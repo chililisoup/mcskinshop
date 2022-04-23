@@ -27,3 +27,6 @@ yarn-error.log*
 firebase.json
 
 package-lock.json
+
+/public/assets
+/src/fakedatabase.json
