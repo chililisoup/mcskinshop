@@ -27,31 +27,30 @@ class LayerAdder extends Component {
 
     addLayer = (id) => {
         const layer = new ImgMod.Layer();
-        layer.sublayers = fakedatabase[id].layers.map(
-            (src, i) => {
-                const sublayer = new ImgMod.Img(process.env.PUBLIC_URL + fakedatabase[id].loc + src);
-                if (fakedatabase[id].colors[i] === "erase") sublayer.type = "erase";
-                return sublayer;
-            }
-        );
-
         layer.colors = fakedatabase[id].colors;
         layer.advanced = fakedatabase[id].advanced;
-        this.props.addLayer(layer);
+
+        Promise.all(fakedatabase[id].layers.map((src, i) => {
+            const image = new ImgMod.Img();
+            layer.sublayers.push(image);
+            if (fakedatabase[id].colors[i] === "erase") image.type = "erase";
+            return image.render(process.env.PUBLIC_URL + fakedatabase[id].loc + src);
+        })).then(() => this.props.addLayer(layer));
     }
 
     loadAssets = () => {
         const layers = new ImgMod.Layer();
 
-        fakedatabase.forEach(asset => {
-            let sublayer = new ImgMod.Layer();
-            asset.layers.forEach(src => sublayer.sublayers.push(
-                new ImgMod.Img(process.env.PUBLIC_URL + asset.loc + src)
-            ));
+        Promise.all(fakedatabase.map(asset => {
+            const sublayer = new ImgMod.Layer();
             layers.sublayers.push(sublayer);
-        });
 
-        layers.updateChildren().then(() => this.setState({layers: layers}));
+            return Promise.all(asset.layers.map(src => {
+                const image = new ImgMod.Img();
+                sublayer.sublayers.push(image);
+                return image.render(process.env.PUBLIC_URL + asset.loc + src);
+            })).then(() => sublayer.render());
+        })).then(() => this.setState({layers: layers}))
     }
 
     render() {
@@ -91,7 +90,7 @@ class SkinManager extends Component {
 
     updateSkin = () => {
         if (this.layers.sublayers.length)
-            this.layers.render().then(result => this.setState({ skin: result }));
+            this.layers.render().then(() => this.setState({ skin: this.layers.src }));
         else this.setState({ skin: null })
     }
 
@@ -106,8 +105,12 @@ class SkinManager extends Component {
     }
 
     addLayerFromInput = (e) => {
-        this.layers.sublayers.push(new ImgMod.Img(URL.createObjectURL(e.target.files[0])));
-        this.updateSkin();
+        const image = new ImgMod.Img();
+        this.layers.sublayers.push(image);
+        image.render(URL.createObjectURL(e.target.files[0])).then(() => {
+            e.target.value = "";
+            this.updateSkin();
+        });
     }
 
     render() {

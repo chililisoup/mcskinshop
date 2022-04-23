@@ -19,7 +19,9 @@ class LayerPreview extends Component {
     }
 
     updatePreview = () => {
-        this.props.asset.render().then(result => this.setState({src: result, alt: this.props.asset.name}));
+        this.props.asset.render().then(() => 
+            this.setState({src: this.props.asset.src, alt: this.props.asset.name})
+        );
     }
 
     render() {
