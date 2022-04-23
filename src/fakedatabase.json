@@ -1,0 +1,209 @@
+[
+    {
+        "name": "shirt",
+        "loc": "/assets/steve/body/shirt/",
+        "layers": [
+            "base.png",
+            "mid.png",
+            "shade.png"
+        ],
+        "colors": [
+            "#eba134",
+            "null",
+            "#000000"
+        ],
+        "advanced": [
+            false,
+            true,
+            true
+        ]
+    },
+    {
+        "name": "pants",
+        "loc": "/assets/uni/legs/pants/",
+        "layers": [
+            "base.png",
+            "shade.png",
+            "shoe_1.png",
+            "shoe_2.png"
+        ],
+        "colors": [
+            "#0094FF",
+            "#190035",
+            "#000000",
+            "#FFFFFF"
+        ],
+        "advanced": [
+            false,
+            true,
+            false,
+            false
+        ]
+    },
+    {
+        "name": "face",
+        "loc": "/assets/uni/head/face/",
+        "layers": [
+            "eyes.png",
+            "pupils.png",
+            "hair.png"
+        ],
+        "colors": [
+            "#FFFFFF",
+            "#9CFF2B",
+            "#54431A"
+        ],
+        "advanced": [
+            false,
+            false,
+            false
+        ]
+    },
+    {
+        "name": "skin",
+        "loc": "/assets/steve/full/skin/",
+        "layers": [
+            "base.png",
+            "shade.png",
+            "highlight.png"
+        ],
+        "colors": [
+            "#F9D3B1",
+            "#990A88",
+            "#FFFFFF"
+        ],
+        "advanced": [
+            false,
+            true,
+            true
+        ]
+    },
+    {
+        "name": "steve_shirt",
+        "loc": "/assets/steve/body/steve_shirt/",
+        "layers": [
+            "base.png",
+            "shade.png"
+        ],
+        "colors": [
+            "#00CCCC",
+            "#213535"
+        ],
+        "advanced": [
+            false,
+            true
+        ]
+    },
+    {
+        "name": "steve_pants",
+        "loc": "/assets/uni/legs/steve_pants/",
+        "layers": [
+            "base.png",
+            "shade.png"
+        ],
+        "colors": [
+            "#5649CC",
+            "#151233"
+        ],
+        "advanced": [
+            false,
+            true
+        ]
+    },
+    {
+        "name": "steve_shoes",
+        "loc": "/assets/uni/legs/steve_shoes/",
+        "layers": [
+            "base.png",
+            "shade.png"
+        ],
+        "colors": [
+            "#6B6B6B",
+            "#161616"
+        ],
+        "advanced": [
+            false,
+            true
+        ]
+    },
+    {
+        "name": "steve_hair",
+        "loc": "/assets/uni/head/steve_hair/",
+        "layers": [
+            "base.png",
+            "shade.png"
+        ],
+        "colors": [
+            "#2E2110",
+            "#000000"
+        ],
+        "advanced": [
+            false,
+            true
+        ]
+    },
+    {
+        "name": "eyes_1",
+        "loc": "/assets/uni/head/eyes_1/",
+        "layers": [
+            "base.png",
+            "color.png",
+            "color_1.png"
+        ],
+        "colors": [
+            "#FFFFFF",
+            "#523D89",
+            "#523D89"
+        ],
+        "advanced": [
+            true,
+            false,
+            true
+        ]
+    },
+    {
+        "name": "eyes_2",
+        "loc": "/assets/uni/head/eyes_2/",
+        "layers": [
+            "base.png",
+            "color.png"
+        ],
+        "colors": [
+            "#FFFFFF",
+            "#523D89"
+        ],
+        "advanced": [
+            true,
+            false
+        ]
+    },
+    {
+        "name": "eyes_3",
+        "loc": "/assets/uni/head/eyes_3/",
+        "layers": [
+            "base.png",
+            "color.png"
+        ],
+        "colors": [
+            "#FFFFFF",
+            "#523D89"
+        ],
+        "advanced": [
+            true,
+            false
+        ]
+    },
+    {
+        "name": "hat_remover",
+        "loc": "/assets/uni/full/hat_remover/",
+        "layers": [
+            "hat_remover.png"
+        ],
+        "colors": [
+            "erase"
+        ],
+        "advanced": [
+            true
+        ]
+    }
+]

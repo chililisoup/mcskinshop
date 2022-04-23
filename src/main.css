@@ -1,0 +1,73 @@
+body {
+  background-color: #2e5266;
+}
+
+button, input {
+  font-weight: bolder;
+  background-color: #6e8898;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  margin: 3px;
+}
+
+button:hover, input:hover {
+  outline: 2px solid #d3d0cb;
+  cursor: pointer;
+}
+
+.SkinManager {
+  display: flex;
+}
+
+img {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  background-image: url("assets/checkerboard.png");
+  background-size: 16px;
+}
+
+.container {
+  display: flex;
+  background-color: #9fb1bc;
+  border: 5px solid #6e8898;
+  border-radius: 10px;
+  margin: 5px;
+}
+
+.paperdoll {
+  display: flex;
+  flex-direction: column;
+  margin: 5px;
+}
+
+.paperdoll-canvas {
+  height: 500px;
+  width: 400px;
+  background: url("assets/background.png");
+}
+
+.manager-layer {
+  flex-direction: row;
+  align-items: center;
+  align-content: center;
+  width: 200px;
+  padding: 5px;
+}
+
+.manager-layer-manager {
+  display: flex;
+  flex-direction: column;
+}
+
+.manager-layer-manager button {
+  width: 18px;
+  height: 18px;
+  margin: 2px;
+}
+
+.manager-layer-colors {
+  display: flex;
+  flex-wrap: wrap;
+}
