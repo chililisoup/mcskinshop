@@ -156,7 +156,9 @@ class SkinManager extends Component {
     downloadSkin = () => {
         const link = document.createElement("a");
         link.href = this.state.skin;
-        link.download = window.prompt("Download as...", "My Skin") + ".png";
+        const name = window.prompt("Download as...", "My Skin");
+        if (name === null) return;
+        link.download = name + ".png";
         link.click();
     }
 
