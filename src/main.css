@@ -1,8 +1,10 @@
 body {
   background-color: #2e5266;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: white;
 }
 
-button, input {
+button, input, select {
   font-weight: bolder;
   background-color: #6e8898;
   color: white;
@@ -16,8 +18,24 @@ button:hover, input:hover {
   cursor: pointer;
 }
 
+input::placeholder {
+  color: black;
+  opacity: 0.7;
+}
+
 .SkinManager {
   display: flex;
+}
+
+.SkinAdders {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+label {
+  margin: 10px 5px 0 10px;
 }
 
 img {
@@ -30,10 +48,31 @@ img {
 
 .container {
   display: flex;
+  flex-direction: column;
   background-color: #9fb1bc;
   border: 5px solid #6e8898;
   border-radius: 10px;
   margin: 5px;
+  height: fit-content;
+}
+
+.container p, .container label {
+  margin: 3px 0;
+  overflow: hidden;
+}
+
+.container span {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.container span input {
+  margin-right: 10px;
+}
+
+.container span button {
+  height: 100%;
 }
 
 .paperdoll {
@@ -48,20 +87,26 @@ img {
   background: url("assets/background.png");
 }
 
-.manager-layer {
-  flex-direction: row;
-  align-items: center;
-  align-content: center;
-  width: 200px;
-  padding: 5px;
+.layer-manager {
+  display: flex;
+  flex-direction: column;
+  min-width: min-content;
+  height: 95vh;
+  overflow-y: auto;
 }
 
-.manager-layer-manager {
+.manager-layer {
+  flex-direction: column;
+  padding: 5px;
+  padding-top: 0;
+}
+
+.manager-layer-buttons {
   display: flex;
   flex-direction: column;
 }
 
-.manager-layer-manager button {
+.manager-layer-buttons button {
   width: 18px;
   height: 18px;
   margin: 2px;
@@ -70,4 +115,11 @@ img {
 .manager-layer-colors {
   display: flex;
   flex-wrap: wrap;
+}
+
+.layer-adder {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  height: 95vh;
 }

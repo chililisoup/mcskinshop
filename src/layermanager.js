@@ -31,6 +31,106 @@ class LayerPreview extends Component {
     }
 }
 
+class Layer extends Component {
+    constructor(props) {
+        super(props);
+
+        this.asset = props.asset;
+    }
+
+    changeColor = (colorIndex, color) => {
+        this.asset.colors[colorIndex] = color.target.value;
+        this.asset.color().then(() => this.updateLayer());
+    }
+
+    changeColorThrottled = (colorIndex, color) => {
+        if (this.awaitUpdate) return;
+        this.awaitUpdate = true;
+        this.changeColor(colorIndex, color);
+
+        setTimeout(() => {
+            this.changeColor(colorIndex, color);
+            this.awaitUpdate = false;
+        }, 100);
+        //add throttle limit slider?
+        //ehh idk, this and a few other things would be fixed with a custom color picker
+    }
+
+    changeBlendMode = (blend) => {
+        this.asset.propagateBlendMode(blend.target.value);
+        this.updateLayer();
+    }
+
+    updateLayer = () => this.props.updateLayer(this.props.index, this.asset);
+
+    moveLayer = change => this.props.moveLayer(this.props.index, change);
+
+    removeLayer = () => this.props.removeLayer(this.props.index);
+
+    render() {
+        const colors = [];
+        if (this.asset?.colors) {
+            this.asset.colors.forEach((color, i) => {
+                if (color !== "null" && color !== "erase" && (!this.asset.advanced[i] || this.props.advanced)) {
+                    colors.push(
+                        <input key={i + this.asset.id} type="color" defaultValue={color} onChange={this.changeColorThrottled.bind(this, i)} />
+                    );
+                }
+            });
+        }
+
+        return (
+            <div className="manager-layer container">
+                <p>{this.asset.name}</p>
+                <span>
+                    <LayerPreview asset={this.asset} />
+                    <div className="manager-layer-buttons">
+                        <button onClick={this.moveLayer.bind(this, -1)}>/\</button>
+                        <button onClick={this.moveLayer.bind(this, 1)}>\/</button>
+                        <button onClick={this.removeLayer.bind(this)}>X</button>
+                    </div>
+                    <div className="manager-layer-colors">
+                        {colors}
+                    </div>
+                </span>
+                {this.props.advanced &&
+                    <span>
+                        <label htmlFor={"blendSelector" + this.asset.id}>Blend Mode:</label>
+                        <select id={"blendSelector" + this.asset.id} value={this.asset.blend} onChange={this.changeBlendMode.bind(this)}>
+                            <option value="source-over">Source Over</option>
+                            <option value="source-in">Source In</option>
+                            <option value="source-out">Source Out</option>
+                            <option value="source-atop">Source Atop</option>
+                            <option value="destination-over">Destination Over</option>
+                            <option value="destination-in">Destination In</option>
+                            <option value="destination-out">Destination Out</option>
+                            <option value="destination-atop">Destination Atop</option>
+                            <option value="lighter">Lighter</option>
+                            <option value="copy">Copy</option>
+                            <option value="xor">XOR</option>
+                            <option value="multiply">Multiply</option>
+                            <option value="screen">Screen</option>
+                            <option value="overlay">Overlay</option>
+                            <option value="darken">Darken</option>
+                            <option value="lighten">Lighten</option>
+                            <option value="color-dodge">Color Dodge</option>
+                            <option value="color-burn">Color Burn</option>
+                            <option value="hard-light">Hard Light</option>
+                            <option value="soft-light">Soft Light</option>
+                            <option value="difference">Difference</option>
+                            <option value="exclusion">Exclusion</option>
+                            <option value="hue">Hue</option>
+                            <option value="saturation">Saturation</option>
+                            <option value="color">Color</option>
+                            <option value="luminosity">Luminosity</option>
+                        </select>
+                    </span>
+                }
+            </div>
+        );
+    }
+}
+
 class LayerManager extends Component {
     constructor(props) {
         super(props);
@@ -43,74 +143,47 @@ class LayerManager extends Component {
         this.layers = props.layers;
     }
 
-    removeLayer = (id) => {
-        let index = this.layerIDs.indexOf(id);
-        this.layers.sublayers.splice(index, 1);
-        this.layerIDs.splice(index, 1);
-        this.updateLayers();
+    setAdvanced = (e) => {
+        this.setState({advanced: e.target.checked});
     }
-
-    moveLayer = (id, change) => {
-        let index = this.layerIDs.indexOf(id);
-        if (index + change < 0 || index + change >= this.layers.length) return;
-        let layer = this.layers.sublayers[index]
-        this.layers.sublayers.splice(index, 1);
-        this.layers.sublayers.splice(index + change, 0, layer);
-        this.layerIDs.splice(index, 1);
-        this.layerIDs.splice(index + change, 0, id);
-        this.updateLayers();
-    }
-
-    changeColor = (id, colorIndex, color) => {
-        let index = this.layerIDs.indexOf(id);
-        this.layers.sublayers[index].colors[colorIndex] = color.target.value;
-        this.layers.sublayers[index].color().then(() => this.updateLayers());
-    }
-
 
     updateLayers = () => {
         this.setState({layers: this.layers});
         this.props.updateLayers(this.layers);
     }
 
-    setAdvanced = (e) => {
-        this.setState({advanced: e.target.checked});
+    updateLayer = (index, newLayer) => {
+        this.layers[index] = newLayer;
+        this.updateLayers();
+    }
+
+    moveLayer = (index, change) => {
+        if (index + change < 0 || index + change >= this.layers.length) return;
+        const layer = this.layers.sublayers[index]
+        this.layers.sublayers.splice(index, 1);
+        this.layers.sublayers.splice(index + change, 0, layer);
+        this.updateLayers();
+    }
+
+    removeLayer = (index) => {
+        this.layers.sublayers.splice(index, 1);
+        this.updateLayers();
     }
 
     render() {
-        this.layerIDs = Array.from(Array(this.layers.sublayers.length).keys());
         let elem = <div />;
         if (this.state.layers.sublayers.length) {
-            elem = this.state.layers.sublayers.map((asset, i) => {
-                let colors = [];
-                if (asset?.colors) {
-                    asset.colors.forEach((color, j) => {
-                        if (color !== "null" && color !== "erase" && (!asset.advanced[j] || this.state.advanced)) {
-                            colors.push(//nextId doesnt work figure this out
-                                <input key={j} type="color" defaultValue={color} onChange={this.changeColor.bind(this, this.layerIDs[i], j)} />
-                            );
-                        }
-                    });
-                }
-
-                return (
-                    <div key={this.layerIDs[i]} className="manager-layer container">
-                        <LayerPreview asset={asset} />
-                        <div className="manager-layer-manager">
-                            <button onClick={this.moveLayer.bind(this, this.layerIDs[i], -1)}>/\</button>
-                            <button onClick={this.moveLayer.bind(this, this.layerIDs[i], 1)}>\/</button>
-                            <button onClick={this.removeLayer.bind(this, this.layerIDs[i])}>X</button>
-                        </div>
-                        <div className="manager-layer-colors">
-                            {colors}
-                        </div>
-                    </div>
-                );
-            });
+            elem = this.state.layers.sublayers.map((asset, i) => 
+                <Layer key={asset.id} asset={asset} index={i} updateLayer={this.updateLayer} moveLayer={this.moveLayer} removeLayer={this.removeLayer} advanced={this.state.advanced}/>
+            );
         }
+
         return (
-            <div>
-                <input type="checkbox" onClick={this.setAdvanced.bind(this)}/>
+            <div className="layer-manager">
+                <span>
+                    <label htmlFor="advancedToggle">Advanced mode</label>
+                    <input type="checkbox" id="advancedToggle" onClick={this.setAdvanced.bind(this)}/>
+                </span>
                 {elem}
             </div>
         );

@@ -18,6 +18,7 @@ class App extends Component {
 
     componentDidMount() {
         this.sceneSetup();
+        this.textureSetup();
         this.modelSetup();
         this.addPartsToScene();
         this.startAnimationLoop();
@@ -39,10 +40,7 @@ class App extends Component {
         this.skin = this.props.skin || this.steve;
         if (this.skin === steve) this.skin = this.slim ? alex : steve;
 
-        const texture = new THREE.TextureLoader().load(this.skin);
-        texture.magFilter = THREE.NearestFilter;
-        this.material.map = texture;
-        this.hatMaterial.map = texture;
+        this.textureSetup();
 
         this.anim = this.props.anim == null ? true : this.props.anim;
     }
@@ -74,17 +72,33 @@ class App extends Component {
         this.controls.update();
     };
 
-    modelSetup = () => {
-        const texture = new THREE.TextureLoader().load(this.skin);
-        texture.magFilter = THREE.NearestFilter;
+    textureSetup = () => {
+        if (typeof this.textureLoader === "undefined")
+            this.textureLoader = new THREE.TextureLoader();
 
-        this.material = new THREE.MeshMatcapMaterial({ map: texture, flatShading: true });
-        this.hatMaterial = new THREE.MeshMatcapMaterial({
-            map: texture,
-            side: THREE.DoubleSide,
-            transparent: true
+        if (typeof this.material === "undefined")
+            this.material = new THREE.MeshMatcapMaterial({ flatShading: true });
+        const material = this.material;
+
+        if (typeof this.hatMaterial === "undefined")
+            this.hatMaterial = new THREE.MeshMatcapMaterial({
+                side: THREE.DoubleSide,
+                transparent: true,
+                flatShading: true,
+                clipIntersection: true
+            });
+        const hatMaterial = this.hatMaterial;
+
+        this.textureLoader.load(this.skin, (texture) => {
+            texture.magFilter = THREE.NearestFilter;
+            material.map = texture;
+            material.needsUpdate = true;
+            hatMaterial.map = texture;
+            hatMaterial.needsUpdate = true;
         });
-        this.hatMaterial.flatShading = true;
+    }
+
+    modelSetup = () => {
 
         ///////////////////////////////
         //                           //
@@ -772,26 +786,26 @@ class PaperDoll extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            skin: null,
-            slim: props.slim || false,
-            anim: props.anim == null ? true : props.anim,
-            isMounted: true
+            slim: !!props.slim,
+            anim: props.anim == null ? true : props.anim
         };
     }
 
+    updateSlim = (e) => {
+        this.setState({slim: e.target.checked});
+        this.props.updateSkin(e.target.checked);
+    }
+    
     render() {
-        const { isMounted = true } = this.state;
-        this.skin = this.props.skin || steve;
         return (
             <div className="paperdoll container">
-                <div>
-                    <input type="checkbox" defaultChecked={this.state.slim} onChange={() => this.setState({slim: !this.state.slim})}/>
-                    <input type="checkbox" defaultChecked={this.state.anim} onChange={() => this.setState({anim: !this.state.anim})}/>
-                    <button onClick={() => this.setState(state => ({ isMounted: !state.isMounted }))}>
-                        {isMounted ? "Hide" : "Show"}
-                    </button>
-                </div>
-                {isMounted && <App skin={this.skin} slim={this.state.slim} anim={this.state.anim} />}
+                <span>
+                    <label htmlFor="slimToggle">Slim</label>
+                    <input type="checkbox" id="slimToggle" checked={this.props.slim} onChange={this.updateSlim.bind(this)}/>
+                    <label htmlFor="animToggle">Animate</label>
+                    <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={() => this.setState({anim: !this.state.anim})}/>
+                </span>
+                <App skin={this.props.skin || steve} slim={this.props.slim} anim={this.state.anim} />
             </div>
         );
     }

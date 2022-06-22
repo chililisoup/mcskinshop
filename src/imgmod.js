@@ -1,6 +1,7 @@
 export class Img {
-    constructor(type) {
+    constructor(type, blend) {
         this.type = type || "normal";
+        this.blend = blend || "source-over";
     }
 
     render = url => new Promise((resolve, reject) => {
@@ -8,6 +9,8 @@ export class Img {
         if (typeof url !== "string") reject();
 
         const image = new Image();
+
+        image.onerror = reject;
         image.onload = () => {
             createImageBitmap(image).then(result => {
                 const canvas = document.createElement("canvas");
@@ -18,10 +21,12 @@ export class Img {
 
                 this.src = canvas.toDataURL();
                 this.image = result;
+
                 resolve();
             });
         }
-        image.onerror = reject;
+        
+        image.crossOrigin = "anonymous";
         image.src = url;
     })
 
@@ -31,6 +36,7 @@ export class Img {
         if (color === "erase" || color === "null") {
             this.type = color;
             resolve();
+            return
         }
 
         const canvas = document.createElement("canvas");
@@ -49,14 +55,29 @@ export class Img {
             resolve();
         });
     })
+
+    propagateBlendMode = (blend) => this.blend = blend || this.blend || "source-over";
+
+    detectSlimModel = () => {
+        if (!this.image) return;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext("2d");
+
+        ctx.drawImage(this.image, 0, 0);
+        return(!ctx.getImageData(46, 63, 1, 1).data[3]);
+    }
 }
 
 
 
 export class Layer {
-    constructor(sublayers, colors) {
+    constructor(sublayers, colors, blend) {
         this.sublayers = sublayers || [];
         this.colors = colors || "#FFFFFF";
+        this.blend = blend || "source-over";
     }
 
     color = colors => new Promise((resolve, reject) => {
@@ -73,8 +94,15 @@ export class Layer {
         )).then(resolve);
     })
 
+    propagateBlendMode = (blend) => {
+        this.blend = blend || this.blend || "source-over";
+        this.sublayers.forEach(sublayer => {
+            sublayer.propagateBlendMode(this.blend);
+        });
+    }
+
     render = ctx => {
-        const dom = !ctx
+        const dom = !ctx;
         if (dom) {
             const canvas = document.createElement("canvas");
             canvas.width = 64;
@@ -85,7 +113,7 @@ export class Layer {
             if (sublayer instanceof Layer)
                 sublayer.render(ctx);
             else {
-                ctx.globalCompositeOperation = "source-over";
+                ctx.globalCompositeOperation = sublayer.blend;
                 if (sublayer.type === "erase") {
                     ctx.globalCompositeOperation = "destination-out";
                 }

@@ -27,8 +27,10 @@ class LayerAdder extends Component {
 
     addLayer = (id) => {
         const layer = new ImgMod.Layer();
+        layer.name = fakedatabase[id].name;
         layer.colors = fakedatabase[id].colors;
         layer.advanced = fakedatabase[id].advanced;
+        layer.id = Math.random().toString(16).slice(2);
 
         Promise.all(fakedatabase[id].layers.map((src, i) => {
             const image = new ImgMod.Img();
@@ -59,15 +61,18 @@ class LayerAdder extends Component {
             elem = this.state.layers.sublayers.map((sublayer, i) => {
                 return (
                     <div className="container" key={fakedatabase[i].name}>
-                        <img src={sublayer.src} alt={fakedatabase[i].name} title={fakedatabase[i].name} />
-                        <button onClick={this.addLayer.bind(this, i)}>+</button>
+                        <p>{fakedatabase[i].name}</p>
+                        <span>
+                            <img src={sublayer.src} alt={fakedatabase[i].name} title={fakedatabase[i].name} />
+                            <button onClick={this.addLayer.bind(this, i)}>+</button>
+                        </span>
                     </div>
                 );
             })
         }
 
         return (
-            <div>
+            <div className="layer-adder">
                 {elem}
             </div>
         );
@@ -79,7 +84,8 @@ class SkinManager extends Component {
         super(props);
 
         this.state = {
-            skin: null
+            skin: null,
+            slim: false,
         }
         this.layers = new ImgMod.Layer();
     }
@@ -88,10 +94,11 @@ class SkinManager extends Component {
         this.updateSkin();//delete maybe? not needed atm
     }
 
-    updateSkin = () => {
+    updateSkin = (slim) => {
+        if (typeof slim === "undefined") slim = this.state.slim || false;
         if (this.layers.sublayers.length)
-            this.layers.render().then(() => this.setState({ skin: this.layers.src }));
-        else this.setState({ skin: null })
+            this.layers.render().then(() => this.setState({ skin: this.layers.src, slim: slim }));
+        else this.setState({ skin: null, slim: slim });
     }
 
     updateLayers = (newLayers) => {
@@ -106,20 +113,69 @@ class SkinManager extends Component {
 
     addLayerFromInput = (e) => {
         const image = new ImgMod.Img();
+        image.name = e.target.files[0].name;
+        image.id = Math.random().toString(16).slice(2);
         this.layers.sublayers.push(image);
-        image.render(URL.createObjectURL(e.target.files[0])).then(() => {
+        image.render(URL.createObjectURL(e.target.files[0]))
+        .then(() => {
             e.target.value = "";
-            this.updateSkin();
+            this.updateSkin(image.detectSlimModel());
         });
+    }
+
+    addLayerFromUsername = () => {
+        /* This might be better but CORS makes it annoying
+
+        fetch("https://api.mojang.com/users/profiles/minecraft/" + this.usernameInput)
+        .then(response => response.json())
+        .then(data => fetch("https://sessionserver.mojang.com/session/minecraft/profile/" + data.id))
+        .then(response => response.json())
+        .then(data => {
+            const skin = new ImgMod.Img();
+            this.layers.sublayers.push(skin);
+            skin.render(JSON.parse(atob(data.properties[0].value)).textures.SKIN.url).then(() => {
+                this.updateSkin();
+            });
+        });
+        */
+
+        const skin = new ImgMod.Img();
+        skin.name = this.usernameInput;
+        skin.id = Math.random().toString(16).slice(2);
+        this.layers.sublayers.push(skin);
+        skin.render("https://minotar.net/skin/" + this.usernameInput).then(() => 
+            this.updateSkin(skin.detectSlimModel())
+        );
+    }
+
+    updateUsernameInput = (e) => {
+        e.target.value = e.target.value.replace(/[^0-9A-Za-z_]/g, "");
+        this.usernameInput = e.target.value;
+    }
+
+    downloadSkin = () => {
+        const link = document.createElement("a");
+        link.href = this.state.skin;
+        link.download = window.prompt("Download as...", "My Skin") + ".png";
+        link.click();
     }
 
     render() {
         return ( //Make it so layer manager just sends updated layers instead of layer update commands
             <div className="SkinManager">
-                <img src={this.state.skin} alt="" />
+                <div className="SkinAdders container">
+                    <img src={this.state.skin} alt="Flattened Skin" />
+                    <button onClick={this.downloadSkin}>Download</button>
+                    <label htmlFor="imageInput">Upload</label>
+                    <input type="file" accept="image/png" id="imageInput" onChange={this.addLayerFromInput} />
+                    <label htmlFor="usernameInput">Skin Stealer</label>
+                    <span>
+                        <input placeholder="Username" maxLength={16} id="usernameInput" onChange={this.updateUsernameInput}></input>
+                        <button onClick={this.addLayerFromUsername}>+</button>
+                    </span>
+                </div>
                 <LayerManager layers={this.layers} updateLayers={this.updateLayers} />
-                <input type="file" accept="image/png" onChange={this.addLayerFromInput} />
-                <PaperDoll skin={this.state.skin} slim={false} />
+                <PaperDoll skin={this.state.skin} slim={this.state.slim} updateSkin={this.updateSkin} />
                 <LayerAdder addLayer={this.addLayer} />
             </div>
         );
