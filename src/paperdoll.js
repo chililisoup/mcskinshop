@@ -12,6 +12,7 @@ class App extends Component {
         this.skin = props.skin || steve;
         if (this.skin === steve) this.skin = this.slim ? alex : steve;
         this.anim = props.anim == null ? true : props.anim;
+        this.animSpeed = props.animSpeed == null ? 1 : props.animSpeed;
 
         this.canvasRef = React.createRef();
     }
@@ -43,6 +44,7 @@ class App extends Component {
         this.textureSetup();
 
         this.anim = this.props.anim == null ? true : this.props.anim;
+        this.animSpeed = this.props.animSpeed == null ? 1 : this.props.animSpeed;
     }
 
     // Standard scene setup in Three.js. Check "Creating a scene" manual for more information
@@ -746,7 +748,7 @@ class App extends Component {
 
         if (this.anim) {
             this.time = this.time || 0;
-            this.time += 0.1;
+            this.time += 0.1 * this.animSpeed;
             if (this.time > Math.PI * 20) this.time -= Math.PI * 20;
         }
 
@@ -787,7 +789,8 @@ class PaperDoll extends React.Component {
         super(props);
         this.state = {
             slim: !!props.slim,
-            anim: props.anim == null ? true : props.anim
+            anim: props.anim == null ? true : props.anim,
+            animSpeed: 1
         };
     }
 
@@ -804,8 +807,9 @@ class PaperDoll extends React.Component {
                     <input type="checkbox" id="slimToggle" checked={this.props.slim} onChange={this.updateSlim.bind(this)}/>
                     <label htmlFor="animToggle">Animate</label>
                     <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={() => this.setState({anim: !this.state.anim})}/>
+                    <input type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.setState({animSpeed: e.target.value})}/>
                 </span>
-                <App skin={this.props.skin || steve} slim={this.props.slim} anim={this.state.anim} />
+                <App skin={this.props.skin || steve} slim={this.props.slim} anim={this.state.anim} animSpeed={this.state.animSpeed} />
             </div>
         );
     }
