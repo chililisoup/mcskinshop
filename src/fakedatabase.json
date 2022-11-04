@@ -1,0 +1,306 @@
+[
+    {
+		"name": "Flat Base",
+		"loc": "/assets/uni/full/flat_base/",
+		"layers": [
+			"flat_base.png"
+		],
+		"colors": [
+			"#d8a997"
+		],
+		"advanced": [
+			false
+		]
+	},
+    {
+        "name": "Beveled Skin",
+        "loc": "/assets/steve/full/skin/",
+        "layers": [
+            "base.png",
+            "shade.png",
+            "highlight.png"
+        ],
+        "colors": [
+            "#F9D3B1",
+            "#990A88",
+            "#FFFFFF"
+        ],
+        "advanced": [
+            false,
+            true,
+            true
+        ]
+    },
+    {
+		"name": "Joose Shade",
+		"loc": "/assets/steve/full/joose_shade/",
+		"layers": [
+			"joose_shade.png"
+		],
+		"colors": [
+			"#000000"
+		],
+		"advanced": [
+			false
+		]
+	},
+    {
+        "name": "Steve Shirt",
+        "loc": "/assets/steve/body/steve_shirt/",
+        "layers": [
+            "base.png",
+            "shade.png"
+        ],
+        "colors": [
+            "#00CCCC",
+            "#213535"
+        ],
+        "advanced": [
+            false,
+            true
+        ]
+    },
+    {
+        "name": "Smiley Shirt :)",
+        "loc": "/assets/steve/body/shirt/",
+        "layers": [
+            "base.png",
+            "mid.png",
+            "shade.png"
+        ],
+        "colors": [
+            "#eba134",
+            "null",
+            "#000000"
+        ],
+        "advanced": [
+            false,
+            true,
+            true
+        ]
+    },
+    {
+        "name": "Steve Pants",
+        "loc": "/assets/uni/legs/steve_pants/",
+        "layers": [
+            "base.png",
+            "shade.png"
+        ],
+        "colors": [
+            "#5649CC",
+            "#151233"
+        ],
+        "advanced": [
+            false,
+            true
+        ]
+    },
+    {
+        "name": "Basic Pants",
+        "loc": "/assets/uni/legs/pants/",
+        "layers": [
+            "base.png",
+            "shade.png",
+            "shoe_1.png",
+            "shoe_2.png"
+        ],
+        "colors": [
+            "#0094FF",
+            "#190035",
+            "#000000",
+            "#FFFFFF"
+        ],
+        "advanced": [
+            false,
+            true,
+            false,
+            false
+        ]
+    },
+    {
+        "name": "Steve Shoes",
+        "loc": "/assets/uni/legs/steve_shoes/",
+        "layers": [
+            "base.png",
+            "shade.png"
+        ],
+        "colors": [
+            "#6B6B6B",
+            "#161616"
+        ],
+        "advanced": [
+            false,
+            true
+        ]
+    },
+    {
+        "name": "Steve Hair",
+        "loc": "/assets/uni/head/steve_hair/",
+        "layers": [
+            "base.png",
+            "shade.png"
+        ],
+        "colors": [
+            "#2E2110",
+            "#000000"
+        ],
+        "advanced": [
+            false,
+            true
+        ]
+    },
+    {
+		"name": "Fancy Man",
+		"loc": "/assets/uni/head/fancy_man/",
+		"layers": [
+			"base.png",
+			"shade.png"
+		],
+		"colors": [
+			"#b39431",
+			"#000000"
+		],
+		"advanced": [
+			false,
+			true
+		]
+	},
+    {
+        "name": "Steve Eyes",
+        "loc": "/assets/uni/head/eyes_1/",
+        "layers": [
+            "base.png",
+            "color.png",
+            "color_1.png"
+        ],
+        "colors": [
+            "#FFFFFF",
+            "#523D89",
+            "#523D89"
+        ],
+        "advanced": [
+            true,
+            false,
+            true
+        ]
+    },
+    {
+        "name": "Big Eyes",
+        "loc": "/assets/uni/head/eyes_2/",
+        "layers": [
+            "base.png",
+            "color.png"
+        ],
+        "colors": [
+            "#FFFFFF",
+            "#523D89"
+        ],
+        "advanced": [
+            true,
+            false
+        ]
+    },
+    {
+        "name": "WOW Eyes",
+        "loc": "/assets/uni/head/eyes_3/",
+        "layers": [
+            "base.png",
+            "color.png"
+        ],
+        "colors": [
+            "#FFFFFF",
+            "#523D89"
+        ],
+        "advanced": [
+            true,
+            false
+        ]
+    },
+    {
+        "name": "Biker Face",
+        "loc": "/assets/uni/head/face/",
+        "layers": [
+            "eyes.png",
+            "pupils.png",
+            "hair.png"
+        ],
+        "colors": [
+            "#FFFFFF",
+            "#9CFF2B",
+            "#54431A"
+        ],
+        "advanced": [
+            false,
+            false,
+            false
+        ]
+    },
+    {
+        "name": "Full Hat Remover",
+        "loc": "/assets/uni/full/hat_remover/",
+        "layers": [
+            "hat_remover.png"
+        ],
+        "colors": [
+            "erase"
+        ],
+        "advanced": [
+            true
+        ]
+    },
+    {
+        "name": "Head Hat Remover",
+        "loc": "/assets/uni/head/head_hat_remover/",
+        "layers": [
+            "head_hat_remover.png"
+        ],
+        "colors": [
+            "erase"
+        ],
+        "advanced": [
+            true
+        ]
+    },
+    {
+        "name": "Body Hat Remover",
+        "loc": "/assets/uni/body/body_hat_remover/",
+        "layers": [
+            "body_hat_remover.png"
+        ],
+        "colors": [
+            "erase"
+        ],
+        "advanced": [
+            true
+        ]
+    },
+    {
+        "name": "Legs Hat Remover",
+        "loc": "/assets/uni/legs/legs_hat_remover/",
+        "layers": [
+            "legs_hat_remover.png"
+        ],
+        "colors": [
+            "erase"
+        ],
+        "advanced": [
+            true
+        ]
+    },
+	{
+		"name": "Dream",
+		"loc": "/assets/alex/body/dream/",
+		"layers": [
+			"base.png",
+			"accent.png"
+		],
+		"colors": [
+			"#ffffff",
+			"#0D0D0D"
+		],
+		"advanced": [
+			false,
+			false
+		]
+	}
+]

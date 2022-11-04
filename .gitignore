@@ -28,6 +28,4 @@ firebase.json
 
 package-lock.json
 
-/public/assets
-/src/fakedatabase.json
 /src/assets

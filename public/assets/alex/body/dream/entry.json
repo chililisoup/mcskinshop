@@ -1,0 +1,15 @@
+{
+    "name": "Dream",
+    "layers": [
+        "base.png",
+        "accent.png"
+    ],
+    "colors": [
+        "#ffffff",
+        "#000000"
+    ],
+    "advanced": [
+        false,
+        false
+    ]
+}
