@@ -248,6 +248,19 @@
             true
         ]
     },
+	{
+        "name": "Full Hat Flattener",
+        "loc": "/assets/uni/full/hat_flattener/",
+        "layers": [
+            "hat_flattener.png"
+        ],
+        "colors": [
+            "flatten"
+        ],
+        "advanced": [
+            true
+        ]
+    },
     {
         "name": "Head Hat Remover",
         "loc": "/assets/uni/head/head_hat_remover/",
@@ -256,6 +269,19 @@
         ],
         "colors": [
             "erase"
+        ],
+        "advanced": [
+            true
+        ]
+    },
+	{
+        "name": "Head Hat Flattener",
+        "loc": "/assets/uni/head/head_hat_flattener/",
+        "layers": [
+            "head_hat_flattener.png"
+        ],
+        "colors": [
+            "flatten"
         ],
         "advanced": [
             true
@@ -274,6 +300,19 @@
             true
         ]
     },
+	{
+        "name": "Body Hat Flattener",
+        "loc": "/assets/uni/body/body_hat_flattener/",
+        "layers": [
+            "body_hat_flattener.png"
+        ],
+        "colors": [
+            "flatten"
+        ],
+        "advanced": [
+            true
+        ]
+    },
     {
         "name": "Legs Hat Remover",
         "loc": "/assets/uni/legs/legs_hat_remover/",
@@ -282,6 +321,19 @@
         ],
         "colors": [
             "erase"
+        ],
+        "advanced": [
+            true
+        ]
+    },
+	{
+        "name": "Legs Hat Flattener",
+        "loc": "/assets/uni/legs/legs_hat_flattener/",
+        "layers": [
+            "legs_hat_flattener.png"
+        ],
+        "colors": [
+            "flatten"
         ],
         "advanced": [
             true
