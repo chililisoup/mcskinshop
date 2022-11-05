@@ -87,6 +87,12 @@ img {
   background: url("assets/background.png");
 }
 
+.paperdoll span {
+  width: 400px;
+  flex-flow: row wrap;
+  justify-content: space-evenly;
+}
+
 .layer-manager {
   display: flex;
   flex-direction: column;

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import steve from "./assets/steve.png";
 import alex from "./assets/alex.png";
+import matcap from "./assets/matcap.png";
 
 class App extends Component {
     constructor(props) {
@@ -13,6 +14,8 @@ class App extends Component {
         if (this.skin === steve) this.skin = this.slim ? alex : steve;
         this.anim = props.anim == null ? true : props.anim;
         this.animSpeed = props.animSpeed == null ? 1 : props.animSpeed;
+        this.explode = props.explode || false;
+        this.shade = props.shade == null ? true : props.shade;
 
         this.canvasRef = React.createRef();
     }
@@ -38,8 +41,15 @@ class App extends Component {
             this.updateSlim();
         }
 
+        if (this.props.explode !== prevProps.explode) {
+            this.explode = this.props.explode || false;
+            this.updateExplode();
+        }
+
         this.skin = this.props.skin || this.steve;
         if (this.skin === steve) this.skin = this.slim ? alex : steve;
+
+        this.shade = this.props.shade == null ? true : this.props.shade;
 
         this.textureSetup();
 
@@ -55,10 +65,12 @@ class App extends Component {
         const height = this.canvasRef.current.clientHeight;
 
         this.scene = new THREE.Scene();
+
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvasRef.current,
             alpha: true
         });
+        this.renderer.setPixelRatio(window.devicePixelRatio * 2);
         this.renderer.setSize(width, height);
 
         this.camera = new THREE.PerspectiveCamera(
@@ -77,6 +89,9 @@ class App extends Component {
     textureSetup = () => {
         if (typeof this.textureLoader === "undefined")
             this.textureLoader = new THREE.TextureLoader();
+        
+        if (typeof this.matcapLoader === "undefined")
+            this.matcapLoader = new THREE.TextureLoader();
 
         if (typeof this.material === "undefined")
             this.material = new THREE.MeshMatcapMaterial({ flatShading: true });
@@ -86,18 +101,32 @@ class App extends Component {
             this.hatMaterial = new THREE.MeshMatcapMaterial({
                 side: THREE.DoubleSide,
                 transparent: true,
-                flatShading: true,
-                clipIntersection: true
+                flatShading: true
             });
         const hatMaterial = this.hatMaterial;
 
+        if (this.shade) {
+            material.matcap = null;
+            hatMaterial.matcap = null;
+        } else this.matcapLoader.load(matcap, (matcapMap) => {
+            material.matcap = matcapMap;
+            material.needsUpdate = true;
+
+            hatMaterial.matcap = matcapMap;
+            hatMaterial.needsUpdate = true;
+        });  
+
         this.textureLoader.load(this.skin, (texture) => {
             texture.magFilter = THREE.NearestFilter;
+
             material.map = texture;
             material.needsUpdate = true;
+
             hatMaterial.map = texture;
             hatMaterial.needsUpdate = true;
         });
+
+        
     }
 
     modelSetup = () => {
@@ -646,7 +675,6 @@ class App extends Component {
         this.headPivot = new THREE.Object3D();
         this.headPivot.add(head);
         this.headPivot.add(headHat);
-        this.headPivot.position.y = 24;
         head.position.y = 4;
         headHat.position.y = 4;
         this.scene.add(this.headPivot);
@@ -666,8 +694,6 @@ class App extends Component {
         this.leftLegPivot = new THREE.Object3D();
         this.leftLegPivot.add(leftLeg);
         this.leftLegPivot.add(leftLegHat);
-        this.leftLegPivot.position.x = 1.995;
-        this.leftLegPivot.position.y = 12;
         leftLeg.position.y = -6;
         leftLegHat.position.y = -6;
         this.scene.add(this.leftLegPivot);
@@ -677,8 +703,6 @@ class App extends Component {
         this.rightLegPivot = new THREE.Object3D();
         this.rightLegPivot.add(rightLeg);
         this.rightLegPivot.add(rightLegHat);
-        this.rightLegPivot.position.x = -1.995;
-        this.rightLegPivot.position.y = 12;
         rightLeg.position.y = -6;
         rightLegHat.position.y = -6;
         this.scene.add(this.rightLegPivot);
@@ -692,7 +716,6 @@ class App extends Component {
         this.leftArmPivot.add(leftArmHat);
         this.leftArmPivot.add(leftArmSlim);
         this.leftArmPivot.add(leftArmSlimHat);
-        this.leftArmPivot.position.x = 5;
         this.leftArmPivot.position.y = 22;
         leftArm.position.x = 1;
         leftArm.position.y = -4;
@@ -715,7 +738,6 @@ class App extends Component {
         this.rightArmPivot.add(rightArmHat);
         this.rightArmPivot.add(rightArmSlim);
         this.rightArmPivot.add(rightArmSlimHat);
-        this.rightArmPivot.position.x = -5;
         this.rightArmPivot.position.y = 22;
         rightArm.position.x = -1;
         rightArm.position.y = -4;
@@ -730,6 +752,7 @@ class App extends Component {
         this.scene.add(this.rightArmPivot);
 
         this.updateSlim();
+        this.updateExplode();
     };
 
     updateSlim = () => {
@@ -742,6 +765,23 @@ class App extends Component {
             else e.visible = !this.slim;
         });
     };
+
+    updateExplode = () => {
+        let mod = this.explode ? 2.5 : 0;
+
+
+        this.headPivot.position.y = 24 + mod;
+
+        this.leftLegPivot.position.x = 1.995 + (mod / 2);
+        this.leftLegPivot.position.y = 12 - mod;
+        
+        this.rightLegPivot.position.x = -1.995 - (mod / 2);
+        this.rightLegPivot.position.y = 12 - mod;
+
+        this.leftArmPivot.position.x = 5 + mod;
+
+        this.rightArmPivot.position.x = -5 - mod;
+    }
 
     startAnimationLoop = () => {
         this.renderer.render(this.scene, this.camera);
@@ -790,7 +830,9 @@ class PaperDoll extends React.Component {
         this.state = {
             slim: !!props.slim,
             anim: props.anim == null ? true : props.anim,
-            animSpeed: 1
+            animSpeed: 1,
+            explode: props.explode == null ? false : props.explode,
+            shade: props.shade == null ? true : props.shade
         };
     }
 
@@ -803,13 +845,25 @@ class PaperDoll extends React.Component {
         return (
             <div className="paperdoll container">
                 <span>
-                    <label htmlFor="slimToggle">Slim</label>
-                    <input type="checkbox" id="slimToggle" checked={this.props.slim} onChange={this.updateSlim.bind(this)}/>
-                    <label htmlFor="animToggle">Animate</label>
-                    <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={() => this.setState({anim: !this.state.anim})}/>
-                    <input type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.setState({animSpeed: e.target.value})}/>
+                    <div>
+                        <label htmlFor="slimToggle">Slim</label>
+                        <input type="checkbox" id="slimToggle" checked={this.props.slim} onChange={this.updateSlim.bind(this)}/>
+                    </div>
+                    <div>
+                        <label htmlFor="animToggle">Animate</label>
+                        <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={() => this.setState({anim: !this.state.anim})}/>
+                        <input type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.setState({animSpeed: e.target.value})}/>
+                    </div>
+                    <div>
+                        <label htmlFor="explodeToggle">Explode</label>
+                        <input type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={() => this.setState({explode: !this.state.explode})}/>
+                    </div>
+                    <div>
+                        <label htmlFor="shadeToggle">Shade</label>
+                        <input type="checkbox" id="shadeToggle" checked={this.state.shade} onChange={() => this.setState({shade: !this.state.shade})}/>
+                    </div>
                 </span>
-                <App skin={this.props.skin || steve} slim={this.props.slim} anim={this.state.anim} animSpeed={this.state.animSpeed} />
+                <App skin={this.props.skin || steve} slim={this.props.slim} anim={this.state.anim} animSpeed={this.state.animSpeed} explode={this.state.explode} shade={this.state.shade} />
             </div>
         );
     }
