@@ -19,6 +19,7 @@ export class Img {
     }
 
     render = url => new Promise((resolve, reject) => {
+        if (!url) url = this.rawSrc;
         if (!url) resolve();
         if (typeof url !== "string") reject();
 
@@ -31,6 +32,13 @@ export class Img {
                 canvas.width = 64;
                 canvas.height = 64;
                 const ctx = canvas.getContext("2d");
+
+                const copyCanvas = document.createElement("canvas");
+                copyCanvas.width = 64;
+                copyCanvas.height = 64;
+                const copyCtx = copyCanvas.getContext("2d");
+                copyCtx.filter = this.filter;
+
                 ctx.drawImage(result, 0, 0);
 
                 if (image.height === 32) {
@@ -46,14 +54,23 @@ export class Img {
                     ctx.drawImage(result, 0,  20, 12, 12, 36, 52, 12, 12); // Leg front/sides
                     ctx.drawImage(result, 12, 20, 4,  12, 32, 52, 4,  12); // Leg back
 
-                    this.src = canvas.toDataURL();
+                    this.rawSrc = canvas.toDataURL();
+
                     createImageBitmap(canvas).then(imageResult => {
                         this.image = imageResult;
+
+                        copyCtx.drawImage(canvas, 0, 0);
+                        this.src = copyCanvas.toDataURL();
+
                         resolve();
                     });
                 } else {
-                    this.src = canvas.toDataURL();
+                    this.rawSrc = canvas.toDataURL();
                     this.image = result;
+
+                    copyCtx.drawImage(canvas, 0, 0);
+                    this.src = copyCanvas.toDataURL();
+
                     resolve();
                 }
             });
@@ -61,7 +78,16 @@ export class Img {
         
         image.crossOrigin = "anonymous";
         image.src = url;
-    })
+    });
+
+    copy = () => {
+        const copy = new Img(this.type, this.blend, this.filter);
+        copy.src = this.src;
+        copy.rawSrc = this.rawSrc;
+        copy.image = this.image;
+
+        return copy;
+    }
 
     color = color => new Promise((resolve, reject) => {
         if (!this.image) reject();
@@ -210,5 +236,18 @@ export class Layer {
             this.src = ctx.canvas.toDataURL();
             this.image = result;
         });
+    }
+
+    copy = () => {
+        const copy = new Layer();
+        copy.colors = this.colors;
+        copy.blend = this.blend;
+        copy.filter = this.filter;
+        if (this.advanced) copy.advanced = this.advanced;
+        if (this.name) copy.name = this.name;
+
+        this.sublayers.forEach(layer => copy.sublayers.push(layer.copy()));
+        
+        return copy;
     }
 }

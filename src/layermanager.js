@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import * as ImgMod from './imgmod';
 
 class LayerPreview extends Component {
     constructor(props) {
@@ -48,7 +49,7 @@ class Layer extends Component {
     }
 
     changeColor = (colorIndex, color) => {
-        this.asset.colors[colorIndex] = color.target.value;
+        this.asset.colors[colorIndex] = color;
         this.asset.color().then(() => this.updateLayer());
     }
 
@@ -66,7 +67,7 @@ class Layer extends Component {
     }
 
     changeBlendMode = blend => {
-        this.asset.propagateBlendMode(blend.target.value);
+        this.asset.propagateBlendMode(blend);
         this.updateLayer();
     }
 
@@ -90,7 +91,13 @@ class Layer extends Component {
 
     moveLayer = change => this.props.moveLayer(this.props.index, change);
 
+    duplicateLayer = () => this.props.duplicateLayer(this.props.index);
+
     removeLayer = () => this.props.removeLayer(this.props.index);
+
+    flattenLayer = () => this.props.flattenLayer(this.props.index);
+
+    mergeLayerDown = () => this.props.mergeLayerDown(this.props.index);
 
     render() {
         const colors = [];
@@ -98,7 +105,7 @@ class Layer extends Component {
             this.asset.colors.forEach((color, i) => {
                 if (color !== "null" && color !== "erase" && (!this.asset.advanced[i] || this.props.advanced)) {
                     colors.push(
-                        <input key={i + this.asset.id} type="color" defaultValue={color} onChange={this.changeColorThrottled.bind(this, i)} />
+                        <input key={i + this.asset.id} type="color" defaultValue={color} onChange={e => this.changeColorThrottled(i, e.target.value)} />
                     );
                 }
             });
@@ -110,9 +117,16 @@ class Layer extends Component {
                 <span>
                     <LayerPreview asset={this.asset} />
                     <div className="manager-layer-buttons">
-                        <button onClick={this.moveLayer.bind(this, 1)}>/\</button>
-                        <button onClick={this.moveLayer.bind(this, -1)}>\/</button>
-                        <button onClick={this.removeLayer.bind(this)}>X</button>
+                        <button onClick={() => this.moveLayer(1)}>&#9650;</button>
+                        <button onClick={() => this.moveLayer(-1)}>&#9660;</button>
+                    </div>
+                    <div className="manager-layer-buttons">
+                        <button onClick={() => this.duplicateLayer()}>&#128471;</button>
+                        <button onClick={() => this.removeLayer()}>&#10006;</button>
+                    </div>
+                    <div className="manager-layer-buttons">
+                        <button onClick={() => this.flattenLayer()}>&#8676;</button>
+                        <button onClick={() => this.mergeLayerDown()}>&#10515;</button>
                     </div>
                     <div className="manager-layer-colors">
                         {colors}
@@ -122,7 +136,7 @@ class Layer extends Component {
                     <div className="settingsList">
                         <span>
                             <label htmlFor={"blendSelector" + this.asset.id}>Blend Mode:</label>
-                            <select id={"blendSelector" + this.asset.id} value={this.asset.blend} onChange={this.changeBlendMode.bind(this)}>
+                            <select id={"blendSelector" + this.asset.id} value={this.asset.blend} onChange={e => this.changeBlendMode(e.target.value)}>
                                 <option value="source-over">Source Over</option>
                                 <option value="source-in">Source In</option>
                                 <option value="source-out">Source Out</option>
@@ -194,11 +208,12 @@ class LayerManager extends Component {
             advanced: false,
             layers: props.layers
         };
-
+        // Should be receiving the sublayers of the layers, it doesn't need the actual full layers object
+        // Also why tf is layers a state and also not a state make it just a state bitch
         this.layers = props.layers;
     }
 
-    setAdvanced = (e) => {
+    setAdvanced = e => {
         this.setState({advanced: e.target.checked});
     }
 
@@ -208,20 +223,76 @@ class LayerManager extends Component {
     }
 
     updateLayer = (index, newLayer) => {
-        this.layers[index] = newLayer;
+        this.layers.sublayers[index] = newLayer;
         this.updateLayers();
     }
 
     moveLayer = (index, change) => {
-        if (index + change < 0 || index + change >= this.layers.length) return;
+        if (index + change < 0) change = this.layers.sublayers.length - 1;
+        if (index + change >= this.layers.sublayers.length) change = 0 - (this.layers.sublayers.length - 1);
         const layer = this.layers.sublayers[index]
         this.layers.sublayers.splice(index, 1);
         this.layers.sublayers.splice(index + change, 0, layer);
         this.updateLayers();
     }
 
-    removeLayer = (index) => {
+    duplicateLayer = index => {
+        const copy = this.layers.sublayers[index].copy();
+        copy.id = Math.random().toString(16).slice(2);
+        this.layers.sublayers.splice(index + 1, 0, copy);
+        this.updateLayers();
+    }
+
+    removeLayer = index => {
         this.layers.sublayers.splice(index, 1);
+        this.updateLayers();
+    }
+
+    flattenLayer = index => {
+        const flatLayer = new ImgMod.Img();
+        flatLayer.name = this.layers.sublayers[index].name;
+        flatLayer.id = Math.random().toString(16).slice(2);
+
+        return this.layers.sublayers[index].render()
+        .then(() => flatLayer.render(this.layers.sublayers[index].src)
+        .then(() => this.updateLayer(index, flatLayer)));
+    }
+
+    mergeLayerDown = index => {
+        if (index === 0 || this.layers.sublayers.length < 2) return;
+        
+        const topLayer = this.layers.sublayers[index];
+        const bottomLayer = this.layers.sublayers[index - 1];
+        const mergedLayer = new ImgMod.Layer();
+
+        mergedLayer.name = topLayer.name + " + " + bottomLayer.name;
+        mergedLayer.id = Math.random().toString(16).slice(2);
+        mergedLayer.colors = [];
+        mergedLayer.advanced = [];
+
+        if (bottomLayer instanceof ImgMod.Layer) {
+            mergedLayer.sublayers = bottomLayer.sublayers;
+            mergedLayer.colors = mergedLayer.colors.concat(bottomLayer.colors);
+            mergedLayer.advanced = bottomLayer.advanced;
+        } else {
+            mergedLayer.sublayers.push(bottomLayer);
+            mergedLayer.colors.push("null");
+            mergedLayer.advanced.push(true);
+        }
+        
+        if (topLayer instanceof ImgMod.Layer) {
+            mergedLayer.sublayers = mergedLayer.sublayers.concat(topLayer.sublayers);
+            mergedLayer.colors = mergedLayer.colors.concat(topLayer.colors);
+            mergedLayer.advanced = mergedLayer.advanced.concat(topLayer.advanced);
+        } else {
+            mergedLayer.sublayers.push(topLayer);
+            mergedLayer.colors.push("null");
+            mergedLayer.advanced.push(true);
+        }
+
+        this.layers.sublayers.splice(index, 1);
+        this.layers.sublayers[index - 1] = mergedLayer;
+        console.log(mergedLayer);
         this.updateLayers();
     }
 
@@ -229,7 +300,7 @@ class LayerManager extends Component {
         let elem = <div />;
         if (this.state.layers.sublayers.length) {
             elem = this.state.layers.sublayers.map((asset, i) => 
-                <Layer key={asset.id} asset={asset} index={i} updateLayer={this.updateLayer} moveLayer={this.moveLayer} removeLayer={this.removeLayer} advanced={this.state.advanced}/>
+                <Layer key={asset.id} asset={asset} index={i} updateLayer={this.updateLayer} moveLayer={this.moveLayer} duplicateLayer={this.duplicateLayer} removeLayer={this.removeLayer} flattenLayer={this.flattenLayer} mergeLayerDown={this.mergeLayerDown} advanced={this.state.advanced}/>
             );
         }
 

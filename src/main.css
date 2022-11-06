@@ -9,7 +9,7 @@ button, input, select {
   background-color: #6e8898;
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 3px;
   margin: 3px;
 }
 
@@ -39,11 +39,12 @@ label {
 }
 
 img {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   image-rendering: pixelated;
   background-image: url("assets/checkerboard.png");
-  background-size: 16px;
+  background-size: 24px;
+  border-radius: 3px;
 }
 
 .container {
@@ -67,14 +68,6 @@ img {
   align-items: center;
 }
 
-.container span input {
-  margin-right: 10px;
-}
-
-.container span button {
-  height: 100%;
-}
-
 .paperdoll {
   display: flex;
   flex-direction: column;
@@ -96,15 +89,19 @@ img {
 .layer-manager {
   display: flex;
   flex-direction: column-reverse;
-  min-width: min-content;
+  width: 325px;
   height: 95vh;
   overflow-y: auto;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
 }
 
 .manager-layer {
   flex-direction: column;
-  padding: 5px;
+  padding: 3px;
   padding-top: 0;
+  margin: 5px;
+  margin-top: 0;
 }
 
 .manager-layer-buttons {
@@ -112,15 +109,21 @@ img {
   flex-direction: column;
 }
 
-.manager-layer-buttons button {
-  width: 18px;
-  height: 18px;
+.manager-layer-buttons button, .manager-layer-colors input {
+  width: 20px;
+  height: 20px;
   margin: 2px;
 }
 
 .manager-layer-colors {
+  height: 100%;
   display: flex;
+  flex-direction: column;
   flex-wrap: wrap;
+}
+
+.manager-layer > span {
+  height: 50px;
 }
 
 .layer-adder {

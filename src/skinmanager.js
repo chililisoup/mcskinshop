@@ -90,6 +90,8 @@ class SkinManager extends Component {
     render() {
         return ( //Make it so layer manager just sends updated layers instead of layer update commands
             <div className="SkinManager">
+                <LayerManager layers={this.layers} updateLayers={this.updateLayers} />
+                <PaperDoll skin={this.state.skin} slim={this.state.slim} updateSkin={this.updateSkin} />
                 <div className="SkinAdders container">
                     <img src={this.state.skin} alt="Flattened Skin" />
                     <button onClick={this.downloadSkin}>Download</button>
@@ -101,8 +103,6 @@ class SkinManager extends Component {
                         <button onClick={this.addLayerFromUsername}>+</button>
                     </span>
                 </div>
-                <LayerManager layers={this.layers} updateLayers={this.updateLayers} />
-                <PaperDoll skin={this.state.skin} slim={this.state.slim} updateSkin={this.updateSkin} />
                 <LayerAdder addLayer={this.addLayer} />
             </div>
         );
