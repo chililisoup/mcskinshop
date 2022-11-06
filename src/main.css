@@ -95,7 +95,7 @@ img {
 
 .layer-manager {
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   min-width: min-content;
   height: 95vh;
   overflow-y: auto;
@@ -128,4 +128,8 @@ img {
   flex-direction: column;
   flex-wrap: wrap;
   height: 95vh;
+}
+
+.settingsList span {
+  justify-content: space-between;
 }
