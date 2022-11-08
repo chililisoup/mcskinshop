@@ -43,7 +43,7 @@ img {
   height: 48px;
   image-rendering: pixelated;
   background-image: url("assets/checkerboard.png");
-  background-size: 24px;
+  background-size: 12px;
   border-radius: 3px;
 }
 
@@ -124,6 +124,14 @@ img {
 
 .manager-layer > span {
   height: 50px;
+}
+
+span.layerTitle {
+  height: auto;
+}
+
+span.layerTitle input {
+  margin-right: 6px;
 }
 
 .layer-adder {

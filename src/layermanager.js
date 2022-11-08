@@ -66,6 +66,11 @@ class Layer extends Component {
         //ehh idk, this and a few other things would be fixed with a custom color picker
     }
 
+    toggleActive = () => {
+        this.asset.active = !this.asset.active;
+        this.updateLayer();
+    }
+
     changeBlendMode = blend => {
         this.asset.propagateBlendMode(blend);
         this.updateLayer();
@@ -113,7 +118,10 @@ class Layer extends Component {
 
         return (
             <div className="manager-layer container">
-                <p>{this.asset.name}</p>
+                <span className="layerTitle">
+                    <input type="checkbox" checked={this.asset.active} onChange={() => this.toggleActive()}/>
+                    <p>{this.asset.name}</p>
+                </span>
                 <span>
                     <LayerPreview asset={this.asset} />
                     <div className="manager-layer-buttons">

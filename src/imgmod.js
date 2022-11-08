@@ -16,6 +16,7 @@ export class Img {
         this.type = type || "normal";
         this.blend = blend || "source-over";
         this.filter = filter || "";
+        this.active = true;
     }
 
     render = url => new Promise((resolve, reject) => {
@@ -174,6 +175,7 @@ export class Layer {
         this.colors = colors || "#FFFFFF";
         this.blend = blend || "source-over";
         this.filter = filter || "";
+        this.active = true;
     }
 
     color = colors => new Promise((resolve, reject) => {
@@ -213,24 +215,26 @@ export class Layer {
             ctx = canvas.getContext("2d");
         }
         this.sublayers.forEach(sublayer => {
+            if (!sublayer.active) return;
+
             ctx.filter = "opacity(100%) hue-rotate(0) saturate(100%) brightness(100%) contrast(100%) invert(0) sepia(0)";
-            if (sublayer instanceof Layer)
+            if (sublayer instanceof Layer) {
                 sublayer.render(ctx);
-            else {
-                if (sublayer.type === "flatten") {
-                    sublayer.flattenWithRespect(ctx);
-                    ctx.globalCompositeOperation = "destination-out";
-                    ctx.drawImage(sublayer.image, 0, 0);
-                } else {
-                    ctx.globalCompositeOperation = sublayer.blend;
-                    ctx.filter = sublayer.filter;
-
-                    if (sublayer.type === "erase")
-                        ctx.globalCompositeOperation = "destination-out";
-
-                    ctx.drawImage(sublayer.image, 0, 0);
-                }
+                return;
             }
+                
+            if (sublayer.type === "flatten") {
+                sublayer.flattenWithRespect(ctx);
+                ctx.globalCompositeOperation = "destination-out";
+                ctx.drawImage(sublayer.image, 0, 0);
+                return;
+            }
+
+            ctx.globalCompositeOperation = sublayer.blend;
+            ctx.filter = sublayer.filter;
+            if (sublayer.type === "erase")
+                ctx.globalCompositeOperation = "destination-out";
+            ctx.drawImage(sublayer.image, 0, 0);
         });
         if (dom) return createImageBitmap(ctx.canvas).then(result => {
             this.src = ctx.canvas.toDataURL();

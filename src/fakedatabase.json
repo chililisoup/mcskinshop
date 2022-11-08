@@ -1,15 +1,34 @@
 [
     {
 		"name": "Flat Base",
-		"loc": "/assets/uni/full/flat_base/",
+		"loc": "/assets/steve/full/flat_base/",
 		"layers": [
-			"flat_base.png"
+			"base.png",
+            "shade.png"
 		],
 		"colors": [
-			"#d8a997"
+			"#E0AA94",
+            "#CC8D72"
 		],
 		"advanced": [
-			false
+			false,
+            false
+		]
+	},
+    {
+		"name": "Flat Base Slim",
+		"loc": "/assets/alex/full/flat_base/",
+		"layers": [
+			"base.png",
+            "shade.png"
+		],
+		"colors": [
+			"#E0AA94",
+            "#CC8D72"
+		],
+		"advanced": [
+			false,
+            false
 		]
 	},
     {
@@ -353,6 +372,110 @@
 		"advanced": [
 			false,
 			false
+		]
+	},
+    {
+		"name": "Overall Pants",
+		"loc": "/assets/uni/body/overall_pants/",
+		"layers": [
+            "erase.png",
+			"base.png",
+			"shade.png"
+		],
+		"colors": [
+            "erase",
+			"#AAD2E0",
+			"#6A8AA5"
+		],
+		"advanced": [
+            true,
+			false,
+			false
+		]
+	},
+    {
+		"name": "Overall Shorts",
+		"loc": "/assets/uni/body/overall_shorts/",
+		"layers": [
+            "erase.png",
+			"base.png",
+			"shade.png"
+		],
+		"colors": [
+            "erase",
+			"#AAD2E0",
+			"#6A8AA5"
+		],
+		"advanced": [
+            true,
+			false,
+			false
+		]
+	},
+    {
+		"name": "Basic Shirt",
+		"loc": "/assets/alex/body/basic_shirt/",
+		"layers": [
+            "erase.png",
+			"base.png",
+            "accent.png",
+			"shade.png"
+		],
+		"colors": [
+            "erase",
+			"#FFF38B",
+			"#FFFFFF",
+            "#1F3F61"
+		],
+		"advanced": [
+            true,
+			false,
+			false,
+            true
+		]
+	},
+    {
+		"name": "Uneven Socks",
+		"loc": "/assets/uni/legs/uneven_socks/",
+		"layers": [
+            "erase.png",
+			"color.png",
+            "color_1.png",
+			"shade.png"
+		],
+		"colors": [
+            "erase",
+			"#515151",
+			"#878787",
+            "#000000"
+		],
+		"advanced": [
+            true,
+			false,
+			false,
+            true
+		]
+	},
+    {
+		"name": "Cool Shoes",
+		"loc": "/assets/uni/legs/cool_shoes/",
+		"layers": [
+            "erase.png",
+			"base.png",
+            "accent.png",
+			"shade.png"
+		],
+		"colors": [
+            "erase",
+			"#1E1E1E",
+			"#FFFFFF",
+            "#000000"
+		],
+		"advanced": [
+            true,
+			false,
+			false,
+            true
 		]
 	}
 ]
