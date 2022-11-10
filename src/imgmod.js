@@ -93,7 +93,7 @@ export class Img {
     color = color => new Promise((resolve, reject) => {
         if (!this.image) reject();
 
-        if (color === "erase" || color === "null") {
+        if (color === "erase" || color === "null" || color === "flatten") {
             this.type = color;
             resolve();
             return
@@ -215,6 +215,7 @@ export class Layer {
             ctx = canvas.getContext("2d");
         }
         this.sublayers.forEach(sublayer => {
+            if (!sublayer) return;
             if (!sublayer.active) return;
 
             ctx.filter = "opacity(100%) hue-rotate(0) saturate(100%) brightness(100%) contrast(100%) invert(0) sepia(0)";

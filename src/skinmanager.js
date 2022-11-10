@@ -3,40 +3,35 @@ import * as ImgMod from './imgmod';
 import PaperDoll from './paperdoll'
 import LayerManager from './layermanager';
 import LayerAdder from './layeradder';
+import AssetCreator from './assetcreator';
 
 class SkinManager extends Component {
     constructor(props) {
         super(props);
 
         this.state = {
-            skin: null,
-            slim: false,
+            skin: null
         }
         this.layers = new ImgMod.Layer();
     }
 
-    componentDidMount() {
-        this.updateSkin();//delete maybe? not needed atm
-    }
-
-    updateSkin = (slim) => {
-        if (typeof slim === "undefined") slim = this.state.slim || false;
+    updateSkin = () => {
         if (this.layers.sublayers.length)
-            this.layers.render().then(() => this.setState({ skin: this.layers.src, slim: slim }));
-        else this.setState({ skin: null, slim: slim });
+            this.layers.render().then(() => this.setState({skin: this.layers.src}));
+        else this.setState({ skin: null});
     }
 
-    updateLayers = (newLayers) => {
+    updateLayers = newLayers => {
         this.layers = newLayers;
         this.updateSkin();
     }
 
-    addLayer = (layer) => {
+    addLayer = layer => {
         this.layers.sublayers.push(layer);
         this.updateSkin();
     }
 
-    addLayerFromInput = (e) => {
+    addLayerFromInput = e => {
         const image = new ImgMod.Img();
         image.name = e.target.files[0].name;
         image.id = Math.random().toString(16).slice(2);
@@ -44,7 +39,7 @@ class SkinManager extends Component {
         image.render(URL.createObjectURL(e.target.files[0]))
         .then(() => {
             e.target.value = "";
-            this.updateSkin(image.detectSlimModel());
+            this.updateSkin();
         });
     }
 
@@ -69,11 +64,11 @@ class SkinManager extends Component {
         skin.id = Math.random().toString(16).slice(2);
         this.layers.sublayers.push(skin);
         skin.render("https://minotar.net/skin/" + this.usernameInput).then(() => 
-            this.updateSkin(skin.detectSlimModel())
+            this.updateSkin()
         );
     }
 
-    updateUsernameInput = (e) => {
+    updateUsernameInput = e => {
         e.target.value = e.target.value.replace(/[^0-9A-Za-z_]/g, "");
         this.usernameInput = e.target.value;
     }
@@ -91,17 +86,26 @@ class SkinManager extends Component {
         return ( //Make it so layer manager just sends updated layers instead of layer update commands
             <div className="SkinManager">
                 <LayerManager layers={this.layers} updateLayers={this.updateLayers} />
-                <PaperDoll skin={this.state.skin} slim={this.state.slim} updateSkin={this.updateSkin} />
-                <div className="SkinAdders container">
-                    <img src={this.state.skin} alt="Flattened Skin" />
-                    <button onClick={this.downloadSkin}>Download</button>
-                    <label htmlFor="imageInput">Upload</label>
-                    <input type="file" accept="image/png" id="imageInput" onChange={this.addLayerFromInput} />
-                    <label htmlFor="usernameInput">Skin Stealer</label>
-                    <span>
-                        <input placeholder="Username" maxLength={16} id="usernameInput" onKeyUp={e => {if (e.key === "Enter") this.addLayerFromUsername()}} onChange={this.updateUsernameInput}></input>
-                        <button onClick={this.addLayerFromUsername}>+</button>
-                    </span>
+                <PaperDoll skin={this.state.skin} />
+                <div>
+                    <div className="SkinAdders container">
+                        <img src={this.state.skin} alt="Flattened Skin" />
+                        <button onClick={this.downloadSkin}>Download</button>
+                        <label htmlFor="imageInput">Upload</label>
+                        <input type="file" accept="image/png" id="imageInput" onChange={this.addLayerFromInput} />
+                        <label htmlFor="usernameInput">Skin Stealer</label>
+                        <span>
+                            <input
+                                placeholder="Username"
+                                maxLength={16}
+                                id="usernameInput"
+                                onKeyUp={e => {if (e.key === "Enter") this.addLayerFromUsername()}}
+                                onChange={this.updateUsernameInput}
+                            ></input>
+                            <button onClick={this.addLayerFromUsername}>+</button>
+                        </span>
+                    </div>
+                    <AssetCreator addLayer={this.addLayer} />
                 </div>
                 <LayerAdder addLayer={this.addLayer} />
             </div>

@@ -1,12 +1,21 @@
+html {
+  height: 100%;
+}
+
 body {
-  background-color: #2e5266;
+  background: rgb(0,4,51);
+  background: linear-gradient(0deg, rgb(24, 30, 107) 0%, rgb(72, 189, 209) 100%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  margin: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: white;
 }
 
 button, input, select {
   font-weight: bolder;
-  background-color: #6e8898;
+  background-color: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
   color: white;
   border: none;
   border-radius: 3px;
@@ -14,7 +23,7 @@ button, input, select {
 }
 
 button:hover, input:hover {
-  outline: 2px solid #d3d0cb;
+  outline: 2px solid white;
   cursor: pointer;
 }
 
@@ -50,11 +59,14 @@ img {
 .container {
   display: flex;
   flex-direction: column;
-  background-color: #9fb1bc;
-  border: 5px solid #6e8898;
+  background-color: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: none;
   border-radius: 10px;
   margin: 5px;
   height: fit-content;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+  padding: 5px;
 }
 
 .container p, .container label {
@@ -65,7 +77,7 @@ img {
 .container span {
   display: flex;
   flex-direction: row;
-  align-items: center;
+  width: 100%;
 }
 
 .paperdoll {
@@ -77,6 +89,7 @@ img {
 .paperdoll-canvas {
   height: 500px;
   width: 400px;
+  border-radius: 6px;
   background: url("assets/background.png");
 }
 
@@ -87,13 +100,11 @@ img {
 }
 
 .layer-manager {
-  display: flex;
   flex-direction: column-reverse;
   width: 325px;
   height: 95vh;
   overflow-y: auto;
   background: rgba(0, 0, 0, 0.3);
-  border-radius: 10px;
 }
 
 .manager-layer {
@@ -143,4 +154,14 @@ span.layerTitle input {
 
 .settingsList span {
   justify-content: space-between;
+}
+
+.asset-layer-manager {
+  flex-direction: column-reverse;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+h3 {
+  width: 100%;
+  text-align: center;
 }

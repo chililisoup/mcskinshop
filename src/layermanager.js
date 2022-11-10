@@ -94,16 +94,6 @@ class Layer extends Component {
 
     updateLayer = () => this.props.updateLayer(this.props.index, this.asset);
 
-    moveLayer = change => this.props.moveLayer(this.props.index, change);
-
-    duplicateLayer = () => this.props.duplicateLayer(this.props.index);
-
-    removeLayer = () => this.props.removeLayer(this.props.index);
-
-    flattenLayer = () => this.props.flattenLayer(this.props.index);
-
-    mergeLayerDown = () => this.props.mergeLayerDown(this.props.index);
-
     render() {
         const colors = [];
         if (this.asset?.colors) {
@@ -125,16 +115,16 @@ class Layer extends Component {
                 <span>
                     <LayerPreview asset={this.asset} />
                     <div className="manager-layer-buttons">
-                        <button onClick={() => this.moveLayer(1)}>&#9650;</button>
-                        <button onClick={() => this.moveLayer(-1)}>&#9660;</button>
+                        <button onClick={() => this.props.moveLayer(this.props.index, 1)}>&#9650;</button>
+                        <button onClick={() => this.props.moveLayer(this.props.index, -1)}>&#9660;</button>
                     </div>
                     <div className="manager-layer-buttons">
-                        <button onClick={() => this.duplicateLayer()}>&#128471;</button>
-                        <button onClick={() => this.removeLayer()}>&#10006;</button>
+                        <button onClick={() => this.props.duplicateLayer(this.props.index)}>&#128471;</button>
+                        <button onClick={() => this.props.removeLayer(this.props.index)}>&#10006;</button>
                     </div>
                     <div className="manager-layer-buttons">
-                        <button onClick={() => this.flattenLayer()}>&#8676;</button>
-                        <button onClick={() => this.mergeLayerDown()}>&#10515;</button>
+                        <button onClick={() => this.props.flattenLayer(this.props.index)}>&#8676;</button>
+                        <button onClick={() => this.props.mergeLayerDown(this.props.index)}>&#10515;</button>
                     </div>
                     <div className="manager-layer-colors">
                         {colors}
@@ -175,31 +165,79 @@ class Layer extends Component {
                         </span>
                         <span>
                             <label htmlFor={"opacitySlider" + this.asset.id}>Opacity: {this.state.opacity}%</label>
-                            <input type="range" id={"opacitySlider" + this.asset.id} min={0} max={100} value={this.state.opacity} onChange={e => this.updateFilter({opacity: e.target.value})}/>
+                            <input
+                                type="range"
+                                id={"opacitySlider" + this.asset.id}
+                                min={0}
+                                max={100}
+                                value={this.state.opacity}
+                                onChange={e => this.updateFilter({opacity: e.target.value})}
+                            />
                         </span>
                         <span>
                             <label htmlFor={"hueSlider" + this.asset.id}>Hue: {this.state.hue}°</label>
-                            <input type="range" id={"hueSlider" + this.asset.id} min={-180} max={180} value={this.state.hue} onChange={e => this.updateFilter({hue: e.target.value})}/>
+                            <input
+                                type="range"
+                                id={"hueSlider" + this.asset.id}
+                                min={-180} max={180}
+                                value={this.state.hue}
+                                onChange={e => this.updateFilter({hue: e.target.value})}
+                            />
                         </span>
                         <span>
                             <label htmlFor={"saturationSlider" + this.asset.id}>Saturation: {this.state.saturation}%</label>
-                            <input type="range" id={"saturationSlider" + this.asset.id} min={0} max={200} value={this.state.saturation} onChange={e => this.updateFilter({saturation: e.target.value})}/>
+                            <input
+                                type="range"
+                                id={"saturationSlider" + this.asset.id}
+                                min={0}
+                                max={200}
+                                value={this.state.saturation}
+                                onChange={e => this.updateFilter({saturation: e.target.value})}
+                            />
                         </span>
                         <span>
                             <label htmlFor={"brightnessSlider" + this.asset.id}>Brightness: {this.state.brightness}%</label>
-                            <input type="range" id={"brightnessSlider" + this.asset.id} min={0} max={200} value={this.state.brightness} onChange={e => this.updateFilter({brightness: e.target.value})}/>
+                            <input
+                                type="range"
+                                id={"brightnessSlider" + this.asset.id}
+                                min={0}
+                                max={200}
+                                value={this.state.brightness}
+                                onChange={e => this.updateFilter({brightness: e.target.value})}
+                            />
                         </span>
                         <span>
                             <label htmlFor={"contrastSlider" + this.asset.id}>Contrast: {this.state.contrast}%</label>
-                            <input type="range" id={"contrastSlider" + this.asset.id} min={0} max={200} value={this.state.contrast} onChange={e => this.updateFilter({contrast: e.target.value})}/>
+                            <input
+                                type="range"
+                                id={"contrastSlider" + this.asset.id}
+                                min={0}
+                                max={200}
+                                value={this.state.contrast}
+                                onChange={e => this.updateFilter({contrast: e.target.value})}
+                            />
                         </span>
                         <span>
                             <label htmlFor={"invertSlider" + this.asset.id}>Invert: {this.state.invert}%</label>
-                            <input type="range" id={"invertSlider" + this.asset.id} min={0} max={100} value={this.state.invert} onChange={e => this.updateFilter({invert: e.target.value})}/>
+                            <input
+                                type="range"
+                                id={"invertSlider" + this.asset.id}
+                                min={0}
+                                max={100}
+                                value={this.state.invert}
+                                onChange={e => this.updateFilter({invert: e.target.value})}
+                            />
                         </span>
                         <span>
                             <label htmlFor={"sepiaSlider" + this.asset.id}>Sepia: {this.state.sepia}%</label>
-                            <input type="range" id={"sepiaSlider" + this.asset.id} min={0} max={100} value={this.state.sepia} onChange={e => this.updateFilter({sepia: e.target.value})}/>
+                            <input
+                                type="range"
+                                id={"sepiaSlider" + this.asset.id}
+                                min={0}
+                                max={100}
+                                value={this.state.sepia}
+                                onChange={e => this.updateFilter({sepia: e.target.value})}
+                            />
                         </span>
                     </div>
                 }
@@ -308,12 +346,23 @@ class LayerManager extends Component {
         let elem = <div />;
         if (this.state.layers.sublayers.length) {
             elem = this.state.layers.sublayers.map((asset, i) => 
-                <Layer key={asset.id} asset={asset} index={i} updateLayer={this.updateLayer} moveLayer={this.moveLayer} duplicateLayer={this.duplicateLayer} removeLayer={this.removeLayer} flattenLayer={this.flattenLayer} mergeLayerDown={this.mergeLayerDown} advanced={this.state.advanced}/>
+                <Layer
+                    key={asset.id}
+                    asset={asset}
+                    index={i}
+                    updateLayer={this.updateLayer}
+                    moveLayer={this.moveLayer}
+                    duplicateLayer={this.duplicateLayer}
+                    removeLayer={this.removeLayer}
+                    flattenLayer={this.flattenLayer}
+                    mergeLayerDown={this.mergeLayerDown}
+                    advanced={this.state.advanced}
+                />
             );
         }
 
         return (
-            <div className="layer-manager">
+            <div className="container layer-manager">
                 <span>
                     <label htmlFor="advancedToggle">Advanced mode</label>
                     <input type="checkbox" id="advancedToggle" onClick={this.setAdvanced.bind(this)}/>

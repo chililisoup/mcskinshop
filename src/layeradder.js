@@ -15,7 +15,7 @@ class LayerAdder extends Component {
         this.loadAssets();
     }
 
-    addLayer = (id) => {
+    addLayer = id => {
         const layer = new ImgMod.Layer();
         layer.name = fakedatabase[id].name;
         layer.colors = fakedatabase[id].colors;
@@ -25,6 +25,7 @@ class LayerAdder extends Component {
         Promise.all(fakedatabase[id].layers.map((src, i) => {
             const image = new ImgMod.Img();
             layer.sublayers.push(image);
+            if (fakedatabase[id].colors[i] === "null") image.type = "null";
             if (fakedatabase[id].colors[i] === "erase") image.type = "erase";
             if (fakedatabase[id].colors[i] === "flatten") image.type = "flatten";
             return image.render(process.env.PUBLIC_URL + fakedatabase[id].loc + src);

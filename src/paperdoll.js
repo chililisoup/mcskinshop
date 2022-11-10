@@ -1,21 +1,93 @@
 import React, { Component } from "react";
 import * as THREE from 'three';
+import * as ImgMod from './imgmod';
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import steve from "./assets/steve.png";
 import alex from "./assets/alex.png";
 import matcap from "./assets/matcap.png";
 
-class App extends Component {
+class PaperDollSettings extends React.Component {
     constructor(props) {
         super(props);
 
-        this.slim = props.slim || false;
-        this.skin = props.skin || steve;
-        if (this.skin === steve) this.skin = this.slim ? alex : steve;
-        this.anim = props.anim == null ? true : props.anim;
-        this.animSpeed = props.animSpeed == null ? 1 : props.animSpeed;
-        this.explode = props.explode || false;
-        this.shade = props.shade == null ? true : props.shade;
+        this.state = {
+            slim: props.slim || false,
+            anim: props.anim == null ? true : props.anim,
+            animSpeed: props.animSpeed == null ? 0.5 : props.animSpeed,
+            explode: props.explode || false,
+            shade: props.shade == null ? true : props.shade
+        }
+    }
+
+    componentDidUpdate = prevProps => {
+        if (this.props.slim !== prevProps.slim) this.setState({slim: this.props.slim});
+    }
+
+    updateSlim = bool => {
+        this.setState({slim: bool});
+        this.props.setSlim(bool);
+    }
+
+    updateAnim = bool => {
+        this.setState({anim: bool});
+        this.props.setAnim(bool);
+    }
+
+    updateAnimSpeed = speed => {
+        this.setState({animSpeed: speed});
+        this.props.setAnimSpeed(speed);
+    }
+
+    updateExplode = bool => {
+        this.setState({explode: bool});
+        this.props.setExplode(bool);
+    }
+
+    updateShade = bool => {
+        this.setState({shade: bool});
+        this.props.setShade(bool);
+    }
+
+    render() {
+        return (
+            <div>
+                <span>
+                    <div>
+                        <label htmlFor="slimToggle">Slim</label>
+                        <input type="checkbox" id="slimToggle" checked={this.state.slim} onChange={e => this.updateSlim(e.target.checked)}/>
+                    </div>
+                    <div>
+                        <label htmlFor="animToggle">Animate</label>
+                        <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={e => this.updateAnim(e.target.checked)}/>
+                        <input type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.updateAnimSpeed(e.target.value)}/>
+                    </div>
+                    <div>
+                        <label htmlFor="explodeToggle">Explode</label>
+                        <input type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateExplode(e.target.checked)}/>
+                    </div>
+                    <div>
+                        <label htmlFor="shadeToggle">Shade</label>
+                        <input type="checkbox" id="shadeToggle" checked={this.state.shade} onChange={e => this.updateShade(e.target.checked)}/>
+                    </div>
+                    <button onClick={this.props.saveRender}>Save Render</button>
+                </span>
+            </div>
+        );
+    }
+}
+
+class PaperDoll extends Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            slim: props.slim || false,
+            skin: props.skin || steve,
+            anim: true,
+            animSpeed: 0.5,
+            explode: false,
+            shade: true
+        }
 
         this.canvasRef = React.createRef();
     }
@@ -27,6 +99,9 @@ class App extends Component {
         this.addPartsToScene();
         this.startAnimationLoop();
         window.addEventListener('resize', this.handleWindowResize);
+
+        const img = new ImgMod.Img();
+        img.render(this.state.skin).then(() => this.setState({slim: img.detectSlimModel()}));
     }
 
     componentWillUnmount() {
@@ -36,25 +111,16 @@ class App extends Component {
     }
 
     componentDidUpdate(prevProps) {
-        if (this.props.slim !== prevProps.slim) {
-            this.slim = this.props.slim || false;
-            this.updateSlim();
+        if (this.props.skin !== prevProps.skin) {
+            const skin = this.props.skin == null ? (this.state.slim ? alex : steve) : this.props.skin
+            this.setState({skin: skin});
+            const img = new ImgMod.Img();
+            img.render(skin).then(() => this.setState({slim: img.detectSlimModel()}));
         }
-
-        if (this.props.explode !== prevProps.explode) {
-            this.explode = this.props.explode || false;
-            this.updateExplode();
-        }
-
-        this.skin = this.props.skin || this.steve;
-        if (this.skin === steve) this.skin = this.slim ? alex : steve;
-
-        this.shade = this.props.shade == null ? true : this.props.shade;
-
+        
+        this.updateSlim();
+        this.updateExplode();
         this.textureSetup();
-
-        this.anim = this.props.anim == null ? true : this.props.anim;
-        this.animSpeed = this.props.animSpeed == null ? 1 : this.props.animSpeed;
     }
 
     // Standard scene setup in Three.js. Check "Creating a scene" manual for more information
@@ -68,7 +134,8 @@ class App extends Component {
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvasRef.current,
-            alpha: true
+            alpha: true,
+            preserveDrawingBuffer: true
         });
         this.renderer.setPixelRatio(window.devicePixelRatio * 2);
         this.renderer.setSize(width, height);
@@ -105,7 +172,7 @@ class App extends Component {
             });
         const hatMaterial = this.hatMaterial;
 
-        if (this.shade) {
+        if (this.state.shade) {
             material.matcap = null;
             hatMaterial.matcap = null;
         } else this.matcapLoader.load(matcap, (matcapMap) => {
@@ -116,7 +183,7 @@ class App extends Component {
             hatMaterial.needsUpdate = true;
         });  
 
-        this.textureLoader.load(this.skin, (texture) => {
+        this.textureLoader.load(this.state.skin, (texture) => {
             texture.magFilter = THREE.NearestFilter;
 
             material.map = texture;
@@ -757,17 +824,17 @@ class App extends Component {
 
     updateSlim = () => {
         this.rightArmPivot.children.forEach(e => {
-            if (e.slim) e.visible = this.slim;
-            else e.visible = !this.slim;
+            if (e.slim) e.visible = this.state.slim;
+            else e.visible = !this.state.slim;
         });
         this.leftArmPivot.children.forEach(e => {
-            if (e.slim) e.visible = this.slim;
-            else e.visible = !this.slim;
+            if (e.slim) e.visible = this.state.slim;
+            else e.visible = !this.state.slim;
         });
     };
 
     updateExplode = () => {
-        let mod = this.explode ? 2.5 : 0;
+        let mod = this.state.explode ? 2.5 : 0;
 
 
         this.headPivot.position.y = 24 + mod;
@@ -786,19 +853,21 @@ class App extends Component {
     startAnimationLoop = () => {
         this.renderer.render(this.scene, this.camera);
 
-        if (this.anim) {
+        if (this.state.anim) {
             this.time = this.time || 0;
-            this.time += 0.1 * this.animSpeed;
+            this.time += 0.1 * this.state.animSpeed;
+            this.idleTime = this.idleTime || 0;
+            this.idleTime += 0.1;
             if (this.time > Math.PI * 20) this.time -= Math.PI * 20;
         }
 
-        let rotation = Math.sin(this.time)
+        let rotation = Math.sin(this.time) * this.state.animSpeed;
         this.leftLegPivot.rotation.x = rotation;
         this.rightLegPivot.rotation.x = -rotation;
         this.leftArmPivot.rotation.x = -rotation;
         this.rightArmPivot.rotation.x = rotation;
 
-        this.leftArmPivot.rotation.z = Math.sin(this.time * 0.3) * 0.05 + 0.05;
+        this.leftArmPivot.rotation.z = Math.sin(this.idleTime * 0.3) * 0.075 + 0.075;
         this.rightArmPivot.rotation.z = -this.leftArmPivot.rotation.z;
 
         // The window.requestAnimationFrame() method tells the browser that you wish to perform
@@ -819,51 +888,43 @@ class App extends Component {
         this.camera.updateProjectionMatrix();
     };
 
-    render() {
-        return <canvas className="paperdoll-canvas" ref={this.canvasRef} />;
-    }
-}
-
-class PaperDoll extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            slim: !!props.slim,
-            anim: props.anim == null ? true : props.anim,
-            animSpeed: 1,
-            explode: props.explode == null ? false : props.explode,
-            shade: props.shade == null ? true : props.shade
-        };
+    saveRender = () => {
+        const link = document.createElement("a");
+        link.href = this.renderer.domElement.toDataURL();
+        const name = window.prompt("Download as...", "My Skin Render");
+        if (name === null) return;
+        link.download = name + ".png";
+        link.click();
     }
 
-    updateSlim = (e) => {
-        this.setState({slim: e.target.checked});
-        this.props.updateSkin(e.target.checked);
+    setSlim = bool => {
+        let state = {slim: bool};
+        if (this.state.skin === steve || this.state.skin === alex) state.skin = bool ? alex : steve;
+        this.setState(state);
     }
-    
+    setAnim = bool => this.setState({anim: bool == null ? true : bool});
+    setAnimSpeed = speed => this.setState({animSpeed: speed == null ? 1 : speed});
+    setExplode = bool => this.setState({explode: bool || false});
+    setShade = bool => this.setState({shade: bool == null ? true : bool});
+
     render() {
         return (
             <div className="paperdoll container">
-                <span>
-                    <div>
-                        <label htmlFor="slimToggle">Slim</label>
-                        <input type="checkbox" id="slimToggle" checked={this.props.slim} onChange={this.updateSlim.bind(this)}/>
-                    </div>
-                    <div>
-                        <label htmlFor="animToggle">Animate</label>
-                        <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={() => this.setState({anim: !this.state.anim})}/>
-                        <input type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.setState({animSpeed: e.target.value})}/>
-                    </div>
-                    <div>
-                        <label htmlFor="explodeToggle">Explode</label>
-                        <input type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={() => this.setState({explode: !this.state.explode})}/>
-                    </div>
-                    <div>
-                        <label htmlFor="shadeToggle">Shade</label>
-                        <input type="checkbox" id="shadeToggle" checked={this.state.shade} onChange={() => this.setState({shade: !this.state.shade})}/>
-                    </div>
-                </span>
-                <App skin={this.props.skin || steve} slim={this.props.slim} anim={this.state.anim} animSpeed={this.state.animSpeed} explode={this.state.explode} shade={this.state.shade} />
+                <PaperDollSettings
+                    slim={this.state.slim}
+                    anim={this.state.anim}
+                    animSpeed={this.state.animSpeed}
+                    explode={this.state.explode}
+                    shade={this.state.shade}
+
+                    setSlim={this.setSlim}
+                    setAnim={this.setAnim}
+                    setAnimSpeed={this.setAnimSpeed}
+                    setExplode={this.setExplode}
+                    setShade={this.setShade}
+                    saveRender={this.saveRender}
+                />
+                <canvas className="paperdoll-canvas" ref={this.canvasRef} />
             </div>
         );
     }
