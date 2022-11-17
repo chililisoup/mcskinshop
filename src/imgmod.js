@@ -11,12 +11,16 @@ const hatFlattenerOffsets = [
     { width: 16, height: 12, from: [48, 52], to: [32, 52] }
 ];
 
+export const emptyImageSource = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIW2NgAAIAAAUAAR4f7BQAAAAASUVORK5CYII=";
+
 export class Img {
     constructor(type, blend, filter) {
         this.type = type || "normal";
         this.blend = blend || "source-over";
         this.filter = filter || "";
         this.active = true;
+        this.src = emptyImageSource;
+        this.rawSrc = emptyImageSource;
     }
 
     render = url => new Promise((resolve, reject) => {

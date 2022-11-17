@@ -86,10 +86,10 @@ class SkinManager extends Component {
         return ( //Make it so layer manager just sends updated layers instead of layer update commands
             <div className="SkinManager">
                 <LayerManager layers={this.layers} updateLayers={this.updateLayers} />
-                <PaperDoll skin={this.state.skin} />
                 <div>
+                    <PaperDoll skin={this.state.skin} />
                     <div className="SkinAdders container">
-                        <img src={this.state.skin} alt="Flattened Skin" />
+                        <img src={this.state.skin || ImgMod.emptyImageSource} alt="Flattened Skin" />
                         <button onClick={this.downloadSkin}>Download</button>
                         <label htmlFor="imageInput">Upload</label>
                         <input type="file" accept="image/png" id="imageInput" onChange={this.addLayerFromInput} />
@@ -105,8 +105,8 @@ class SkinManager extends Component {
                             <button onClick={this.addLayerFromUsername}>+</button>
                         </span>
                     </div>
-                    <AssetCreator addLayer={this.addLayer} />
                 </div>
+                <AssetCreator addLayer={this.addLayer} />
                 <LayerAdder addLayer={this.addLayer} />
             </div>
         );

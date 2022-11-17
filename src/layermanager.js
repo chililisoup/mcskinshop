@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import * as ImgMod from './imgmod';
+import LayerEditor from './layereditor';
 
 class LayerPreview extends Component {
     constructor(props) {
@@ -111,6 +112,9 @@ class Layer extends Component {
                 <span className="layerTitle">
                     <input type="checkbox" checked={this.asset.active} onChange={() => this.toggleActive()}/>
                     <p>{this.asset.name}</p>
+                    {this.asset instanceof ImgMod.Img &&
+                        <button onClick={() => this.props.selectForEdit(this.props.index)}>Edit</button>
+                    }
                 </span>
                 <span>
                     <LayerPreview asset={this.asset} />
@@ -252,7 +256,8 @@ class LayerManager extends Component {
 
         this.state = {
             advanced: false,
-            layers: props.layers
+            layers: props.layers,
+            selectedLayer: null
         };
         // Should be receiving the sublayers of the layers, it doesn't need the actual full layers object
         // Also why tf is layers a state and also not a state make it just a state bitch
@@ -338,8 +343,22 @@ class LayerManager extends Component {
 
         this.layers.sublayers.splice(index, 1);
         this.layers.sublayers[index - 1] = mergedLayer;
-        console.log(mergedLayer);
         this.updateLayers();
+    }
+
+    selectForEdit = index => {
+        this.setState({ selectedLayer: this.layers.sublayers[index].id });
+    }
+
+    addLayer = () => {
+        const layer = new ImgMod.Img();
+        layer.name = "New Layer";
+        layer.id = Math.random().toString(16).slice(2);
+
+        layer.render().then(() => {
+            this.layers.sublayers.push(layer);
+            this.updateLayers();
+        });
     }
 
     render() {
@@ -356,19 +375,36 @@ class LayerManager extends Component {
                     removeLayer={this.removeLayer}
                     flattenLayer={this.flattenLayer}
                     mergeLayerDown={this.mergeLayerDown}
+                    selectForEdit={this.selectForEdit}
                     advanced={this.state.advanced}
                 />
             );
         }
 
+        let selectedLayer = null;
+        let selectedLayerIndex = null;
+        for (let i = 0; i < this.layers.sublayers.length; i++) {
+            if (this.layers.sublayers[i].id === this.state.selectedLayer) {
+                selectedLayer = this.layers.sublayers[i];
+                selectedLayerIndex = i;
+                break;
+            }
+        }
+
         return (
-            <div className="container layer-manager">
-                <span>
-                    <label htmlFor="advancedToggle">Advanced mode</label>
-                    <input type="checkbox" id="advancedToggle" onClick={this.setAdvanced.bind(this)}/>
-                </span>
-                {elem}
-            </div>
+            <span>
+                <div>
+                    <div className="container layer-manager">
+                        {elem}
+                    </div>
+                    <span>
+                        <label htmlFor="advancedToggle">Advanced mode</label>
+                        <input type="checkbox" id="advancedToggle" onClick={this.setAdvanced.bind(this)}/>
+                        <button onClick={this.addLayer}>New Layer</button>
+                    </span>
+                </div>
+                <LayerEditor layer={selectedLayer} updateLayer={layer => this.updateLayer(selectedLayerIndex, layer)} />
+            </span>
         );
     }
 }

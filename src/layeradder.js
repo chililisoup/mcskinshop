@@ -66,7 +66,9 @@ class LayerAdder extends Component {
 
         return (
             <div className="layer-adder">
-                {elem}
+                <div className="layer-adder-content">
+                    {elem}
+                </div>
             </div>
         );
     }

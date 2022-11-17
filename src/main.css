@@ -56,6 +56,11 @@ img {
   border-radius: 3px;
 }
 
+span {
+  display: flex;
+  flex-direction: row;
+}
+
 .container {
   display: flex;
   flex-direction: column;
@@ -75,8 +80,6 @@ img {
 }
 
 .container span {
-  display: flex;
-  flex-direction: row;
   width: 100%;
 }
 
@@ -99,10 +102,19 @@ img {
   justify-content: space-evenly;
 }
 
+.layereditor-canvas {
+  height: 512px;
+  width: 512px;
+  border-radius: 6px;
+  background-image: url("assets/checkerboard.png");
+  background-size: 16px;
+  image-rendering: pixelated;
+}
+
 .layer-manager {
   flex-direction: column-reverse;
   width: 325px;
-  height: 95vh;
+  height: 90vh;
   overflow-y: auto;
   background: rgba(0, 0, 0, 0.3);
 }
@@ -146,10 +158,16 @@ span.layerTitle input {
 }
 
 .layer-adder {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
   height: 95vh;
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+
+.layer-adder-content {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  width: 325px;
 }
 
 .settingsList span {
