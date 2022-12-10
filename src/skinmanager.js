@@ -10,15 +10,18 @@ class SkinManager extends Component {
         super(props);
 
         this.state = {
-            skin: null
+            skin: null,
+            slim: false
         }
         this.layers = new ImgMod.Layer();
     }
 
+    updateSlim = slim => this.setState({ slim: slim });
+
     updateSkin = () => {
         if (this.layers.sublayers.length)
             this.layers.render().then(() => this.setState({skin: this.layers.src}));
-        else this.setState({ skin: null});
+        else this.setState({ skin: null });
     }
 
     updateLayers = newLayers => {
@@ -40,6 +43,7 @@ class SkinManager extends Component {
         .then(() => {
             e.target.value = "";
             this.updateSkin();
+            this.setState({slim: image.detectSlimModel()});
         });
     }
 
@@ -59,13 +63,14 @@ class SkinManager extends Component {
         });
         */
 
-        const skin = new ImgMod.Img();
-        skin.name = this.usernameInput;
-        skin.id = Math.random().toString(16).slice(2);
-        this.layers.sublayers.push(skin);
-        skin.render("https://minotar.net/skin/" + this.usernameInput).then(() => 
-            this.updateSkin()
-        );
+        const image = new ImgMod.Img();
+        image.name = this.usernameInput;
+        image.id = Math.random().toString(16).slice(2);
+        this.layers.sublayers.push(image);
+        image.render("https://minotar.net/skin/" + this.usernameInput).then(() => {
+            this.updateSkin();
+            this.setState({slim: image.detectSlimModel()});
+        });
     }
 
     updateUsernameInput = e => {
@@ -87,7 +92,7 @@ class SkinManager extends Component {
             <div className="SkinManager">
                 <LayerManager layers={this.layers} updateLayers={this.updateLayers} />
                 <div>
-                    <PaperDoll skin={this.state.skin} />
+                    <PaperDoll skin={this.state.skin} slim={this.state.slim} updateSlim={this.updateSlim} />
                     <div className="SkinAdders container">
                         <img src={this.state.skin || ImgMod.emptyImageSource} alt="Flattened Skin" />
                         <button onClick={this.downloadSkin}>Download</button>

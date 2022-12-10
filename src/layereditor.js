@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import ColorPicker from './colorpicker';
 
 class LayerEditor extends Component {
     constructor(props) {
@@ -9,13 +10,23 @@ class LayerEditor extends Component {
         this.mouseActive = false;
         this.color = "#000000";
         this.mousePos = {x: 0, y: 0};
+        this.lastUpdate = new Date();
     }
 
     componentDidUpdate() {
         const ctx = this.canvasRef.current.getContext("2d");
-        ctx.clearRect(0, 0, 64, 64);
+
+        if (!this.props.layer) {
+            this.layer = null;
+            ctx.clearRect(0, 0, 64, 64);
+            return;
+        }
+        
+        if (this.layer && this.props.layer.id == this.layer.id) return;
+        
         this.layer = this.props.layer;
         if (this.layer) {
+            ctx.clearRect(0, 0, 64, 64);
             ctx.drawImage(this.layer.image, 0, 0);
         }
     }
@@ -40,29 +51,44 @@ class LayerEditor extends Component {
         this.drawPixel();
     }
 
+    onMouseQuit = () => {
+        this.mouseActive = false;
+        this.update(true);
+    }
+
+    update = force => {
+        if (new Date().getTime() - this.lastUpdate.getTime() < 100 && !force) return;
+        if (!this.layer) return;
+
+        this.lastUpdate = new Date();
+        this.layer.rawSrc = this.canvasRef.current.toDataURL();
+        this.layer.render().then(() => {this.props.updateLayer(this.layer)});
+    }
+
     drawPixel = () => {
         if (!this.layer) return;
+
         const ctx = this.canvasRef.current.getContext("2d");
         ctx.fillStyle = this.color;
+
         if (this.mouseActive === "erase") {
             ctx.clearRect(this.mousePos.x, this.mousePos.y, 1, 1);
         } else ctx.fillRect(this.mousePos.x, this.mousePos.y, 1, 1);
 
-        this.layer.rawSrc = this.canvasRef.current.toDataURL();
-        this.layer.render().then(() => {this.props.updateLayer(this.layer)});
+        this.update();
     }
 
     render() {
         return (
             <div className="container">
-                <input type="color" onChange={e => this.setColor(e.target.value)}/>
+                <ColorPicker update={this.setColor} alpha={true} />
                 <canvas
                     className="layereditor-canvas"
                     ref={this.canvasRef}
                     onMouseMove={this.onMouseMove}
                     onMouseDown={this.onMouseDown}
-                    onMouseUp={() => this.mouseActive = false}
-                    onMouseLeave={() => this.mouseActive = false}
+                    onMouseUp={this.onMouseQuit}
+                    onMouseLeave={this.onMouseQuit}
                     onContextMenu={e => e.preventDefault()}
                     width={64}
                     height={64}

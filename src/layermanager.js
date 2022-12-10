@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import * as ImgMod from './imgmod';
 import LayerEditor from './layereditor';
+import ColorPicker from './colorpicker';
 
 class LayerPreview extends Component {
     constructor(props) {
@@ -101,7 +102,7 @@ class Layer extends Component {
             this.asset.colors.forEach((color, i) => {
                 if (color !== "null" && color !== "erase" && (!this.asset.advanced[i] || this.props.advanced)) {
                     colors.push(
-                        <input key={i + this.asset.id} type="color" defaultValue={color} onChange={e => this.changeColorThrottled(i, e.target.value)} />
+                        <ColorPicker key={i + this.asset.id} default={color} update={color => this.changeColorThrottled(i, color)} />
                     );
                 }
             });

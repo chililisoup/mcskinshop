@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import * as ImgMod from './imgmod';
+import ColorPicker from './colorpicker';
 
 class AssetLayer extends Component {
     constructor(props) {
@@ -56,7 +57,7 @@ class AssetLayer extends Component {
                             <div>
                                 <span>
                                     <label>Default Color:</label>
-                                    <input type="color" onChange={e => this.props.setColor(this.props.index, e.target.value)}/>
+                                    <ColorPicker update={color => this.props.setColor(this.props.index, color)} />
                                 </span>
                                 <span>
                                     <label>Is advanced?</label>

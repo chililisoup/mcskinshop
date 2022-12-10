@@ -54,7 +54,7 @@ class PaperDollSettings extends React.Component {
                 <span>
                     <div>
                         <label htmlFor="slimToggle">Slim</label>
-                        <input type="checkbox" id="slimToggle" checked={this.state.slim} onChange={e => this.updateSlim(e.target.checked)}/>
+                        <input type="checkbox" id="slimToggle" checked={this.props.slim} onChange={e => this.updateSlim(e.target.checked)}/>
                     </div>
                     <div>
                         <label htmlFor="animToggle">Animate</label>
@@ -81,8 +81,6 @@ class PaperDoll extends Component {
         super(props);
 
         this.state = {
-            slim: props.slim || false,
-            skin: props.skin || steve,
             anim: true,
             animSpeed: 0.5,
             explode: false,
@@ -101,7 +99,7 @@ class PaperDoll extends Component {
         window.addEventListener('resize', this.handleWindowResize);
 
         const img = new ImgMod.Img();
-        img.render(this.state.skin).then(() => this.setState({slim: img.detectSlimModel()}));
+        img.render(this.props.skin).then(() => this.setState({slim: img.detectSlimModel()}));
     }
 
     componentWillUnmount() {
@@ -110,14 +108,7 @@ class PaperDoll extends Component {
         this.controls.dispose();
     }
 
-    componentDidUpdate(prevProps) {
-        if (this.props.skin !== prevProps.skin) {
-            const skin = this.props.skin == null ? (this.state.slim ? alex : steve) : this.props.skin
-            this.setState({skin: skin});
-            const img = new ImgMod.Img();
-            img.render(skin).then(() => this.setState({slim: img.detectSlimModel()}));
-        }
-        
+    componentDidUpdate() {   
         this.updateSlim();
         this.updateExplode();
         this.textureSetup();
@@ -181,9 +172,10 @@ class PaperDoll extends Component {
 
             hatMaterial.matcap = matcapMap;
             hatMaterial.needsUpdate = true;
-        });  
+        });
 
-        this.textureLoader.load(this.state.skin, (texture) => {
+        const skin = this.props.skin == null ? (this.props.slim ? alex : steve) : this.props.skin;
+        this.textureLoader.load(skin, (texture) => {
             texture.magFilter = THREE.NearestFilter;
 
             material.map = texture;
@@ -824,12 +816,12 @@ class PaperDoll extends Component {
 
     updateSlim = () => {
         this.rightArmPivot.children.forEach(e => {
-            if (e.slim) e.visible = this.state.slim;
-            else e.visible = !this.state.slim;
+            if (e.slim) e.visible = this.props.slim;
+            else e.visible = !this.props.slim;
         });
         this.leftArmPivot.children.forEach(e => {
-            if (e.slim) e.visible = this.state.slim;
-            else e.visible = !this.state.slim;
+            if (e.slim) e.visible = this.props.slim;
+            else e.visible = !this.props.slim;
         });
     };
 
@@ -899,8 +891,9 @@ class PaperDoll extends Component {
 
     setSlim = bool => {
         let state = {slim: bool};
-        if (this.state.skin === steve || this.state.skin === alex) state.skin = bool ? alex : steve;
+        if (this.props.skin === steve || this.props.skin === alex) state.skin = bool ? alex : steve;
         this.setState(state);
+        this.props.updateSlim(bool);
     }
     setAnim = bool => this.setState({anim: bool == null ? true : bool});
     setAnimSpeed = speed => this.setState({animSpeed: speed == null ? 1 : speed});
@@ -911,7 +904,7 @@ class PaperDoll extends Component {
         return (
             <div className="paperdoll container">
                 <PaperDollSettings
-                    slim={this.state.slim}
+                    slim={this.props.slim}
                     anim={this.state.anim}
                     animSpeed={this.state.animSpeed}
                     explode={this.state.explode}
