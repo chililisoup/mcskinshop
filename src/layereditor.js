@@ -22,7 +22,7 @@ class LayerEditor extends Component {
             return;
         }
         
-        if (this.layer && this.props.layer.id == this.layer.id) return;
+        if (this.layer && this.props.layer.id === this.layer.id) return;
         
         this.layer = this.props.layer;
         if (this.layer) {
