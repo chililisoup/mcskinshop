@@ -3,8 +3,7 @@ html {
 }
 
 body {
-  background: rgb(0,4,51);
-  background: linear-gradient(0deg, rgb(24, 30, 107) 0%, rgb(72, 189, 209) 100%);
+  background: rgb(32, 38, 51);
   background-repeat: no-repeat;
   background-attachment: fixed;
   margin: 0;
@@ -14,12 +13,21 @@ body {
 
 button, input, select {
   font-weight: bolder;
-  background-color: rgba(0, 0, 0, 0.3);
-  box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+  background-color: rgba(0, 0, 0, 0.4);
+  box-shadow: none;
   color: white;
   border: none;
-  border-radius: 3px;
+  border-radius: 0;
   margin: 3px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+input {
+  font-family: monospace;
+}
+
+input[type="file"] {
+  display: none;
 }
 
 button:hover, input:hover {
@@ -34,13 +42,62 @@ input::placeholder {
 
 .SkinManager {
   display: flex;
+  margin-top: 35px;
 }
 
-.SkinAdders {
+.MenuBar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 30px;
+  background: rgb(103, 88, 146);
+  padding: 0;
+  outline: 2px solid black;
+}
+
+.MenuBar button {
+  background: none;
+  height: 30px;
+  margin: 0;
+  border: none;
+  padding: 0 12px;
+  outline: none;
+}
+
+.MenuBar button:hover {
+  background: rgb(66, 54, 99);
+}
+
+.MenuBar > div {
+  position: absolute;
+  top: 32px;
+}
+
+.MenuBar > div > div {
+  position: absolute;
+  z-index: 100;
+  background: rgb(103, 88, 146);
+  display: flex;
+  flex-direction: column;
+  outline: 2px solid black;
+}
+
+.MenuBar > div > div > button {
+  white-space: nowrap;
+  text-align: left;
+}
+
+.Preview {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+}
+
+.Preview img {
+  width: 192px;
+  height: 192px;
 }
 
 label {
@@ -53,7 +110,6 @@ img {
   image-rendering: pixelated;
   background-image: url("assets/checkerboard.png");
   background-size: 12px;
-  border-radius: 3px;
 }
 
 span {
@@ -61,21 +117,25 @@ span {
   flex-direction: row;
 }
 
+hr {
+  border: 1px solid black;
+  width: calc(100% - 16px);
+  margin: 0 auto;
+}
+
 .container {
   display: flex;
   flex-direction: column;
-  background-color: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
+  background-color: rgb(67, 70, 100);
   border: none;
-  border-radius: 10px;
+  outline: 2px solid black;
   margin: 5px;
   height: fit-content;
-  box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
   padding: 5px;
 }
 
 .container p, .container label {
-  margin: 3px 0;
+  margin: 3px;
   overflow: hidden;
 }
 
@@ -87,12 +147,12 @@ span {
   display: flex;
   flex-direction: column;
   margin: 5px;
+  margin-bottom: 10px;
 }
 
 .paperdoll-canvas {
   height: 500px;
   width: 400px;
-  border-radius: 6px;
   background: url("assets/background.png");
 }
 
@@ -105,7 +165,6 @@ span {
 .layereditor-canvas {
   height: 512px;
   width: 512px;
-  border-radius: 6px;
   background-image: url("assets/checkerboard.png");
   background-size: 16px;
   image-rendering: pixelated;
@@ -133,7 +192,7 @@ span {
   flex-direction: column;
 }
 
-.manager-layer-buttons button, .manager-layer-colors input {
+.manager-layer-buttons > button, .manager-layer-colors > input {
   width: 20px;
   height: 20px;
   margin: 2px;
@@ -166,8 +225,7 @@ span.layerTitle input {
 
 .layer-adder-content {
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
+  flex-direction: column;
   width: 325px;
 }
 
@@ -196,8 +254,8 @@ h3 {
   width: 18px;
   height: 18px;
   border: none;
-  border-radius: 5px;
-  outline: 2px inset rgba(255, 255, 255, 0.75);
+  outline: 2px solid black;
+  image-rendering: pixelated;
 }
 
 .color-picker {
@@ -212,7 +270,7 @@ h3 {
   position: absolute;
   z-index: 1000;
   top: 10px;
-  left: -100px;
+  left: -105px;
   width: 200px;
   padding: 10px 0 10px;
 }
@@ -235,15 +293,26 @@ h3 {
   margin: 10px 0 10px;
   appearance: none;
   outline: none;
+  border: 2px solid black;
+  image-rendering: pixelated;
+}
+
+.color-picker > div > span {
+  width: 80%;
+  margin: 10px 0 10px;
+}
+
+.color-picker > div > span > input {
+  width: 60%;
 }
 
 .color-picker > div > input::-webkit-slider-thumb, .color-picker > div > input::-moz-range-thumb {
   appearance: none;
-  width: 8px;
+  width: 6px;
   height: 12px;
-  border: 4px solid white;
-  border-radius: 8px;
-  box-shadow: 0 0 2px black;
+  border: 2px solid white;
+  border-radius: 0;
+  outline: 2px solid black;
   background: none;
   cursor: pointer;
 }

@@ -55,13 +55,9 @@ class PaperDollSettings extends React.Component {
                     <div>
                         <label htmlFor="slimToggle">Slim</label>
                         <input type="checkbox" id="slimToggle" checked={this.props.slim} onChange={e => this.updateSlim(e.target.checked)}/>
-                    </div>
-                    <div>
                         <label htmlFor="animToggle">Animate</label>
                         <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={e => this.updateAnim(e.target.checked)}/>
                         <input type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.updateAnimSpeed(e.target.value)}/>
-                    </div>
-                    <div>
                         <label htmlFor="explodeToggle">Explode</label>
                         <input type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateExplode(e.target.checked)}/>
                     </div>
@@ -88,6 +84,7 @@ class PaperDoll extends Component {
         }
 
         this.canvasRef = React.createRef();
+        this.clock = new THREE.Clock();
     }
 
     componentDidMount() {
@@ -844,12 +841,13 @@ class PaperDoll extends Component {
 
     startAnimationLoop = () => {
         this.renderer.render(this.scene, this.camera);
+        const delta = this.clock.getDelta();
 
         if (this.state.anim) {
             this.time = this.time || 0;
-            this.time += 0.1 * this.state.animSpeed;
+            this.time += delta * 8 * this.state.animSpeed;
             this.idleTime = this.idleTime || 0;
-            this.idleTime += 0.1;
+            this.idleTime += delta * 8;
             if (this.time > Math.PI * 20) this.time -= Math.PI * 20;
         }
 

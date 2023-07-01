@@ -54,10 +54,12 @@ class LayerAdder extends Component {
             elem = this.state.layers.sublayers.map((sublayer, i) => {
                 return (
                     <div className="container" key={fakedatabase[i].name}>
-                        <p>{fakedatabase[i].name}</p>
                         <span>
                             <img src={sublayer.src} alt={fakedatabase[i].name} title={fakedatabase[i].name} />
-                            <button onClick={this.addLayer.bind(this, i)}>+</button>
+                            <div>
+                                <p>{fakedatabase[i].name}</p>
+                                <button onClick={this.addLayer.bind(this, i)}>+</button>
+                            </div>
                         </span>
                     </div>
                 );
