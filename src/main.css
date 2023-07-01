@@ -26,10 +26,6 @@ input {
   font-family: monospace;
 }
 
-input[type="file"] {
-  display: none;
-}
-
 button:hover, input:hover {
   outline: 2px solid white;
   cursor: pointer;
@@ -54,6 +50,10 @@ input::placeholder {
   background: rgb(103, 88, 146);
   padding: 0;
   outline: 2px solid black;
+}
+
+.MenuBar input[type="file"] {
+  display: none;
 }
 
 .MenuBar button {
@@ -98,6 +98,7 @@ input::placeholder {
 .Preview img {
   width: 192px;
   height: 192px;
+  background-size: 48px;
 }
 
 label {

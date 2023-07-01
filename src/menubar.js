@@ -101,7 +101,7 @@ class MenuBar extends Component {
                 <button style={this.state.help ? {background: 'rgb(66, 54, 99)'} : {}} onMouseDown={() => this.setState({help: !this.state.help})}>Help</button>
                 {this.state.help && <PopUp close={() => this.setState({help: false})} children={
                     <div style={{marginLeft: '148px'}}>
-                        <button>Stop it. Ask for help.</button>
+                        <button>Stop it. Get some help.</button>
                     </div>
                 } />}
             </div>
