@@ -229,7 +229,7 @@ class PaperDoll extends Component {
             hat.position.set(v.position[0], v.position[1], 0);
 
             hat.hat = true;
-            if (k.slice(-4) == "Slim") {
+            if (k.slice(-4) === "Slim") {
                 base.slim = true;
                 hat.slim = true;
             }
