@@ -141,7 +141,7 @@ class PaperDoll extends Component {
         const ambientLight = new THREE.AmbientLight(0xffffff, 1);
         this.scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 2.8);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
         directionalLight.position.set(1, 0, 1);
         this.camera.add(directionalLight);
 
