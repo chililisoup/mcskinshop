@@ -12,41 +12,25 @@ class PaperDollSettings extends React.Component {
         super(props);
 
         this.state = {
-            slim: props.slim || false,
-            anim: props.anim == null ? true : props.anim,
-            animSpeed: props.animSpeed == null ? 0.5 : props.animSpeed,
-            explode: props.explode || false,
-            shade: props.shade == null ? true : props.shade
+            slim: props.settings.slim || false,
+            anim: props.settings.anim == null ? true : props.settings.anim,
+            animSpeed: props.settings.animSpeed == null ? 0.5 : props.settings.animSpeed,
+            explode: props.settings.explode || false,
+            shade: props.settings.shade == null ? true : props.settings.shade,
+            lightAngle: props.settings.lightAngle == null ? Math.PI / 4 : props.settings.lightAngle,
+            lightIntensity: props.settings.lightIntensity == null ? Math.SQRT2 : props.settings.lightIntensity
         }
     }
 
     componentDidUpdate = prevProps => {
-        if (this.props.slim !== prevProps.slim) this.setState({slim: this.props.slim});
+        if (this.props.settings.slim !== prevProps.settings.slim) this.setState({slim: this.props.settings.slim});
     }
 
-    updateSlim = bool => {
-        this.setState({slim: bool});
-        this.props.setSlim(bool);
-    }
-
-    updateAnim = bool => {
-        this.setState({anim: bool});
-        this.props.setAnim(bool);
-    }
-
-    updateAnimSpeed = speed => {
-        this.setState({animSpeed: speed});
-        this.props.setAnimSpeed(speed);
-    }
-
-    updateExplode = bool => {
-        this.setState({explode: bool});
-        this.props.setExplode(bool);
-    }
-
-    updateShade = bool => {
-        this.setState({shade: bool});
-        this.props.setShade(bool);
+    updateSetting = (setting, value) => {
+        const update = {};
+        update[setting] = value;
+        this.setState(update);
+        this.props.updateSetting(setting, value);
     }
 
     render() {
@@ -55,16 +39,22 @@ class PaperDollSettings extends React.Component {
                 <span>
                     <div>
                         <label htmlFor="slimToggle">Slim</label>
-                        <input type="checkbox" id="slimToggle" checked={this.props.slim} onChange={e => this.updateSlim(e.target.checked)}/>
+                        <input type="checkbox" id="slimToggle" checked={this.props.slim} onChange={e => this.updateSetting("slim", e.target.checked)}/>
                         <label htmlFor="animToggle">Animate</label>
-                        <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={e => this.updateAnim(e.target.checked)}/>
-                        <input type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.updateAnimSpeed(e.target.value)}/>
+                        <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={e => this.updateSetting("anim", e.target.checked)}/>
+                        <input type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.updateSetting("animSpeed", e.target.value)}/>
                         <label htmlFor="explodeToggle">Explode</label>
-                        <input type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateExplode(e.target.checked)}/>
+                        <input type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateSetting("explode", e.target.checked)}/>
                     </div>
                     <div>
                         <label htmlFor="shadeToggle">Shade</label>
-                        <input type="checkbox" id="shadeToggle" checked={this.state.shade} onChange={e => this.updateShade(e.target.checked)}/>
+                        <input type="checkbox" id="shadeToggle" checked={this.state.shade} onChange={e => this.updateSetting("shade", e.target.checked)}/>
+                        <label htmlFor="lightIntensity">Light Intensity</label>
+                        <input type="range" id="lightIntensity" min={0} max={10} step={0.1} value={Math.sqrt(this.state.lightIntensity)} onChange={e => this.updateSetting("lightIntensity", e.target.value ** 2)}/>
+                    </div>
+                    <div>
+                        <label htmlFor="lightAngle">Light Angle</label>
+                        <input type="range" id="lightAngle" min={0} max={2 * Math.PI} step={0.1} value={this.state.lightAngle} onChange={e => this.updateSetting("lightAngle", e.target.value)}/>
                     </div>
                     <button onClick={this.props.saveRender}>Save Render</button>
                 </span>
@@ -81,7 +71,9 @@ class PaperDoll extends Component {
             anim: true,
             animSpeed: 0.5,
             explode: false,
-            shade: true
+            shade: true,
+            lightAngle: Math.PI / 4,
+            lightIntensity: Math.SQRT2
         }
 
         this.canvasRef = React.createRef();
@@ -141,9 +133,8 @@ class PaperDoll extends Component {
         const ambientLight = new THREE.AmbientLight(0xffffff, 1);
         this.scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
-        directionalLight.position.set(1, 0, 1);
-        this.camera.add(directionalLight);
+        this.directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
+        this.camera.add(this.directionalLight);
 
         this.textureLoader = new THREE.TextureLoader();
         const matcapMap = this.textureLoader.load(matcap, matcapMap => matcapMap);
@@ -188,10 +179,16 @@ class PaperDoll extends Component {
         });
     }
 
-    updateShade = () => 
+    updateShade = () => {
+        this.directionalLight.position.set(
+            Math.sin(this.state.lightAngle) * this.state.lightIntensity,
+            0,
+            Math.cos(this.state.lightAngle) * this.state.lightIntensity
+        );
         this.dollOrigin.children.forEach(pivot => pivot.children.forEach(part =>
             part.material = this[(
                 this.state.shade ? "shaded" : "flat") + (part.hat ? "HatMat" : "BaseMat")]));
+    }
 
     modelPartSetup = (size, key, hat) => {
         let geometry = new THREE.BoxGeometry(size[0], size[1], size[2]);
@@ -315,21 +312,45 @@ class PaperDoll extends Component {
     setExplode = bool => this.setState({explode: bool || false});
     setShade = bool => this.setState({shade: bool == null ? true : bool});
 
+    updateSetting = (setting, value) => {
+        switch(setting) {
+            case "slim":
+                let state = {slim: value};
+                if (this.props.skin === steve || this.props.skin === alex) state.skin = value ? alex : steve;
+                this.setState(state);
+                this.props.updateSlim(value);
+                break;
+            case "anim":
+                this.setState({anim: value == null ? true : value});
+                break;
+            case "animSpeed":
+                this.setState({animSpeed: value == null ? 1 : value});
+                break;
+            case "explode":
+                this.setState({explode: value || false});
+                break;
+            case "shade":
+                this.setState({shade: value == null ? true : value});
+                break;
+            default:
+                const update = {};
+                update[setting] = value;
+                this.setState(update);
+        }
+    }
+
     render() {
         return (
             <div className="paperdoll container">
                 <PaperDollSettings
-                    slim={this.props.slim}
-                    anim={this.state.anim}
-                    animSpeed={this.state.animSpeed}
-                    explode={this.state.explode}
-                    shade={this.state.shade}
-
-                    setSlim={this.setSlim}
-                    setAnim={this.setAnim}
-                    setAnimSpeed={this.setAnimSpeed}
-                    setExplode={this.setExplode}
-                    setShade={this.setShade}
+                    settings={{
+                        slim: this.props.slim,
+                        anim: this.props.anim,
+                        animSpeed: this.props.animSpeed,
+                        explode: this.props.explode,
+                        shade: this.props.shade
+                    }}
+                    updateSetting={this.updateSetting}
                     saveRender={this.saveRender}
                 />
                 <canvas className="paperdoll-canvas" ref={this.canvasRef} />

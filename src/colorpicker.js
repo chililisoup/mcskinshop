@@ -102,7 +102,7 @@ class ColorPicker extends Component {
                 {this.state.open && <PopUp close={() => this.setState({open: false})} children={
                     <div className="color-picker" style={this.state.open ? {display: "block"} : {display: "none"}}>
                         <div className="container">
-                            <input value={this.state.hsla[0]} min={0} max={360} step={1} type="range" onChange={e => this.updateHue(e.target.value)} style={{
+                            <input value={this.state.hsla[0]} min={0} max={360} step={1} type="range" onChange={e => this.updateHue(e.target.value)} onMouseUp={e => this.updateHue(e.target.value)} style={{
                                 background: `linear-gradient(to right,
                                     hsl(0, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
                                     hsl(60, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
@@ -113,7 +113,7 @@ class ColorPicker extends Component {
                                     hsl(360, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%)
                                 )`
                             }} />
-                            <input value={this.state.hsla[1]} min={0} max={100} step={1} type="range" onChange={e => this.updateSaturation(e.target.value)} style={{
+                            <input value={this.state.hsla[1]} min={0} max={100} step={1} type="range" onChange={e => this.updateSaturation(e.target.value)} onMouseUp={e => this.updateSaturation(e.target.value)} style={{
                                 background: `linear-gradient(to right,
                                     hsl(
                                         ${this.state.hsla[0]},
@@ -127,7 +127,7 @@ class ColorPicker extends Component {
                                     )
                                 )`
                             }} />
-                            <input value={this.state.hsla[2]} min={0} max={100} step={1} type="range" onChange={e => this.updateLightness(e.target.value)} style={{
+                            <input value={this.state.hsla[2]} min={0} max={100} step={1} type="range" onChange={e => this.updateLightness(e.target.value)} onMouseUp={e => this.updateLightness(e.target.value)} style={{
                                 background: `linear-gradient(to right,
                                     #000000,
                                     hsl(
@@ -138,7 +138,7 @@ class ColorPicker extends Component {
                                     #ffffff
                                 )`
                             }} />
-                            {this.props.alpha && <input value={this.state.hsla[3]} min={0} max={1} step={0.01} type="range" onChange={e => this.updateAlpha(e.target.value)} style={{
+                            {this.props.alpha && <input value={this.state.hsla[3]} min={0} max={1} step={0.01} type="range" onChange={e => this.updateAlpha(e.target.value)} onMouseUp={e => this.updateAlpha(e.target.value)} style={{
                                 backgroundImage: `linear-gradient(to right,
                                     rgba(0,0,0,0),
                                     hsl(
