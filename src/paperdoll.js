@@ -310,10 +310,10 @@ class PaperDoll extends Component {
 
     updateSlim = () => {
         this.pivots.rightArm.children.forEach(e =>
-            e.visible = !!e.slim == this.props.slim
+            e.visible = !!e.slim === this.props.slim
         );
         this.pivots.leftArm.children.forEach(e =>
-            e.visible = !!e.slim == this.props.slim
+            e.visible = !!e.slim === this.props.slim
         );
     };
 
@@ -408,7 +408,7 @@ class PaperDoll extends Component {
     onMouseDown = e => {
         if (!this.state.pose) return;
         if (!this.selectedObject) return;
-        if (e.button == 2) return;
+        if (e.button === 2) return;
 
         this.controls.enabled = false;
 
