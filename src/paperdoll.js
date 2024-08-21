@@ -244,89 +244,80 @@ class PaperDoll extends Component {
         });
     }
 
+    propagateShade = part => {
+        part.material = this[(
+            this.state.shade ? "shaded" : "flat") + (part.renderType == "cutout" ? "HatMat" : "BaseMat")];
+
+        part.children.forEach(this.propagateShade);
+    }
+
     updateShade = () => {
         this.directionalLight.position.set(
             Math.sin(this.state.lightAngle) * this.state.lightFocus,
             0,
             Math.cos(this.state.lightAngle) * this.state.lightFocus
         );
-        this.dollOrigin.children.forEach(pivot => pivot.children.forEach(part =>
-            part.material = this[(
-                this.state.shade ? "shaded" : "flat") + (part.hat ? "HatMat" : "BaseMat")]));
+
+        this.propagateShade(this.doll);
     }
 
-    modelPartSetup = (size, key, hat) => {
-        const geometry = new THREE.BoxGeometry(size[0], size[1], size[2]);
-        const uvAttribute = geometry.getAttribute("uv");
+    eatChild = (name, child) => {
+        let part;
 
-        skinmodel.parts[key][hat ? "hatUV" : "baseUV"]
-        .forEach((v, i) => uvAttribute.setXY(i, v[0] / 64, v[1] / 64));
+        if (child.shape) {
+            const geometry = new THREE.BoxGeometry(child.shape[0], child.shape[1], child.shape[2]);
 
-        return geometry;
+            if (child.uv) {
+                const uvAttribute = geometry.getAttribute("uv");
+                child.uv.forEach((v, i) => uvAttribute.setXY(i, v[0] / 64, v[1] / 64));
+            }
+
+            part = new THREE.Mesh(geometry);
+            if (child.renderType) part.renderType = child.renderType;
+
+        } else part = new THREE.Group();
+
+        if (child.children) for (const [k, v] of Object.entries(child.children))
+            part.add(this.eatChild(k, v));
+
+        if (child.poseable) {
+            part.poseable = true;
+            this.pivots[name] = part;
+        }
+        if (child.position) part.position.fromArray(child.position);
+
+        part.name = name;
+
+        return part;
     }
 
     modelSetup = () => {
-        this.dollOrigin = new THREE.Object3D();
-        this.scene.add(this.dollOrigin);
-
         this.pivots = {};
-        this.geometries = {};
-        this.hatGeometries = {};
+        this.doll = new THREE.Object3D();
+        this.doll.name = "doll";
+        this.scene.add(this.doll);
 
-        for (const [k, v] of Object.entries(skinmodel.pivots)) {
-            const pivot = new THREE.Object3D();
-            pivot.position.y = v;
-            pivot.name = k;
-            this.pivots[k] = pivot;
-            this.dollOrigin.add(pivot);
-        }
-
-        for (const [k, v] of Object.entries(skinmodel.parts)) {
-            let base = this.modelPartSetup(v.baseSize, k);
-            let hat = this.modelPartSetup(v.hatSize, k, true);
-            const pivot = this.pivots[v.pivot];
-            
-            this.geometries[k] = base;
-            this.hatGeometries[k] = hat;
-
-            base = new THREE.Mesh(base);
-            hat = new THREE.Mesh(hat);
-
-            base.name = k + "Base";
-            hat.name = k + "Hat";
-
-            base.position.set(v.position[0], v.position[1], 0);
-            hat.position.set(v.position[0], v.position[1], 0);
-
-            hat.hat = true;
-            if (k.slice(-4) === "Slim") {
-                base.slim = true;
-                hat.slim = true;
-            }
-
-            pivot.add(base, hat);
-        }
+        for (const [k, v] of Object.entries(skinmodel))
+            this.doll.add(this.eatChild(k, v));
     };
 
     updateSlim = () => {
-        this.pivots.rightArm.children.forEach(e =>
-            e.visible = !!e.slim === this.props.slim
-        );
-        this.pivots.leftArm.children.forEach(e =>
-            e.visible = !!e.slim === this.props.slim
-        );
+        this.pivots.rightArm.children[0].visible = !this.props.slim;
+        this.pivots.rightArm.children[1].visible = this.props.slim;
+        this.pivots.leftArm.children[0].visible = !this.props.slim;
+        this.pivots.leftArm.children[1].visible = this.props.slim;
     };
 
     updateExplode = () => {
         let mod = this.state.explode ? 2.5 : 0;
 
-        this.pivots.head.position.y = 24 + mod;
+        this.pivots.head.position.y = skinmodel.head.position[1] + mod;
 
-        this.pivots.leftLeg.position.set(1.995 + (mod / 2), 12 - mod, 0);
-        this.pivots.rightLeg.position.set(-1.995 - (mod / 2), 12 - mod, 0);
+        this.pivots.leftLeg.position.fromArray(skinmodel.torso.children.leftLeg.position).add(new THREE.Vector3(mod / 2, -mod, 0));
+        this.pivots.rightLeg.position.fromArray(skinmodel.torso.children.rightLeg.position).add(new THREE.Vector3(-mod / 2, -mod, 0));
 
-        this.pivots.leftArm.position.x = 5 + mod;
-        this.pivots.rightArm.position.x = -5 - mod;
+        this.pivots.leftArm.position.x = skinmodel.torso.children.leftArm.position[0] + mod;
+        this.pivots.rightArm.position.x = skinmodel.torso.children.rightArm.position[0] - mod;
     }
 
     resetPose = () => {
@@ -356,6 +347,12 @@ class PaperDoll extends Component {
         this.pivots.rightArm.rotation.z = -this.pivots.leftArm.rotation.z;
     }
 
+    findPosableAncestor = part => {
+        if (part.poseable) return part;
+        if (part.parent) return this.findPosableAncestor(part.parent);
+        return false;
+    }
+
     pose = () => {
         if (this.oldMousePos && this.selectedObject) {
             if (this.mousePos.equals(this.oldMousePos)) return;
@@ -375,10 +372,13 @@ class PaperDoll extends Component {
 
         this.raycaster.setFromCamera(this.mousePos, this.camera);
         const intersects = this.raycaster.intersectObject(this.scene, true);
+        const poseable = intersects.length > 0 ? this.findPosableAncestor(intersects[0].object) : false;
 
-        if (intersects.length > 0) {
-            this.selectedObject = intersects[0].object.parent;
-            this.outlinePass.selectedObjects = this.selectedObject.children.filter(child => !child.hat);
+        if (poseable) {
+            this.selectedObject = poseable;
+            this.outlinePass.selectedObjects = poseable.children.filter(child =>
+                child.renderType != "cutout" && !child.poseable
+            );
         } else {
             this.selectedObject = null;
             this.outlinePass.selectedObjects = [];
@@ -413,8 +413,7 @@ class PaperDoll extends Component {
         this.controls.enabled = false;
 
         this.oldMousePos = new THREE.Vector2().copy(this.mousePos);
-
-        const posePivot = new THREE.Vector3().copy(this.selectedObject.position).project(this.camera);
+        const posePivot = this.selectedObject.getWorldPosition(new THREE.Vector3()).project(this.camera);
         this.posePivot = new THREE.Vector2(posePivot.x, posePivot.y);
     }
 
