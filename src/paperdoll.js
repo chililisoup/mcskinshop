@@ -246,7 +246,7 @@ class PaperDoll extends Component {
 
     propagateShade = part => {
         part.material = this[(
-            this.state.shade ? "shaded" : "flat") + (part.renderType == "cutout" ? "HatMat" : "BaseMat")];
+            this.state.shade ? "shaded" : "flat") + (part.renderType === "cutout" ? "HatMat" : "BaseMat")];
 
         part.children.forEach(this.propagateShade);
     }
@@ -377,7 +377,7 @@ class PaperDoll extends Component {
         if (poseable) {
             this.selectedObject = poseable;
             this.outlinePass.selectedObjects = poseable.children.filter(child =>
-                child.renderType != "cutout" && !child.poseable
+                child.renderType !== "cutout" && !child.poseable
             );
         } else {
             this.selectedObject = null;
