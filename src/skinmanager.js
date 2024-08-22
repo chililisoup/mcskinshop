@@ -5,6 +5,7 @@ import LayerManager from './layermanager';
 import LayerAdder from './layeradder';
 import AssetCreator from './assetcreator';
 import MenuBar from './menubar';
+import DraggableWindow from './draggablewindow';
 
 class SkinManager extends Component {
     constructor(props) {
@@ -13,7 +14,12 @@ class SkinManager extends Component {
         this.state = {
             skin: null,
             slim: false,
-            editHints: ["", ""]
+            editHints: ["", ""],
+            layerManager: true,
+            paperDoll: true,
+            preview: true,
+            assetCreator: false,
+            layerAdder: false
         }
         this.layers = new ImgMod.Layer();
         this.editHistory = [];
@@ -106,9 +112,15 @@ class SkinManager extends Component {
         link.click();
     }
 
+    updateState = (setting, value) => {
+        const update = {};
+        update[setting] = value;
+        this.setState(update);
+    }
+
     render() {
         return ( //Make it so layer manager just sends updated layers instead of layer update commands
-            <div className="SkinManager">
+            <div className="appRoot">
                 <MenuBar
                     addLayer={this.addLayer}
                     downloadSkin={this.downloadSkin}
@@ -116,17 +128,24 @@ class SkinManager extends Component {
                     requestUndo={this.requestUndo}
                     requestRedo={this.requestRedo}
                     editHints={this.state.editHints}
+                    viewTab={[
+                        ["Layer Manager", this.state.layerManager, () => this.updateState("layerManager", !this.state.layerManager)],
+                        ["Paper Doll", this.state.paperDoll, () => this.updateState("paperDoll", !this.state.paperDoll)],
+                        ["Preview", this.state.preview, () => this.updateState("preview", !this.state.preview)],
+                        ["Asset Creator", this.state.assetCreator, () => this.updateState("assetCreator", !this.state.assetCreator)],
+                        ["Layer Adder", this.state.layerAdder, () => this.updateState("layerAdder", !this.state.layerAdder)],
+                    ]}
                 />
-                <LayerManager layers={this.layers} updateLayers={this.updateLayers} />
-                <div>
-                    <PaperDoll skin={this.state.skin} slim={this.state.slim} updateSlim={this.updateSlim} addEdit={this.addEdit} />
-                    <div className="Preview container">
-                        <p>Preview</p>
-                        <img src={this.state.skin || ImgMod.emptyImageSource} alt="Flattened Skin" />
-                    </div>
+                <div className="SkinManager">
+                    
+                    {this.state.layerManager && <LayerManager layers={this.layers} updateLayers={this.updateLayers} />}
+                    {this.state.paperDoll && <PaperDoll skin={this.state.skin} slim={this.state.slim} updateSlim={this.updateSlim} addEdit={this.addEdit} />}
+                    {this.state.preview && <DraggableWindow title="Preview" pos={{x: 100000, y: 100000}} close={() => this.updateState("preview", false)} children={
+                        <img className="Preview" src={this.state.skin || ImgMod.emptyImageSource} alt="Flattened Skin" />
+                    } />}
+                    {this.state.assetCreator && <AssetCreator addLayer={this.addLayer} />}
+                    {this.state.layerAdder && <LayerAdder addLayer={this.addLayer} />}
                 </div>
-                <AssetCreator addLayer={this.addLayer} />
-                <LayerAdder addLayer={this.addLayer} />
             </div>
         );
     }

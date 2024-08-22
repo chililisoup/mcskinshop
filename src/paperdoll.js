@@ -6,6 +6,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { SMAAPass } from "three/addons/postprocessing/SMAAPass";
 import steve from "./assets/steve.png";
 import alex from "./assets/alex.png";
 import matcap from "./assets/matcap.png";
@@ -58,39 +59,37 @@ class PaperDollSettings extends React.Component {
 
     render() {
         return (
-            <div>
-                <span>
-                    <div>
-                        <label htmlFor="slimToggle">Slim</label>
-                        <input type="checkbox" id="slimToggle" checked={this.state.slim} onChange={e => this.updateSetting("slim", e.target.checked)}/>
-                        <label htmlFor="animToggle">Animate</label>
-                        <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={e => this.toggleAnim(e.target.checked)}/>
-                        <input type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.updateSetting("animSpeed", e.target.value)}/>
-                        <label htmlFor="explodeToggle">Explode</label>
-                        <input type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateSetting("explode", e.target.checked)}/>
-                    </div>
-                    <div>
-                        <label htmlFor="shadeToggle">Shade</label>
-                        <input type="checkbox" id="shadeToggle" checked={this.state.shade} onChange={e => this.updateSetting("shade", e.target.checked)}/>
-                        <label htmlFor="lightFocus">Light Focus</label>
-                        <input type="range" id="lightFocus" min={0} max={10} step={0.1} value={Math.sqrt(this.state.lightFocus)} onChange={e => this.updateSetting("lightFocus", e.target.value ** 2)}/>
-                    </div>
-                    <div>
-                        <label htmlFor="lightAngle">Light Angle</label>
-                        <input type="range" id="lightAngle" min={0} max={2 * Math.PI} step={0.1} value={this.state.lightAngle} onChange={e => this.updateSetting("lightAngle", e.target.value)}/>
-                        <label htmlFor="poseToggle">Pose</label>
-                        <input type="checkbox" id="poseToggle" checked={this.state.pose} onChange={e => this.togglePose(e.target.checked)}/>
-                    </div>
-                    <div>
-                        <label htmlFor="fov">FOV ({this.state.fov})</label>
-                        <input type="range" id="fov" min={30} max={120} step={1} value={this.state.fov} onChange={e => this.updateSetting("fov", e.target.value)}/>
-                    </div>
-                    <div>
-                        <button onClick={this.props.resetCamera}>Reset Camera</button>
-                        <button onClick={this.props.saveRender}>Save Render</button>
-                    </div>
-                </span>
-            </div>
+            <span>
+                <div>
+                    <label htmlFor="slimToggle">Slim</label>
+                    <input type="checkbox" id="slimToggle" checked={this.state.slim} onChange={e => this.updateSetting("slim", e.target.checked)}/>
+                    <label htmlFor="animToggle">Animate</label>
+                    <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={e => this.toggleAnim(e.target.checked)}/>
+                    <input type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.updateSetting("animSpeed", e.target.value)}/>
+                    <label htmlFor="explodeToggle">Explode</label>
+                    <input type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateSetting("explode", e.target.checked)}/>
+                </div>
+                <div>
+                    <label htmlFor="shadeToggle">Shade</label>
+                    <input type="checkbox" id="shadeToggle" checked={this.state.shade} onChange={e => this.updateSetting("shade", e.target.checked)}/>
+                    <label htmlFor="lightFocus">Light Focus</label>
+                    <input type="range" id="lightFocus" min={0} max={10} step={0.1} value={Math.sqrt(this.state.lightFocus)} onChange={e => this.updateSetting("lightFocus", e.target.value ** 2)}/>
+                </div>
+                <div>
+                    <label htmlFor="lightAngle">Light Angle</label>
+                    <input type="range" id="lightAngle" min={0} max={2 * Math.PI} step={0.1} value={this.state.lightAngle} onChange={e => this.updateSetting("lightAngle", e.target.value)}/>
+                    <label htmlFor="poseToggle">Pose</label>
+                    <input type="checkbox" id="poseToggle" checked={this.state.pose} onChange={e => this.togglePose(e.target.checked)}/>
+                </div>
+                <div>
+                    <label htmlFor="fov">FOV ({this.state.fov})</label>
+                    <input type="range" id="fov" min={30} max={120} step={1} value={this.state.fov} onChange={e => this.updateSetting("fov", e.target.value)}/>
+                </div>
+                <div>
+                    <button onClick={this.props.resetCamera}>Reset Camera</button>
+                    <button onClick={this.props.saveRender}>Save Render</button>
+                </div>
+            </span>
         );
     }
 }
@@ -151,12 +150,12 @@ class PaperDoll extends Component {
         this.textureSetup();
 
         this.camera.fov = this.state.fov;
-        this.camera.updateProjectionMatrix();
+        this.handleWindowResize();
     }
 
     sceneSetup = () => {
-        const width = this.canvasRef.current.clientWidth;
-        const height = this.canvasRef.current.clientHeight;
+        const width = this.canvasRef.current.parentNode.clientWidth;
+        const height = this.canvasRef.current.parentNode.clientHeight;
 
         this.raycaster = new THREE.Raycaster();
 
@@ -164,10 +163,9 @@ class PaperDoll extends Component {
 
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvasRef.current,
-            alpha: true,
-            preserveDrawingBuffer: true
+            alpha: true
         });
-        this.renderer.setPixelRatio(window.devicePixelRatio * 2);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(width, height);
         this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 
@@ -193,6 +191,9 @@ class PaperDoll extends Component {
 
         this.outputPass = new OutputPass();
         this.composer.addPass(this.outputPass);
+
+        this.SMAAPass = new SMAAPass();
+        this.composer.addPass(this.SMAAPass);
 
         const ambientLight = new THREE.AmbientLight(0xffffff, 1);
         this.scene.add(ambientLight);
@@ -353,6 +354,19 @@ class PaperDoll extends Component {
         return false;
     }
 
+    filterOutline = part => {
+        let children = [];
+
+        if (part.children.length > 0) {
+            part.children.forEach(child => {
+                children = children.concat(this.filterOutline(child));
+            });
+        } else if (part.renderType !== "cutout" && !part.poseable && part.visible)
+            children = [part];
+
+        return children;
+    }
+
     pose = () => {
         if (this.oldMousePos && this.selectedObject) {
             if (this.mousePos.equals(this.oldMousePos)) return;
@@ -382,23 +396,26 @@ class PaperDoll extends Component {
 
         if (poseable) {
             this.selectedObject = poseable;
-            this.outlinePass.selectedObjects = poseable.children.filter(child =>
-                child.renderType !== "cutout" && !child.poseable
-            );
+            this.outlinePass.selectedObjects = this.filterOutline(poseable);
         } else {
             this.selectedObject = null;
             this.outlinePass.selectedObjects = [];
         }
     }
 
-    startAnimationLoop = () => {
+    renderFrame = () => {
         const delta = this.clock.getDelta();
 
         if (this.state.pose) this.pose();
         else this.animate(delta);
 
-        this.requestID = window.requestAnimationFrame(this.startAnimationLoop);
         this.composer.render();
+    }
+
+    startAnimationLoop = () => {
+        this.renderFrame();
+
+        this.requestID = window.requestAnimationFrame(this.startAnimationLoop);
     };
 
     poseUndo = (obj, start) => {
@@ -411,8 +428,8 @@ class PaperDoll extends Component {
     onMouseMove = e => {
         if (!this.state.pose) return;
 
-        const width = this.canvasRef.current.clientWidth;
-        const height = this.canvasRef.current.clientHeight;
+        const width = this.canvasRef.current.parentNode.clientWidth;
+        const height = this.canvasRef.current.parentNode.clientHeight;
         
         this.mousePos.x = (e.offsetX / width) * 2 - 1;
         this.mousePos.y = (e.offsetY / height) * -2 + 1;
@@ -470,8 +487,8 @@ class PaperDoll extends Component {
     }
 
     handleWindowResize = () => {
-        const width = this.canvasRef.current.clientWidth;
-        const height = this.canvasRef.current.clientHeight;
+        const width = this.canvasRef.current.parentNode.clientWidth;
+        const height = this.canvasRef.current.parentNode.clientHeight;
 
         this.renderer.setSize(width, height);
         this.composer.setSize(width, height);
@@ -481,8 +498,25 @@ class PaperDoll extends Component {
     };
 
     saveRender = () => {
+        const scale = Number(window.prompt("Render Scale (1-4):", 1));
+        if (isNaN(scale) || scale < 1 || scale > 4) return;
+
+        const width = this.canvasRef.current.parentNode.clientWidth;
+        const height = this.canvasRef.current.parentNode.clientHeight;
+
+        this.SMAAPass.enabled = false;
+        this.renderer.setSize(width * scale, height * scale);
+        this.composer.setSize(width * scale, height * scale);
+        this.renderFrame();
+
+        const data = this.renderer.domElement.toDataURL();
+
+        this.SMAAPass.enabled = true;
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.handleWindowResize();
+
         const link = document.createElement("a");
-        link.href = this.renderer.domElement.toDataURL();
+        link.href = data
         const name = window.prompt("Download as...", "My Skin Render");
         if (name === null) return;
         link.download = name + ".png";
@@ -550,7 +584,9 @@ class PaperDoll extends Component {
                     saveRender={this.saveRender}
                     resetCamera={() => this.controls.reset()}
                 />
-                <canvas className="paperdoll-canvas" ref={this.canvasRef} />
+                <div className="paperdoll-canvas-container">
+                    <canvas className="paperdoll-canvas" ref={this.canvasRef} />
+                </div>
             </div>
         );
     }

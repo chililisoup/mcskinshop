@@ -67,6 +67,10 @@ class MenuBar extends Component {
     }
 
     render() {
+        const viewTabChildren = this.props.viewTab ? this.props.viewTab.map(tab =>
+            <span><p>{tab[1] ? "✓" : ""}</p><button onClick={tab[2]}>{tab[0]}</button></span>
+        ) : <button>Look at that view...</button>;
+
         return (
             <div className="MenuBar">
                 <button style={this.state.file ? {background: 'rgb(66, 54, 99)'} : {}} onMouseDown={() => this.setState({file: !this.state.file})}>File</button>
@@ -88,9 +92,7 @@ class MenuBar extends Component {
                 } />}
                 <button style={this.state.view ? {background: 'rgb(66, 54, 99)'} : {}} onMouseDown={() => this.setState({view: !this.state.view})}>View</button>
                 {this.state.view && <PopUp close={() => this.setState({view: false})} children={
-                    <div style={{marginLeft: '94px'}}>
-                        <button>Look at that view...</button>
-                    </div>
+                    <div style={{marginLeft: '94px'}}>{viewTabChildren}</div>
                 } />}
                 <button style={this.state.help ? {background: 'rgb(66, 54, 99)'} : {}} onMouseDown={() => this.setState({help: !this.state.help})}>Help</button>
                 {this.state.help && <PopUp close={() => this.setState({help: false})} children={

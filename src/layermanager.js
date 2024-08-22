@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import * as ImgMod from './imgmod';
 import LayerEditor from './layereditor';
 import ColorPicker from './colorpicker';
+import DraggableWindow from './draggablewindow';
 
 class LayerPreview extends Component {
     constructor(props) {
@@ -393,8 +394,8 @@ class LayerManager extends Component {
         }
 
         return (
-            <span>
-                <div>
+            <div>
+                <div className="LayerManager">
                     <div className="container layer-manager">
                         {elem}
                     </div>
@@ -404,8 +405,10 @@ class LayerManager extends Component {
                         <button onClick={this.addLayer}>New Layer</button>
                     </span>
                 </div>
-                <LayerEditor layer={selectedLayer} updateLayer={layer => this.updateLayer(selectedLayerIndex, layer)} />
-            </span>
+                {selectedLayer && <DraggableWindow title={selectedLayer.name} pos={{x: 350, y: 0}} close={() => this.setState({ selectedLayer: null})} children={
+                    <LayerEditor layer={selectedLayer} updateLayer={layer => this.updateLayer(selectedLayerIndex, layer)} />
+                } />}
+            </div>
         );
     }
 }

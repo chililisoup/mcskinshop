@@ -80,7 +80,7 @@ class LayerEditor extends Component {
 
     render() {
         return (
-            <div className="container">
+            <div>
                 <ColorPicker update={this.setColor} alpha={true} />
                 <canvas
                     className="layereditor-canvas"
