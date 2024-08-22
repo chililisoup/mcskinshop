@@ -364,7 +364,13 @@ class PaperDoll extends Component {
             const newRad = new THREE.Vector2().copy(this.mousePos).sub(this.posePivot).angle();
             let angle = oldRad - newRad;
 
-            this.selectedObject.rotateOnWorldAxis(axis, angle)
+            const parentInvQuat = this.selectedObject.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+            const rotQuat = new THREE.Quaternion().setFromAxisAngle(axis, angle);
+            const worldQuat = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
+
+            const finalQuat = parentInvQuat.clone().multiply(new THREE.Quaternion().multiplyQuaternions(rotQuat, worldQuat));
+
+            this.selectedObject.setRotationFromQuaternion(finalQuat);
 
             this.oldMousePos = new THREE.Vector2().copy(this.mousePos);
             return;
@@ -416,7 +422,7 @@ class PaperDoll extends Component {
             const obj = this.selectedObject;
             const start = obj.rotation.clone();
             this.props.addEdit(
-                "Pose " + obj.name,
+                "pose " + obj.name,
                 () => this.poseUndo(obj, start)
             );
         }
@@ -448,10 +454,17 @@ class PaperDoll extends Component {
         if (!this.selectedObject) return;
 
         this.controls.enabled = false;
+        
+        const obj = this.selectedObject;
+        const start = obj.rotation.clone();
+        this.props.addEdit(
+            "reset " + obj.name +  " pose",
+            () => this.poseUndo(obj, start)
+        );
 
-        this.selectedObject.rotation.x = 0;
-        this.selectedObject.rotation.y = 0;
-        this.selectedObject.rotation.z = 0;
+        obj.rotation.x = 0;
+        obj.rotation.y = 0;
+        obj.rotation.z = 0;
 
         e.preventDefault();
     }
