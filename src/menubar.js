@@ -82,14 +82,8 @@ class MenuBar extends Component {
                 <button style={this.state.edit ? {background: 'rgb(66, 54, 99)'} : {}} onMouseDown={() => this.setState({edit: !this.state.edit})}>Edit</button>
                 {this.state.edit && <PopUp close={() => this.setState({edit: false})} children={
                     <div style={{marginLeft: '46px'}}>
-                        <button>(NOTHING HERE WORKS)</button>
-                        <hr/>
-                        <button>Undo</button>
-                        <button>Redo</button>
-                        <hr/>
-                        <button>Cut</button>
-                        <button>Copy</button>
-                        <button>Paste</button>
+                        <button onClick={this.props.requestUndo}>{this.props.editHints[0] === "" ? "Nothing to undo" : "Undo " + this.props.editHints[0]}</button>
+                        <button onClick={this.props.requestRedo}>{this.props.editHints[1] === "" ? "Nothing to redo" : "Redo " + this.props.editHints[1]}</button>
                     </div>
                 } />}
                 <button style={this.state.view ? {background: 'rgb(66, 54, 99)'} : {}} onMouseDown={() => this.setState({view: !this.state.view})}>View</button>

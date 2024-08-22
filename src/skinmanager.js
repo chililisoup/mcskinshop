@@ -12,9 +12,71 @@ class SkinManager extends Component {
 
         this.state = {
             skin: null,
-            slim: false
+            slim: false,
+            editHints: ["", ""]
         }
         this.layers = new ImgMod.Layer();
+        this.editHistory = [];
+        this.redoProphecy = [];
+    }
+
+    componentDidMount() {
+        document.addEventListener("keydown", this.onKeyDown);
+    }
+
+    componentWillUnmount() {
+        document.removeEventListener("keydown", this.onKeyDown);
+    }
+
+    onKeyDown = e => {
+        if (!e.ctrlKey) return;
+
+        if (document.hasFocus()
+            && document.activeElement
+            && document.activeElement.nodeName === "INPUT"
+        ) return;
+
+        if (e.key === "z")
+            this.requestUndo();
+        else if (e.key === "Z" || e.key === "y")
+            this.requestRedo();
+    }
+
+    requestUndo = () => {
+        if (this.editHistory.length < 1) return;
+
+        const action = this.editHistory.pop();
+        this.redoProphecy.push([action[0], action[1]()]);
+
+        this.setState({
+            editHints: [
+                this.editHistory.length > 0 ? this.editHistory[this.editHistory.length - 1][0] : "",
+                action[0]
+            ]
+        });
+    }
+
+    requestRedo = () => {
+        if (this.redoProphecy.length < 1) return;
+
+        const action = this.redoProphecy.pop();
+        this.editHistory.push([action[0], action[1]()]);
+
+        this.setState({
+            editHints: [
+                action[0],
+                this.redoProphecy.length > 0 ? this.redoProphecy[this.redoProphecy.length - 1][0] : ""
+            ]
+        });
+    }
+
+    addEdit = (name, undoCallback) => {
+        this.editHistory.push([name, undoCallback]);
+
+        if (this.editHistory.length > 50) this.editHistory.shift();
+
+        this.redoProphecy = [];
+        this.setState({editHints: [name, ""]});
     }
 
     updateSlim = slim => this.setState({ slim: slim });
@@ -47,10 +109,17 @@ class SkinManager extends Component {
     render() {
         return ( //Make it so layer manager just sends updated layers instead of layer update commands
             <div className="SkinManager">
-                <MenuBar addLayer={this.addLayer} downloadSkin={this.downloadSkin} updateSlim={this.updateSlim} />
+                <MenuBar
+                    addLayer={this.addLayer}
+                    downloadSkin={this.downloadSkin}
+                    updateSlim={this.updateSlim}
+                    requestUndo={this.requestUndo}
+                    requestRedo={this.requestRedo}
+                    editHints={this.state.editHints}
+                />
                 <LayerManager layers={this.layers} updateLayers={this.updateLayers} />
                 <div>
-                    <PaperDoll skin={this.state.skin} slim={this.state.slim} updateSlim={this.updateSlim} />
+                    <PaperDoll skin={this.state.skin} slim={this.state.slim} updateSlim={this.updateSlim} addEdit={this.addEdit} />
                     <div className="Preview container">
                         <p>Preview</p>
                         <img src={this.state.skin || ImgMod.emptyImageSource} alt="Flattened Skin" />

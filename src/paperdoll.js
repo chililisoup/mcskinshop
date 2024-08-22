@@ -395,6 +395,13 @@ class PaperDoll extends Component {
         this.composer.render();
     };
 
+    poseUndo = (obj, start) => {
+        const redoStart = obj.rotation.clone()
+        const redoProphecy = () => this.poseUndo(obj, redoStart);
+        obj.setRotationFromEuler(start);
+        return redoProphecy;
+    }
+
     onMouseMove = e => {
         if (!this.state.pose) return;
 
@@ -403,6 +410,16 @@ class PaperDoll extends Component {
         
         this.mousePos.x = (e.offsetX / width) * 2 - 1;
         this.mousePos.y = (e.offsetY / height) * -2 + 1;
+
+        if (this.queuedPoseEdit) {
+            this.queuedPoseEdit = null;
+            const obj = this.selectedObject;
+            const start = obj.rotation.clone();
+            this.props.addEdit(
+                "Pose " + obj.name,
+                () => this.poseUndo(obj, start)
+            );
+        }
     }
 
     onMouseDown = e => {
@@ -415,12 +432,15 @@ class PaperDoll extends Component {
         this.oldMousePos = new THREE.Vector2().copy(this.mousePos);
         const posePivot = this.selectedObject.getWorldPosition(new THREE.Vector3()).project(this.camera);
         this.posePivot = new THREE.Vector2(posePivot.x, posePivot.y);
+
+        this.queuedPoseEdit = this.selectedObject.position.clone();
     }
 
     onMouseUp = () => {
         this.controls.enabled = true;
         this.oldMousePos = null;
         this.posePivot = null;
+        this.queuedPoseEdit = null;
     }
 
     onContextMenu = e => {

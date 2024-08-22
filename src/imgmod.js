@@ -212,12 +212,14 @@ export class Layer {
 
     render = ctx => {
         const dom = !ctx;
+
         if (dom) {
             const canvas = document.createElement("canvas");
             canvas.width = 64;
             canvas.height = 64;
             ctx = canvas.getContext("2d");
         }
+
         this.sublayers.forEach(sublayer => {
             if (!sublayer) return;
             if (!sublayer.active) return;
@@ -241,6 +243,7 @@ export class Layer {
                 ctx.globalCompositeOperation = "destination-out";
             ctx.drawImage(sublayer.image, 0, 0);
         });
+        
         if (dom) return createImageBitmap(ctx.canvas).then(result => {
             this.src = ctx.canvas.toDataURL();
             this.image = result;
