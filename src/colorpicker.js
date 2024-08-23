@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import React, { Component } from 'react';
 import PopUp from './popup';
 import checker from "./assets/checkerboard.png";
 
@@ -13,11 +13,13 @@ class ColorPicker extends Component {
         this.state = {
             open: false,
             hsla: hsla,
-            color: `hsla(${hsla[0]}, ${hsla[1]}%, ${hsla[2]}%, ${hsla[3]})`
+            color: `hsla(${hsla[0]}, ${hsla[1]}%, ${hsla[2]}%, ${hsla[3]})`,
+            hex: this.hexFromHSL(hsla[0], hsla[1], hsla[2]),
+            bottom: false
         };
 
         this.boxStyle = {};
-        this.hexInput = '';
+        this.pickerRef = React.createRef();
     }
 
     // https://gist.github.com/xenozauros/f6e185c8de2a04cdfecf
@@ -50,57 +52,81 @@ class ColorPicker extends Component {
         return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100), 1];
     }
 
-    setHSLA = hsla => {
-        const color = `hsla(${hsla[0]}, ${hsla[1]}%, ${hsla[2]}%, ${hsla[3]})`
-        this.setState({hsla: hsla, color: color});
+    // https://stackoverflow.com/a/44134328
+    hexFromHSL = (h, s, l) => {
+        l /= 100;
+        const a = s * Math.min(l, 1 - l) / 100;
+        const f = n => {
+            const k = (n + h / 30) % 12;
+            const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+            return Math.round(255 * color).toString(16).padStart(2, '0'); // convert to Hex and prefix "0" if needed
+        };
+        return `#${f(0)}${f(8)}${f(4)}`;
+    }
+
+    setHSLA = (hsla, hex) => {
+        const color = `hsla(${hsla[0]}, ${hsla[1]}%, ${hsla[2]}%, ${hsla[3]})`;
+        this.setState({
+            hsla: hsla, color: color,
+            hex: hex ? hex : this.hexFromHSL(hsla[0], hsla[1], hsla[2])
+        });
         if (this.props.update) this.props.update(color);
     }
 
     updateHue = hue => {
-        let newHSLA = this.state.hsla;
+        const newHSLA = this.state.hsla;
         newHSLA[0] = hue;
         this.setHSLA(newHSLA);
     }
 
     updateSaturation = saturation => {
-        let newHSLA = this.state.hsla;
+        const newHSLA = this.state.hsla;
         newHSLA[1] = saturation;
         this.setHSLA(newHSLA);
     }
 
     updateLightness = lightness => {
-        let newHSLA = this.state.hsla;
+        const newHSLA = this.state.hsla;
         newHSLA[2] = lightness;
         this.setHSLA(newHSLA);
     }
 
     updateAlpha = alpha => {
-        let newHSLA = this.state.hsla;
+        const newHSLA = this.state.hsla;
         newHSLA[3] = alpha;
         this.setHSLA(newHSLA);
     }
 
     setHex = hex => {
-        let newHSLA = this.hexToHSL(hex);
-        if (!newHSLA) return;
-        this.setHSLA(newHSLA);
+        const newHSLA = this.hexToHSL(hex);
+        if (!newHSLA) return this.setState({hex: hex});
+        this.setHSLA(newHSLA, hex);
     }
 
-    //<input type="color" defaultValue={this.props.color || "#000000"} onChange={e => this.props.update(e.target.value)} />
+    togglePicker = () => {
+        const rect = this.pickerRef.current.getBoundingClientRect();
+        const height = window.innerHeight;
+
+        this.setState({
+            open: !this.state.open,
+            bottom: rect.top > height / 2
+        });
+    }
+
     render() {
         return (
             <div className="color-picker-parent">
-                <button className="color-label" style={{
+                <button ref={this.pickerRef} className="color-label" style={{
                         backgroundImage: `linear-gradient(to right,
                             hsla(${this.state.hsla[0]}, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%, ${this.state.hsla[3]}),
                             hsl(${this.state.hsla[0]}, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%)
                         ),
                         url(${checker})`
                     }}
-                    onMouseDown={() => this.setState({open: !this.state.open})}
+                    onMouseDown={this.togglePicker}
                 />
                 {this.state.open && <PopUp close={() => this.setState({open: false})} children={
-                    <div className="color-picker" style={this.state.open ? {display: "block"} : {display: "none"}}>
+                    <div className={"color-picker " + (this.state.bottom ? "color-picker-bottom" : "color-picker-top")} style={this.state.open ? {display: "block"} : {display: "none"}}>
                         <div className="container">
                             <input value={this.state.hsla[0]} min={0} max={360} step={1} type="range" onChange={e => this.updateHue(e.target.value)} onMouseUp={e => this.updateHue(e.target.value)} style={{
                                 background: `linear-gradient(to right,
@@ -150,8 +176,7 @@ class ColorPicker extends Component {
                                 url(${checker})`
                             }} />}
                             <span>
-                                <input placeholder='#ffffff' onChange={e => this.hexInput = e.target.value} />
-                                <button onClick={() => this.setHex(this.hexInput)}>&gt;</button>
+                                <input placeholder="#ffffff" value={this.state.hex} onChange={e => this.setHex(e.target.value)} />
                             </span>
                         </div>
                     </div>

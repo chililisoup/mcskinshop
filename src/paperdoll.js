@@ -41,6 +41,26 @@ class PaperDollSettings extends React.Component {
         this.props.updateSetting(setting, value);
     }
 
+    settingEdit = (setting, from, to) => {
+        const update = {};
+        update[setting] = from;
+        this.setState(update);
+        this.props.updateSetting(setting, from);
+
+        return () => this.settingEdit(setting, to, from);
+    }
+
+    updateSettingFinish = (setting, value) => {
+        const from = this.state[setting];
+
+        this.updateSetting(setting, value);
+
+        this.props.addEdit(
+            "change " + setting,
+            () => this.settingEdit(setting, from, value)
+        );
+    }
+
     toggleAnim = bool => {
         this.setState({
             anim: bool,
@@ -62,16 +82,16 @@ class PaperDollSettings extends React.Component {
             <span>
                 <div>
                     <label htmlFor="slimToggle">Slim</label>
-                    <input type="checkbox" id="slimToggle" checked={this.state.slim} onChange={e => this.updateSetting("slim", e.target.checked)}/>
+                    <input type="checkbox" id="slimToggle" checked={this.state.slim} onChange={e => this.updateSettingFinish("slim", e.target.checked)}/>
                     <label htmlFor="animToggle">Animate</label>
                     <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={e => this.toggleAnim(e.target.checked)}/>
                     <input type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.updateSetting("animSpeed", e.target.value)}/>
                     <label htmlFor="explodeToggle">Explode</label>
-                    <input type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateSetting("explode", e.target.checked)}/>
+                    <input type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateSettingFinish("explode", e.target.checked)}/>
                 </div>
                 <div>
                     <label htmlFor="shadeToggle">Shade</label>
-                    <input type="checkbox" id="shadeToggle" checked={this.state.shade} onChange={e => this.updateSetting("shade", e.target.checked)}/>
+                    <input type="checkbox" id="shadeToggle" checked={this.state.shade} onChange={e => this.updateSettingFinish("shade", e.target.checked)}/>
                     <label htmlFor="lightFocus">Light Focus</label>
                     <input type="range" id="lightFocus" min={0} max={10} step={0.1} value={Math.sqrt(this.state.lightFocus)} onChange={e => this.updateSetting("lightFocus", e.target.value ** 2)}/>
                 </div>
@@ -202,28 +222,7 @@ class PaperDoll extends Component {
         this.camera.add(this.directionalLight);
 
         this.textureLoader = new THREE.TextureLoader();
-        const matcapMap = this.textureLoader.load(matcap, matcapMap => matcapMap);
-        this.shadedBaseMat = new THREE.MeshLambertMaterial({
-            flatShading: true
-        });
-        this.shadedHatMat = new THREE.MeshLambertMaterial({
-            side: THREE.DoubleSide,
-            transparent: true,
-            flatShading: true,
-            depthWrite: false
-        });
-        this.flatBaseMat = new THREE.MeshMatcapMaterial({
-            flatShading: true,
-            matcap: matcapMap
-        });
-        this.flatHatMat = new THREE.MeshMatcapMaterial({
-            side: THREE.DoubleSide,
-
-            transparent: true,
-            flatShading: true,
-            depthWrite: false,
-            matcap: matcapMap
-        });
+        this.matcapMap = this.textureLoader.load(matcap, matcapMap => matcapMap);
     };
 
     textureSetup = () => {
@@ -231,23 +230,17 @@ class PaperDoll extends Component {
         this.textureLoader.load(skin, texture => {
             texture.magFilter = THREE.NearestFilter;
 
-            this.shadedBaseMat.map = texture;
-            this.shadedBaseMat.needsUpdate = true;
-
-            this.flatBaseMat.map = texture;
-            this.flatBaseMat.needsUpdate = true;
-
-            this.shadedHatMat.map = texture;
-            this.shadedHatMat.needsUpdate = true;
-
-            this.flatHatMat.map = texture;
-            this.flatHatMat.needsUpdate = true;
+            this.materials[this.state.shade ? "shaded" : "flat"].forEach(mat => {
+                mat.map = texture;
+                mat.needsUpdate = true;
+            });
         });
     }
 
     propagateShade = part => {
-        part.material = this[(
-            this.state.shade ? "shaded" : "flat") + (part.renderType === "cutout" ? "HatMat" : "BaseMat")];
+        if (part.materialIndex !== null) {
+            part.material = this.materials[this.state.shade ? "shaded" : "flat"][part.materialIndex];
+        }
 
         part.children.forEach(this.propagateShade);
     }
@@ -260,6 +253,8 @@ class PaperDoll extends Component {
         );
 
         this.propagateShade(this.doll);
+        this.textureSetup();
+
     }
 
     eatChild = (name, child) => {
@@ -273,8 +268,39 @@ class PaperDoll extends Component {
                 child.uv.forEach((v, i) => uvAttribute.setXY(i, v[0] / 64, v[1] / 64));
             }
 
+            let shadedMat, flatMat;
+
             part = new THREE.Mesh(geometry);
-            if (child.renderType) part.renderType = child.renderType;
+            if (child.renderType === "cutout") {
+                part.renderType = "cutout";
+
+                shadedMat = new THREE.MeshLambertMaterial({
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    flatShading: true,
+                    alphaTest: 1
+                });
+
+                flatMat = new THREE.MeshMatcapMaterial({
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    flatShading: true,
+                    alphaTest: 1,
+                    matcap: this.matcapMap
+                });
+            } else {
+                shadedMat = new THREE.MeshLambertMaterial({
+                    flatShading: true
+                });
+
+                flatMat = new THREE.MeshMatcapMaterial({
+                    flatShading: true,
+                    matcap: this.matcapMap
+                });
+            }
+
+            part.materialIndex = this.materials.shaded.push(shadedMat) - 1;
+            this.materials.flat.push(flatMat);
 
         } else part = new THREE.Group();
 
@@ -293,6 +319,10 @@ class PaperDoll extends Component {
     }
 
     modelSetup = () => {
+        this.materials = {
+            shaded: [],
+            flat: []
+        };
         this.pivots = {};
         this.doll = new THREE.Object3D();
         this.doll.name = "doll";
@@ -583,6 +613,7 @@ class PaperDoll extends Component {
                     updateSetting={this.updateSetting}
                     saveRender={this.saveRender}
                     resetCamera={() => this.controls.reset()}
+                    addEdit={this.props.addEdit}
                 />
                 <div className="paperdoll-canvas-container">
                     <canvas className="paperdoll-canvas" ref={this.canvasRef} />

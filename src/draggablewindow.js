@@ -50,8 +50,8 @@ class DraggableWindow extends Component {
         const vh = window.innerHeight;
 
         return {
-            x: Math.min(Math.max(pos.x, 6), vw - width - 6),
-            y: Math.min(Math.max(pos.y, 38), vh - height - 6)
+            x: Math.max(Math.min(pos.x, vw - width - 6), 6),
+            y: Math.max(Math.min(pos.y, vh - height - 6), 38)
         };
     }
 

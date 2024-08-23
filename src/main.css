@@ -33,7 +33,7 @@ input {
   font-family: monospace;
 }
 
-button:hover, input:hover {
+button:hover:enabled, input:hover:enabled {
   outline: 2px solid white;
   cursor: pointer;
 }
@@ -100,8 +100,9 @@ input::placeholder {
   user-select: none;
 }
 
-.MenuBar button:hover {
+.MenuBar button:hover:enabled {
   background: rgb(66, 54, 99);
+  outline: none;
 }
 
 .MenuBar > div {
@@ -123,10 +124,18 @@ input::placeholder {
   text-align: left;
 }
 
-.Preview {
-  width: 256px;
-  height: 256px;
-  background-size: 64px;
+.Preview span {
+  flex-flow: nowrap;
+  gap: 6px;
+}
+
+.Preview span button {
+  flex: 1;
+  margin: 0 0 6px;
+}
+
+.Preview img {
+  margin-bottom: -4px;
 }
 
 label {
@@ -197,8 +206,7 @@ hr {
 .layereditor-canvas {
   height: 512px;
   width: 512px;
-  background-image: url("assets/checkerboard.png");
-  background-size: 16px;
+  background-size: 512px, 16px;
   image-rendering: pixelated;
 }
 
@@ -309,22 +317,37 @@ h3 {
   align-items: center;
   position: absolute;
   z-index: 1000;
-  top: 10px;
-  left: -105px;
+  left: -100px;
   width: 200px;
   padding: 10px 0 10px;
+}
+
+.color-picker-top > div {
+  top: 10px;
+}
+
+.color-picker-bottom > div {
+  bottom: 35px;
 }
 
 .color-picker > div::after {
   content: "";
   position: absolute;
-  top: -10px;
-  left: 90px;
-  outline-style: solid;
-  outline-width: 0 10px 10px;
-  outline-color: black transparent;
+  border-style: solid;
+  border-color: black transparent;
   display: block;
   width: 0;
+  left: 90px;
+}
+
+.color-picker-top > div::after {
+  border-width: 0 10px 10px;
+  top: -10px;
+}
+
+.color-picker-bottom > div::after {
+  border-width: 10px 10px 0;
+  bottom: -10px;
 }
 
 .color-picker > div > input {
@@ -332,27 +355,36 @@ h3 {
   height: 12px;
   margin: 10px 0 10px;
   appearance: none;
-  outline: none;
   outline: 2px solid black;
   image-rendering: pixelated;
 }
 
 .color-picker > div > span {
+  flex-flow: nowrap;
   width: 80%;
   margin: 10px 0 10px;
+  gap: 6px;
 }
 
 .color-picker > div > span > input {
-  width: 60%;
+  min-width: 0;
+  flex: 1;
+  margin: 0;
 }
 
 .color-picker > div > input::-webkit-slider-thumb, .color-picker > div > input::-moz-range-thumb {
   appearance: none;
   width: 6px;
-  height: 12px;
-  outline: 2px solid black;
+  height: 14px;
+  outline: none;
+  border: 2px solid black;
+  border-radius: 0;
   background: none;
   cursor: pointer;
+}
+
+.color-picker > div > input:hover::-webkit-slider-thumb, .color-picker > div > input:hover::-moz-range-thumb {
+  border: 2px solid white;
 }
 
 .draggable {
@@ -381,4 +413,15 @@ h3 {
 
 .draggable > span > button {
   margin: 0;
+}
+
+*:disabled {
+  cursor: default;
+  color: black;
+  font-weight: normal;
+}
+
+label {
+  user-select: none;
+  cursor: pointer;
 }

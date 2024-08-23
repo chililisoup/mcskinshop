@@ -5,7 +5,7 @@ import LayerManager from './layermanager';
 import LayerAdder from './layeradder';
 import AssetCreator from './assetcreator';
 import MenuBar from './menubar';
-import DraggableWindow from './draggablewindow';
+import Preview from './preview';
 
 class SkinManager extends Component {
     constructor(props) {
@@ -40,6 +40,8 @@ class SkinManager extends Component {
         if (document.hasFocus()
             && document.activeElement
             && document.activeElement.nodeName === "INPUT"
+            && document.activeElement.type !== "checkbox"
+            && document.activeElement.type !== "range"
         ) return;
 
         if (e.key === "z")
@@ -137,12 +139,9 @@ class SkinManager extends Component {
                     ]}
                 />
                 <div className="SkinManager">
-                    
-                    {this.state.layerManager && <LayerManager layers={this.layers} updateLayers={this.updateLayers} />}
+                    {this.state.layerManager && <LayerManager layers={this.layers} updateLayers={this.updateLayers} slim={this.state.slim} />}
                     {this.state.paperDoll && <PaperDoll skin={this.state.skin} slim={this.state.slim} updateSlim={this.updateSlim} addEdit={this.addEdit} />}
-                    {this.state.preview && <DraggableWindow title="Preview" pos={{x: 100000, y: 100000}} close={() => this.updateState("preview", false)} children={
-                        <img className="Preview" src={this.state.skin || ImgMod.emptyImageSource} alt="Flattened Skin" />
-                    } />}
+                    {this.state.preview && <Preview skin={this.state.skin} close={() => this.updateState("preview", false)} />}
                     {this.state.assetCreator && <AssetCreator addLayer={this.addLayer} />}
                     {this.state.layerAdder && <LayerAdder addLayer={this.addLayer} />}
                 </div>

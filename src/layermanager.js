@@ -56,19 +56,6 @@ class Layer extends Component {
         this.asset.color().then(() => this.updateLayer());
     }
 
-    changeColorThrottled = (colorIndex, color) => {
-        if (this.awaitUpdate) return;
-        this.awaitUpdate = true;
-        this.changeColor(colorIndex, color);
-
-        setTimeout(() => {
-            this.changeColor(colorIndex, color);
-            this.awaitUpdate = false;
-        }, 100);
-        //add throttle limit slider?
-        //ehh idk, this and a few other things would be fixed with a custom color picker
-    }
-
     toggleActive = () => {
         this.asset.active = !this.asset.active;
         this.updateLayer();
@@ -103,7 +90,7 @@ class Layer extends Component {
             this.asset.colors.forEach((color, i) => {
                 if (color !== "null" && color !== "erase" && (!this.asset.advanced[i] || this.props.advanced)) {
                     colors.push(
-                        <ColorPicker key={i + this.asset.id} default={color} update={color => this.changeColorThrottled(i, color)} />
+                        <ColorPicker key={i + this.asset.id} default={color} update={color => this.changeColor(i, color)} />
                     );
                 }
             });
@@ -406,7 +393,7 @@ class LayerManager extends Component {
                     </span>
                 </div>
                 {selectedLayer && <DraggableWindow title={selectedLayer.name} pos={{x: 350, y: 0}} close={() => this.setState({ selectedLayer: null})} children={
-                    <LayerEditor layer={selectedLayer} updateLayer={layer => this.updateLayer(selectedLayerIndex, layer)} />
+                    <LayerEditor layer={selectedLayer} updateLayer={layer => this.updateLayer(selectedLayerIndex, layer)} slim={this.props.slim} />
                 } />}
             </div>
         );

@@ -71,6 +71,9 @@ class MenuBar extends Component {
             <span><p>{tab[1] ? "✓" : ""}</p><button onClick={tab[2]}>{tab[0]}</button></span>
         ) : <button>Look at that view...</button>;
 
+        const undoHint = this.props.editHints[0] !== "" ? "Undo " + this.props.editHints[0] : false;
+        const redoHint = this.props.editHints[1] !== "" ? "Redo " + this.props.editHints[1] : false;
+
         return (
             <div className="MenuBar">
                 <button style={this.state.file ? {background: 'rgb(66, 54, 99)'} : {}} onMouseDown={() => this.setState({file: !this.state.file})}>File</button>
@@ -86,8 +89,8 @@ class MenuBar extends Component {
                 <button style={this.state.edit ? {background: 'rgb(66, 54, 99)'} : {}} onMouseDown={() => this.setState({edit: !this.state.edit})}>Edit</button>
                 {this.state.edit && <PopUp close={() => this.setState({edit: false})} children={
                     <div style={{marginLeft: '46px'}}>
-                        <button onClick={this.props.requestUndo}>{this.props.editHints[0] === "" ? "Nothing to undo" : "Undo " + this.props.editHints[0]}</button>
-                        <button onClick={this.props.requestRedo}>{this.props.editHints[1] === "" ? "Nothing to redo" : "Redo " + this.props.editHints[1]}</button>
+                        <button disabled={!undoHint} onClick={this.props.requestUndo}>{undoHint ? undoHint : "Undo"}</button>
+                        <button disabled={!redoHint} onClick={this.props.requestRedo}>{redoHint ? redoHint : "Redo"}</button>
                     </div>
                 } />}
                 <button style={this.state.view ? {background: 'rgb(66, 54, 99)'} : {}} onMouseDown={() => this.setState({view: !this.state.view})}>View</button>

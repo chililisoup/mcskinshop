@@ -1,11 +1,17 @@
 import React, { Component } from 'react';
 import ColorPicker from './colorpicker';
+import checkerboard from "./assets/checkerboard.png";
+import fullref from "./assets/fullref.png";
+import slimref from "./assets/slimref.png";
 
 class LayerEditor extends Component {
     constructor(props) {
         super(props);
 
-        this.layer = props.selectedLayer;
+        this.state = {
+            guide: false
+        }
+
         this.canvasRef = React.createRef();
         this.mouseActive = false;
         this.color = "#000000";
@@ -13,7 +19,15 @@ class LayerEditor extends Component {
         this.lastUpdate = new Date();
     }
 
+    componentDidMount() {
+        this.loadLayer();
+    }
+
     componentDidUpdate() {
+        this.loadLayer();
+    }
+
+    loadLayer = () => {
         const ctx = this.canvasRef.current.getContext("2d");
 
         if (!this.props.layer) {
@@ -78,10 +92,20 @@ class LayerEditor extends Component {
         this.update();
     }
 
+    updateSetting = (setting, value) => {
+        const update = {};
+        update[setting] = value;
+        this.setState(update);
+    }
+
     render() {
         return (
             <div>
-                <ColorPicker update={this.setColor} alpha={true} />
+                <span>
+                    <ColorPicker default={this.color} update={this.setColor} alpha={true} />
+                    <label htmlFor="guide">Guide</label>
+                    <input type="checkbox" id="guide" checked={this.state.explode} onChange={e => this.updateSetting("guide", e.target.checked)} />
+                </span>
                 <canvas
                     className="layereditor-canvas"
                     ref={this.canvasRef}
@@ -92,6 +116,9 @@ class LayerEditor extends Component {
                     onContextMenu={e => e.preventDefault()}
                     width={64}
                     height={64}
+                    style={{
+                        backgroundImage: (this.state.guide ? "url(" + (this.props.slim ? slimref : fullref) + ")" : "none") + ", url(" + checkerboard + ")"
+                    }}
                 />
             </div>
         );
