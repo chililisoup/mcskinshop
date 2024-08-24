@@ -278,14 +278,14 @@ class PaperDoll extends Component {
                     side: THREE.DoubleSide,
                     transparent: true,
                     flatShading: true,
-                    alphaTest: 1
+                    alphaTest: 0.001
                 });
 
                 flatMat = new THREE.MeshMatcapMaterial({
                     side: THREE.DoubleSide,
                     transparent: true,
                     flatShading: true,
-                    alphaTest: 1,
+                    alphaTest: 0.001,
                     matcap: this.matcapMap
                 });
             } else {
