@@ -169,6 +169,44 @@ export class Img {
             offset.height
         ));
     }
+
+    onDynamicChange = async (records, observer) => {
+        let modified = false;
+        let fileHandle;
+
+        console.log("Change detected!");
+
+        for (const record of records) {
+            if (record.type !== "modified") break;
+            modified = true;
+            fileHandle = record.root;
+        }
+
+        if (!modified) {
+            this.dynamic = false;
+            this.fileHandle = null;
+            observer.disconnect();
+        } else {
+            const file = await fileHandle.getFile();
+            this.render(URL.createObjectURL(file))
+            .then(() => {
+                if (this.internalUpdateCallback) this.internalUpdateCallback();
+            });
+        }
+    }
+
+    observeDynamic = async fileHandle => {
+        this.dynamic = true;
+        this.observer = new window.FileSystemObserver(this.onDynamicChange);
+        await this.observer.observe(fileHandle);
+    }
+
+    cleanup = () => {
+        if (this.observer) {
+            this.fileHandle = null;
+            this.observer.disconnect();
+        }
+    }
 }
 
 
@@ -261,5 +299,12 @@ export class Layer {
         this.sublayers.forEach(layer => copy.sublayers.push(layer.copy()));
         
         return copy;
+    }
+
+    cleanup = () => {
+        this.sublayers.forEach(sublayer => {
+            if (!sublayer) return;
+            sublayer.cleanup();
+        });
     }
 }

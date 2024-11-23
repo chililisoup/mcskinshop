@@ -130,6 +130,7 @@ class SkinManager extends Component {
                     requestUndo={this.requestUndo}
                     requestRedo={this.requestRedo}
                     editHints={this.state.editHints}
+                    updateSkin={this.updateSkin}
                     viewTab={[
                         ["Layer Manager", this.state.layerManager, () => this.updateState("layerManager", !this.state.layerManager)],
                         ["Paper Doll", this.state.paperDoll, () => this.updateState("paperDoll", !this.state.paperDoll)],

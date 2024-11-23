@@ -101,8 +101,11 @@ class Layer extends Component {
                 <span className="layerTitle">
                     <input type="checkbox" checked={this.asset.active} onChange={() => this.toggleActive()}/>
                     <p>{this.asset.name}</p>
-                    {this.asset instanceof ImgMod.Img &&
+                    {(this.asset instanceof ImgMod.Img && !this.asset.dynamic) &&
                         <button onClick={() => this.props.selectForEdit(this.props.index)}>Edit</button>
+                    }
+                    {(this.asset instanceof ImgMod.Img && this.asset.dynamic) &&
+                        <button disabled>Edit in external editor</button>
                     }
                 </span>
                 <span>
@@ -263,7 +266,11 @@ class LayerManager extends Component {
     }
 
     updateLayer = (index, newLayer) => {
+        const oldLayer = this.layers.sublayers[index];
         this.layers.sublayers[index] = newLayer;
+
+        if (oldLayer !== newLayer) oldLayer.cleanup();
+
         this.updateLayers();
     }
 

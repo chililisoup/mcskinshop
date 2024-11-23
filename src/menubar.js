@@ -14,6 +14,7 @@ class MenuBar extends Component {
         };
 
         this.uploadRef = React.createRef();
+        this.fileSystemAccess = `showOpenFilePicker` in window && `FileSystemObserver` in window;
     }
 
     addLayerFromInput = e => {
@@ -29,6 +30,32 @@ class MenuBar extends Component {
         });
 
         this.setState({file: false});
+    }
+
+    addDynamicLayerFromInput = async () => {
+        const [fileHandle] = await window.showOpenFilePicker({
+            types: [{
+                description: "Minecraft skin image files",
+                accept: {
+                    "image/png": [".png"]
+                }
+            }],
+            startIn: "pictures"
+        });
+
+        const file = await fileHandle.getFile();
+        const image = new ImgMod.Img();
+        image.name = file.name;
+        image.id = Math.random().toString(16).slice(2);
+
+        image.internalUpdateCallback = () => this.props.updateSkin();
+        image.observeDynamic(fileHandle);
+
+        image.render(URL.createObjectURL(file))
+        .then(() => {
+            this.props.addLayer(image);
+            this.props.updateSlim(image.detectSlimModel());
+        });
     }
 
     addLayerFromUsername = () => {
@@ -81,6 +108,7 @@ class MenuBar extends Component {
                     <div>
                         <button onClick={() => this.uploadRef.current.click()}>Load from File...</button>
                         <input ref={this.uploadRef} type="file" accept="image/png" onChange={this.addLayerFromInput} />
+                        {this.fileSystemAccess && <button onClick={this.addDynamicLayerFromInput}>Dynamically Load from File...</button>}
                         <button onClick={this.addLayerFromUsername}>Load from Username...</button>
                         <hr/>
                         <button onClick={this.downloadSkin}>Save As...</button>
