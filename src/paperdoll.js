@@ -189,7 +189,8 @@ class PaperDoll extends Component {
         this.modelSetup();
         this.updateSlim();
         this.updateExplode();
-        this.updateShade();
+        this.updateLighting();
+        this.propagateShade(this.doll);
         this.textureSetup();
         this.startAnimationLoop();
 
@@ -216,6 +217,12 @@ class PaperDoll extends Component {
     componentDidUpdate(prevProps, prevState) {
         if (this.state.explode !== prevState.explode) this.updateExplode();
 
+        if (this.state.lightAngle !== prevState.lightAngle ||
+            this.state.lightFocus !== prevState.lightFocus
+        ) {
+            this.updateLighting();
+        }
+
         let updateTextures = false;
 
         if (this.props.slim !== prevProps.slim) {
@@ -224,7 +231,7 @@ class PaperDoll extends Component {
         }
 
         if (this.state.shade !== prevState.shade) {
-            this.updateShade();
+            this.propagateShade(this.doll);
             updateTextures = true;
         }
 
@@ -386,14 +393,12 @@ class PaperDoll extends Component {
         part.children.forEach(this.propagateShade);
     }
 
-    updateShade = () => {
+    updateLighting = () => {
         this.directionalLight.position.set(
             Math.sin(this.state.lightAngle) * this.state.lightFocus,
             0,
             Math.cos(this.state.lightAngle) * this.state.lightFocus
         );
-
-        this.propagateShade(this.doll);
     }
 
     eatChild = (name, child) => {
