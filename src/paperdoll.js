@@ -294,6 +294,18 @@ class PaperDoll extends Component {
 
         this.textureLoader = new THREE.TextureLoader();
         this.matcapMap = this.textureLoader.load(matcap, matcapMap => matcapMap);
+
+        // Debug geometry, can move it to positions to reference code :)
+        // this.sphere = new THREE.Mesh(
+        //     new THREE.SphereGeometry(1, 32, 16),
+        //     new THREE.MeshBasicMaterial({
+        //         color: 0xffff00,
+        //         depthTest: false,
+        //         transparent: true,
+        //         opacity: 0.33
+        //     })
+        // );
+        // this.scene.add(this.sphere);
     };
 
     createRotationHandle = (color, name, normal, rotation) => {
@@ -544,7 +556,7 @@ class PaperDoll extends Component {
             if (!this.handle) return;
 
             const localRotation = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
-            const worldPivotPos = this.selectedObject.parent.getWorldPosition(new THREE.Vector3());
+            const worldPivotPos = this.selectedObject.getWorldPosition(new THREE.Vector3());
             const norm = this.handle.normal.clone().applyQuaternion(localRotation);
 
             const start = this.clipToWorldSpace(this.mousePos, 0.5);
@@ -609,7 +621,7 @@ class PaperDoll extends Component {
             if (!this.handle) return;
 
             const localRotation = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
-            const worldPivotPos = this.selectedObject.parent.getWorldPosition(new THREE.Vector3());
+            const worldPivotPos = this.selectedObject.getWorldPosition(new THREE.Vector3());
             const norm = this.handle.normal.clone().applyQuaternion(localRotation);
 
             const line = new THREE.Line3(
