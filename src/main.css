@@ -70,7 +70,7 @@ input::placeholder {
   outline: 2px solid black;
 }
 
-.MenuBar input[type="file"] {
+.hidden {
   display: none;
 }
 

@@ -5,7 +5,7 @@ class DraggableWindow extends Component {
         super(props);
 
         this.state = {
-            pos: props.pos || {x: 6, y: 30}
+            pos: props.pos || { x: 6, y: 30 }
         }
 
         this.handleRef = React.createRef();
@@ -28,18 +28,21 @@ class DraggableWindow extends Component {
 
     onMouseDown = e => {
         if (e.button !== 0) return;
-        this.mousePos = {x: e.screenX, y: e.screenY};
+        this.handleOffset = {
+            x: e.screenX - this.state.pos.x,
+            y: e.screenY - this.state.pos.y
+        }
         document.addEventListener("mousemove", this.drag);
     }
 
     onMouseUp = e => {
         if (e.button !== 0) return;
-        this.mousePos = null;
+        this.handleOffset = null;
         document.removeEventListener("mousemove", this.drag);
     }
 
     handleWindowResize = () => {
-        this.setState({pos: this.fixPosition(this.state.pos)});
+        this.setState({ pos: this.fixPosition(this.state.pos) });
     }
 
     fixPosition = pos => {
@@ -56,22 +59,10 @@ class DraggableWindow extends Component {
     }
 
     drag = e => {
-        const pos = {
-            x: e.screenX,
-            y: e.screenY
-        };
-
-        const delta = {
-            x: pos.x - this.mousePos.x,
-            y: pos.y - this.mousePos.y
-        };
-
-        this.setState({pos: this.fixPosition({
-            x: this.state.pos.x + delta.x,
-            y: this.state.pos.y + delta.y
+        this.setState({ pos: this.fixPosition({
+            x: e.screenX - this.handleOffset.x,
+            y: e.screenY - this.handleOffset.y
         })});
-
-        this.mousePos = pos;
     }
 
     render() {

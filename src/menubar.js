@@ -107,7 +107,7 @@ class MenuBar extends Component {
                 {this.state.file && <PopUp close={() => this.setState({file: false})} children={
                     <div>
                         <button onClick={() => this.uploadRef.current.click()}>Load from File...</button>
-                        <input ref={this.uploadRef} type="file" accept="image/png" onChange={this.addLayerFromInput} />
+                        <input className="hidden" ref={this.uploadRef} type="file" accept="image/png" onChange={this.addLayerFromInput} />
                         {this.fileSystemAccess && <button onClick={this.addDynamicLayerFromInput}>Dynamically Load from File...</button>}
                         <button onClick={this.addLayerFromUsername}>Load from Username...</button>
                         <hr/>

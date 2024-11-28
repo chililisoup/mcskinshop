@@ -25,6 +25,11 @@ class PaperDollSettings extends React.Component {
             lightAngle: props.settings.lightAngle == null ? Math.PI / 4 : props.settings.lightAngle,
             lightFocus: props.settings.lightFocus == null ? Math.SQRT2 : props.settings.lightFocus,
             pose: props.settings.pose || false,
+            poseSettings: props.settings.poseSettings || {
+                mode: "Simple",
+                type: "Rotation",
+                space: "Global"
+            },
             fov: props.settings.fov == null ? 80 : props.settings.fov
         }
     }
@@ -72,9 +77,39 @@ class PaperDollSettings extends React.Component {
     togglePose = bool => {
         this.setState({
             pose: bool,
-            anim: false
+            anim: false,
+            explode: false
         });
         this.props.updateSetting("pose", bool);
+    }
+
+    changePoseSetting = setting => {
+        let poseSettings = {
+            mode: this.state.poseSettings.mode,
+            type: this.state.poseSettings.type,
+            space: this.state.poseSettings.space
+        };
+
+        let newValue;
+
+        switch (setting) {
+            case "mode":
+                newValue = this.state.poseSettings.mode === "Simple" ? "Controlled" : "Simple";
+                break;
+            case "type":
+                newValue = this.state.poseSettings.type === "Rotation" ? "Position" : "Rotation";
+                break;
+            case "space":
+                newValue = this.state.poseSettings.space === "Global" ? "Local" : "Global";
+                break;
+            default:
+                return;
+        }
+
+        poseSettings[setting] = newValue;
+
+        this.setState({ poseSettings: poseSettings });
+        this.props.updateSetting("poseSettings", poseSettings);
     }
 
     render() {
@@ -87,7 +122,7 @@ class PaperDollSettings extends React.Component {
                     <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={e => this.toggleAnim(e.target.checked)}/>
                     <input type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.updateSetting("animSpeed", e.target.value)}/>
                     <label htmlFor="explodeToggle">Explode</label>
-                    <input type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateSettingFinish("explode", e.target.checked)}/>
+                    <input disabled={this.state.pose} type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateSettingFinish("explode", e.target.checked)}/>
                 </div>
                 <div>
                     <label htmlFor="shadeToggle">Shade</label>
@@ -98,13 +133,22 @@ class PaperDollSettings extends React.Component {
                 <div>
                     <label htmlFor="lightAngle">Light Angle</label>
                     <input type="range" id="lightAngle" min={0} max={2 * Math.PI} step={0.1} value={this.state.lightAngle} onChange={e => this.updateSetting("lightAngle", e.target.value)}/>
-                    <label htmlFor="poseToggle">Pose</label>
-                    <input type="checkbox" id="poseToggle" checked={this.state.pose} onChange={e => this.togglePose(e.target.checked)}/>
-                </div>
-                <div>
                     <label htmlFor="fov">FOV ({this.state.fov})</label>
                     <input type="range" id="fov" min={30} max={120} step={1} value={this.state.fov} onChange={e => this.updateSetting("fov", e.target.value)}/>
                 </div>
+                <span>
+                    <div>
+                        <label htmlFor="poseToggle">Pose</label>
+                        <input type="checkbox" id="poseToggle" checked={this.state.pose} onChange={e => this.togglePose(e.target.checked)}/>
+                        <label htmlFor="poseMode">Pose Mode</label>
+                        <button id="poseMode" onClick={() => this.changePoseSetting("mode")}>{this.state.poseSettings.mode}</button>
+                        <label htmlFor="poseType">Pose Type</label>
+                        <button id="poseType" onClick={() => this.changePoseSetting("type")}>{this.state.poseSettings.type}</button>
+                        <label htmlFor="poseSpace">Pose Space</label>
+                        <button id="poseSpace" onClick={() => this.changePoseSetting("space")}>{this.state.poseSettings.space}</button>
+                        <button onClick={this.props.deselect}>Deselect</button>
+                    </div>
+                </span>
                 <div>
                     <button onClick={this.props.resetCamera}>Reset Camera</button>
                     <button onClick={this.props.saveRender}>Save Render</button>
@@ -126,6 +170,11 @@ class PaperDoll extends Component {
             lightAngle: Math.PI / 4,
             lightFocus: Math.SQRT2,
             pose: false,
+            poseSettings: {
+                mode: "Simple",
+                type: "Rotation",
+                space: "Global"
+            },
             fov: 80
         }
 
@@ -136,6 +185,7 @@ class PaperDoll extends Component {
 
     componentDidMount() {
         this.sceneSetup();
+        this.createHandles();
         this.modelSetup();
         this.updateSlim();
         this.updateExplode();
@@ -163,11 +213,26 @@ class PaperDoll extends Component {
         this.controls.dispose();
     }
 
-    componentDidUpdate() {   
-        this.updateSlim();
-        this.updateExplode();
-        this.updateShade();
-        this.textureSetup();
+    componentDidUpdate(prevProps, prevState) {
+        if (this.state.explode !== prevState.explode) this.updateExplode();
+
+        let updateTextures = false;
+
+        if (this.props.slim !== prevProps.slim) {
+            this.updateSlim();
+            updateTextures = true;
+        }
+
+        if (this.state.shade !== prevState.shade) {
+            this.updateShade();
+            updateTextures = true;
+        }
+
+        if (this.props.skin !== prevProps.skin) {
+            updateTextures = true;
+        }
+
+        if (updateTextures) this.textureSetup();
 
         this.camera.fov = this.state.fov;
         this.handleWindowResize();
@@ -203,11 +268,17 @@ class PaperDoll extends Component {
         this.renderPass = new RenderPass(this.scene, this.camera);
         this.composer.addPass(this.renderPass);
 
-        this.outlinePass = new OutlinePass(new THREE.Vector2(width, height), this.scene, this.camera);
-        this.outlinePass.hiddenEdgeColor.set(0xffffff);
-        this.outlinePass.edgeStrength = 10;
-        this.outlinePass.edgeThickness = 3;
-        this.composer.addPass(this.outlinePass);
+        this.hoveredOutlinePass = new OutlinePass(new THREE.Vector2(width, height), this.scene, this.camera);
+        this.hoveredOutlinePass.hiddenEdgeColor.set(0xffffff);
+        this.hoveredOutlinePass.edgeStrength = 3;
+        this.hoveredOutlinePass.edgeThickness = 1;
+        this.composer.addPass(this.hoveredOutlinePass);
+
+        this.selectedOutlinePass = new OutlinePass(new THREE.Vector2(width, height), this.scene, this.camera);
+        this.selectedOutlinePass.hiddenEdgeColor.set(0xff7e1c);
+        this.selectedOutlinePass.edgeStrength = 3;
+        this.selectedOutlinePass.edgeThickness = 1;
+        this.composer.addPass(this.selectedOutlinePass);
 
         this.outputPass = new OutputPass();
         this.composer.addPass(this.outputPass);
@@ -224,6 +295,64 @@ class PaperDoll extends Component {
         this.textureLoader = new THREE.TextureLoader();
         this.matcapMap = this.textureLoader.load(matcap, matcapMap => matcapMap);
     };
+
+    createRotationHandle = (color, name, normal, rotation) => {
+        const handle = new THREE.Mesh(
+            new THREE.TorusGeometry(5, 0.3, 8, 32),
+            new THREE.MeshBasicMaterial({
+                color: color,
+                depthTest: false,
+                transparent: true,
+                opacity: 0.33
+            })
+        );
+        
+        handle.name = name;
+        handle.normal = new THREE.Vector3().fromArray(normal);
+        handle.setRotationFromEuler(new THREE.Euler().setFromVector3(new THREE.Vector3().fromArray(rotation).multiplyScalar(Math.PI / 2)));
+        handle.renderOrder = 999;
+        handle.noOutline = true;
+
+        return handle;
+    }
+
+    createPositionHandle = (color, name, normal, rotation) => {
+        const handle = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.3, 10, 32),
+            new THREE.MeshBasicMaterial({
+                color: color,
+                depthTest: false,
+                transparent: true,
+                opacity: 0.33
+            })
+        );
+        
+        handle.name = name;
+        handle.normal = new THREE.Vector3().fromArray(normal);
+        handle.setRotationFromEuler(new THREE.Euler().setFromVector3(new THREE.Vector3().fromArray(rotation).multiplyScalar(Math.PI / 2)));
+        handle.renderOrder = 999;
+        handle.noOutline = true;
+
+        return handle;
+    }
+
+    createHandles = () => {
+        this.handles = new THREE.Object3D();
+        
+        const rotationHandles = new THREE.Object3D();
+        rotationHandles.name = "rotationHandles";
+        rotationHandles.add(this.createRotationHandle(0xff0000, "x", [1, 0, 0], [0, 1, 0]));
+        rotationHandles.add(this.createRotationHandle(0x00ff00, "y", [0, 1, 0], [1, 0, 0]));
+        rotationHandles.add(this.createRotationHandle(0x0000ff, "z", [0, 0, 1], [0, 0, 0]));
+        this.handles.add(rotationHandles);
+
+        const positionHandles = new THREE.Object3D();
+        positionHandles.name = "positionHandles";
+        positionHandles.add(this.createPositionHandle(0xff0000, "x", [1, 0, 0], [0, 0, 1]));
+        positionHandles.add(this.createPositionHandle(0x00ff00, "y", [0, 1, 0], [0, 0, 0]));
+        positionHandles.add(this.createPositionHandle(0x0000ff, "z", [0, 0, 1], [1, 0, 0]));
+        this.handles.add(positionHandles);
+    }
 
     textureSetup = () => {
         const skin = this.props.skin == null ? (this.props.slim ? alex : steve) : this.props.skin;
@@ -253,8 +382,6 @@ class PaperDoll extends Component {
         );
 
         this.propagateShade(this.doll);
-        this.textureSetup();
-
     }
 
     eatChild = (name, child) => {
@@ -307,11 +434,13 @@ class PaperDoll extends Component {
         if (child.children) for (const [k, v] of Object.entries(child.children))
             part.add(this.eatChild(k, v));
 
+        if (child.position) part.position.fromArray(child.position);
+
         if (child.poseable) {
             part.poseable = true;
+            part.defaultPosition = part.position.clone();
             this.pivots[name] = part;
         }
-        if (child.position) part.position.fromArray(child.position);
 
         part.name = name;
 
@@ -353,6 +482,7 @@ class PaperDoll extends Component {
 
     resetPose = () => {
         Object.values(this.pivots).forEach(pivot => {
+            pivot.position.copy(pivot.defaultPosition);
             pivot.rotation.x = 0;
             pivot.rotation.y = 0;
             pivot.rotation.z = 0;
@@ -391,22 +521,76 @@ class PaperDoll extends Component {
             part.children.forEach(child => {
                 children = children.concat(this.filterOutline(child));
             });
-        } else if (part.renderType !== "cutout" && !part.poseable && part.visible)
+        } else if (part.renderType !== "cutout" && !part.poseable && part.visible && !part.noOutline)
             children = [part];
 
         return children;
     }
 
-    pose = () => {
-        if (this.oldMousePos && this.selectedObject) {
-            if (this.mousePos.equals(this.oldMousePos)) return;
+    getClipZ = part => {
+        return part.getWorldPosition(new THREE.Vector3()).project(this.camera).z;
+    }
 
-            let axis = new THREE.Vector3();
-            this.camera.getWorldDirection(axis);
+    clipToWorldSpace = (position, clipZ) => {
+        return new THREE.Vector3(
+            position.x,
+            position.y,
+            clipZ
+        ).unproject(this.camera);
+    }
 
-            const oldRad = new THREE.Vector2().copy(this.oldMousePos).sub(this.posePivot).angle();
-            const newRad = new THREE.Vector2().copy(this.mousePos).sub(this.posePivot).angle();
-            let angle = oldRad - newRad;
+    poseRotation = () => {
+        if (this.state.poseSettings.mode === "Controlled") {
+            if (!this.handle) return;
+
+            const localRotation = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
+            const worldPivotPos = this.selectedObject.parent.getWorldPosition(new THREE.Vector3());
+            const norm = this.handle.normal.clone().applyQuaternion(localRotation);
+
+            const start = this.clipToWorldSpace(this.mousePos, 0.5);
+            const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9).sub(start).normalize();
+            start.sub(worldPivotPos);
+
+            const line = new THREE.Line3(
+                start,
+                start.clone().addScaledVector(lineDirection, 500)
+            );
+
+            const plane = new THREE.Plane(norm);
+
+            const intersect = new THREE.Vector3();
+            const result = plane.intersectLine(line, intersect);
+            if (!result) return;
+
+            if (!this.oldHandlePos) {
+                this.oldHandlePos = intersect;
+                return;
+            }
+
+            const vec1 = this.oldHandlePos.clone().normalize();
+            const vec2 = intersect.clone().normalize();
+
+            const matrix = new THREE.Matrix3(
+                vec1.x, vec1.y, vec1.z,
+                vec2.x, vec2.y, vec2.z,
+                norm.x, norm.y, norm.z
+            );
+
+            const angle = Math.atan2(
+                matrix.determinant(),
+                vec1.dot(vec2)
+            );
+
+            this.selectedObject.rotateOnAxis(this.handle.normal, angle);
+
+            this.oldHandlePos = intersect;
+
+        } else { // Simple mode
+            const axis = this.camera.getWorldDirection(new THREE.Vector3());
+
+            const oldRad = this.oldMousePos.clone().sub(this.posePivot).angle();
+            const newRad = this.mousePos.clone().sub(this.posePivot).angle();
+            const angle = oldRad - newRad;
 
             const parentInvQuat = this.selectedObject.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
             const rotQuat = new THREE.Quaternion().setFromAxisAngle(axis, angle);
@@ -415,21 +599,96 @@ class PaperDoll extends Component {
             const finalQuat = parentInvQuat.clone().multiply(new THREE.Quaternion().multiplyQuaternions(rotQuat, worldQuat));
 
             this.selectedObject.setRotationFromQuaternion(finalQuat);
+        }
+    }
 
-            this.oldMousePos = new THREE.Vector2().copy(this.mousePos);
-            return;
+    posePosition = () => {
+        const clipZ = this.getClipZ(this.selectedObject);
+
+        if (this.state.poseSettings.mode === "Controlled") {
+            if (!this.handle) return;
+
+            const localRotation = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
+            const worldPivotPos = this.selectedObject.parent.getWorldPosition(new THREE.Vector3());
+            const norm = this.handle.normal.clone().applyQuaternion(localRotation);
+
+            const line = new THREE.Line3(
+                worldPivotPos,
+                worldPivotPos.clone().add(norm)
+            );
+
+            const linePos = line.closestPointToPoint(this.clipToWorldSpace(this.mousePos, clipZ), false, new THREE.Vector3());
+            const oldLinePos = line.closestPointToPoint(this.clipToWorldSpace(this.oldMousePos, clipZ), false, new THREE.Vector3());
+
+            const movement = linePos.sub(oldLinePos);
+            this.selectedObject.position.add(movement);
+
+        } else { // Simple mode
+            const movement = this.clipToWorldSpace(this.mousePos, clipZ)
+                .sub(this.clipToWorldSpace(this.oldMousePos, clipZ));
+
+            this.selectedObject.position.add(movement);
+        }
+    }
+
+    pose = () => {
+        this.raycaster.setFromCamera(this.mousePos, this.camera);
+        this.hoveredHandle = null;
+        const isRotationMode = this.state.poseSettings.type === "Rotation";
+
+        if (this.selectedObject) {
+            if (this.state.poseSettings.mode === "Controlled") {
+                this.selectedObject.add(this.handles);
+                this.handles.getObjectByName("rotationHandles").visible = isRotationMode;
+                this.handles.getObjectByName("positionHandles").visible = !isRotationMode;
+
+                if (!this.handle) {
+                    const handleIntersects = this.raycaster.intersectObject(this.handles, true);
+                    this.hoveredHandle = handleIntersects.length > 0 ? handleIntersects[0].object : false;
+
+                    this.handles.children.forEach(handleGroup =>
+                        handleGroup.children.forEach(child => {
+                            child.material.opacity = 0.33;
+                            child.renderOrder = 999;
+                        }
+                    ));
+
+                    if (this.hoveredHandle) {
+                        this.hoveredHandle.material.opacity = 1;
+                        this.hoveredHandle.renderOrder = 1000;
+                    }
+                }
+            }
+
+            if (this.oldMousePos) {
+                if (this.mousePos.equals(this.oldMousePos)) return;
+
+                if (isRotationMode)
+                    this.poseRotation();
+                else
+                    this.posePosition();
+
+                this.oldMousePos = new THREE.Vector2().copy(this.mousePos);
+            }
+
+            this.selectedOutlinePass.selectedObjects = this.filterOutline(this.selectedObject);
+        } else {
+            this.selectedOutlinePass.selectedObjects = [];
+            this.handles.removeFromParent();
         }
 
-        this.raycaster.setFromCamera(this.mousePos, this.camera);
-        const intersects = this.raycaster.intersectObject(this.scene, true);
-        const poseable = intersects.length > 0 ? this.findPosableAncestor(intersects[0].object) : false;
+        this.hoveredObject = null;
+        this.hoveredOutlinePass.selectedObjects = [];
 
-        if (poseable) {
-            this.selectedObject = poseable;
-            this.outlinePass.selectedObjects = this.filterOutline(poseable);
-        } else {
-            this.selectedObject = null;
-            this.outlinePass.selectedObjects = [];
+        if (!this.hoveredHandle && !this.handle) {
+            const intersects = this.raycaster.intersectObject(this.scene, true);
+            const poseable = intersects.length > 0 ? this.findPosableAncestor(intersects[0].object) : false;
+
+            if (poseable) {
+                this.hoveredObject = poseable;
+                if (poseable !== this.selectedObject)
+                    this.hoveredOutlinePass.selectedObjects = this.filterOutline(poseable);
+            }
         }
     }
 
@@ -449,10 +708,30 @@ class PaperDoll extends Component {
     };
 
     poseUndo = (obj, start) => {
-        const redoStart = obj.rotation.clone()
+        const redoStart = new THREE.Object3D();
+        redoStart.setRotationFromEuler(obj.rotation);
+        redoStart.position.copy(obj.position);
+
         const redoProphecy = () => this.poseUndo(obj, redoStart);
-        obj.setRotationFromEuler(start);
+        obj.setRotationFromEuler(start.rotation);
+        obj.position.copy(start.position);
+        
         return redoProphecy;
+    }
+
+    addPoseEdit = (prefix, suffix) => {
+        const obj = this.selectedObject;
+
+        const start = new THREE.Object3D();
+        start.setRotationFromEuler(obj.rotation);
+        start.position.copy(obj.position);
+
+        suffix = suffix == null ? "" : " " + suffix;
+
+        this.props.addEdit(
+            prefix + " " + obj.name + suffix,
+            () => this.poseUndo(obj, start)
+        );
     }
 
     onMouseMove = e => {
@@ -466,54 +745,80 @@ class PaperDoll extends Component {
 
         if (this.queuedPoseEdit) {
             this.queuedPoseEdit = null;
-            const obj = this.selectedObject;
-            const start = obj.rotation.clone();
-            this.props.addEdit(
-                "pose " + obj.name,
-                () => this.poseUndo(obj, start)
-            );
+            this.addPoseEdit("pose");
         }
     }
 
     onMouseDown = e => {
         if (!this.state.pose) return;
-        if (!this.selectedObject) return;
         if (e.button === 2) return;
 
-        this.controls.enabled = false;
+        if (this.state.poseSettings.mode === "Controlled") {
+            if (this.hoveredObject) {
+                this.selectedObject = this.hoveredObject;
+                return;
+            } else if (!this.hoveredHandle) return;
+            this.handle = this.hoveredHandle;
+        } else {
+            if (!this.hoveredObject) return;
+            this.selectedObject = this.hoveredObject;
 
+            const posePivot = this.selectedObject.getWorldPosition(new THREE.Vector3()).project(this.camera);
+            this.posePivot = new THREE.Vector2(posePivot.x, posePivot.y);
+        }
+
+        this.controls.enabled = false;
         this.oldMousePos = new THREE.Vector2().copy(this.mousePos);
-        const posePivot = this.selectedObject.getWorldPosition(new THREE.Vector3()).project(this.camera);
-        this.posePivot = new THREE.Vector2(posePivot.x, posePivot.y);
 
         this.queuedPoseEdit = this.selectedObject.position.clone();
     }
 
     onMouseUp = () => {
+        if (this.state.poseSettings.mode === "Simple") {
+            this.selectedObject = null;
+        }
+
         this.controls.enabled = true;
         this.oldMousePos = null;
+        this.oldHandlePos = null;
         this.posePivot = null;
         this.queuedPoseEdit = null;
+        this.handle = null;
     }
 
     onContextMenu = e => {
         if (!this.state.pose) return;
-        if (!this.selectedObject) return;
+        if (!this.hoveredObject) return;
 
+        if (this.state.poseSettings.mode === "Controlled") {
+            if (this.selectedObject !== this.hoveredObject) return;
+        }
+
+        this.selectedObject = this.hoveredObject;
         this.controls.enabled = false;
-        
-        const obj = this.selectedObject;
-        const start = obj.rotation.clone();
-        this.props.addEdit(
-            "reset " + obj.name +  " pose",
-            () => this.poseUndo(obj, start)
-        );
 
-        obj.rotation.x = 0;
-        obj.rotation.y = 0;
-        obj.rotation.z = 0;
+        const isRotationMode = this.state.poseSettings.type === "Rotation";
+        
+        this.addPoseEdit("reset", isRotationMode ? "rotation" : "position");
+
+        const obj = this.selectedObject;
+        
+        if (isRotationMode) {
+            obj.rotation.x = 0;
+            obj.rotation.y = 0;
+            obj.rotation.z = 0;
+        } else {
+            obj.position.copy(obj.defaultPosition);
+        }
 
         e.preventDefault();
+    }
+
+    deselect = () => {
+        this.selectedObject = null;
+        this.hoveredOutlinePass.selectedObjects = [];
+        this.selectedOutlinePass.selectedObjects = [];
+        this.handles.removeFromParent();
     }
 
     handleWindowResize = () => {
@@ -535,6 +840,9 @@ class PaperDoll extends Component {
         const height = this.canvasRef.current.parentNode.clientHeight;
 
         this.SMAAPass.enabled = false;
+        this.hoveredOutlinePass.enabled = false;
+        this.selectedOutlinePass.enabled = false;
+        this.handles.visible = false;
         this.renderer.setSize(width * scale, height * scale);
         this.composer.setSize(width * scale, height * scale);
         this.renderFrame();
@@ -542,6 +850,9 @@ class PaperDoll extends Component {
         const data = this.renderer.domElement.toDataURL();
 
         this.SMAAPass.enabled = true;
+        this.hoveredOutlinePass.enabled = true;
+        this.selectedOutlinePass.enabled = true;
+        this.handles.visible = true;
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.handleWindowResize();
 
@@ -577,16 +888,32 @@ class PaperDoll extends Component {
                     anim: value == null ? true : value,
                     pose: false
                 });
-                this.outlinePass.selectedObjects = [];
+                this.hoveredOutlinePass.selectedObjects = [];
+                this.selectedOutlinePass.selectedObjects = [];
+                this.handles.removeFromParent();
                 this.resetPose();
                 break;
             case "pose":
                 this.setState({
                     pose: value == null ? true : value,
-                    anim: false
+                    anim: false,
+                    explode: false
                 });
-                this.outlinePass.selectedObjects = [];
+                this.hoveredOutlinePass.selectedObjects = [];
+                this.selectedOutlinePass.selectedObjects = [];
+                this.handles.removeFromParent();
                 this.resetPose();
+                break;
+            case "poseSettings":
+                if (this.state.poseSettings.mode !== value.mode) this.selectedObject = null;
+
+                this.setState({
+                    poseSettings: {
+                        mode: value.mode == null ? "Simple" : value.mode,
+                        type: value.type == null ? "Rotation" : value.type,
+                        space: value.space == null ? "Global" : value.space,
+                    }
+                });
                 break;
             default:
                 const update = {};
@@ -608,12 +935,14 @@ class PaperDoll extends Component {
                         lightAngle: this.state.lightAngle,
                         lightFocus: this.state.lightFocus,
                         pose: this.state.pose,
+                        poseSettings: this.state.poseSettings,
                         fov: this.state.fov
                     }}
                     updateSetting={this.updateSetting}
                     saveRender={this.saveRender}
                     resetCamera={() => this.controls.reset()}
                     addEdit={this.props.addEdit}
+                    deselect={this.deselect}
                 />
                 <div className="paperdoll-canvas-container">
                     <canvas className="paperdoll-canvas" ref={this.canvasRef} />
