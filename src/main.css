@@ -214,7 +214,7 @@ hr {
   display: flex;
 }
 
-.paperdoll-settings input, .paperdoll-settings button, .paperdoll-settings label, .paperdoll-settings select {
+.paperdoll-settings input, .paperdoll-settings button, .paperdoll-settings label, .paperdoll-settings select, .paperdoll-settings option {
   pointer-events: all;
 }
 

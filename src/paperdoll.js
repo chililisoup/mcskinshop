@@ -34,17 +34,17 @@ class PaperDollSettings extends React.Component {
                 space: "Local"
             },
             fov: props.settings.fov == null ? 80 : props.settings.fov,
-            usePerspectiveCam: props.settings.usePerspectiveCam == null ? true : props.settings.usePerspectiveCam
+            usePerspectiveCam: props.settings.usePerspectiveCam == null ? true : props.settings.usePerspectiveCam,
+            selectedPose: this.props.savedPoses[0]
         }
-
-        this.selectedPose = this.props.savedPoses[0];
     }
 
     componentDidUpdate = prevProps => {
         if (this.props.settings.slim !== prevProps.settings.slim)
             this.setState({slim: this.props.settings.slim});
-        if (!this.selectedPose || this.props.savedPoses.indexOf(this.selectedPose) < 0)
-            this.selectedPose = this.props.savedPoses[0];
+        if ((this.props.savedPoses.indexOf(this.state.selectedPose) < 0) ||
+            (!this.state.selectedPose && this.props.savedPoses.length)
+        ) this.setState({selectedPose: this.props.savedPoses[0]});
     }
 
     updateSetting = (setting, value) => {
@@ -160,11 +160,11 @@ class PaperDollSettings extends React.Component {
                         <button id="poseSpace" onClick={() => this.changePoseSetting("space")}>{this.state.poseSettings.space}</button>
                         <button onClick={this.props.deselect}>Deselect</button>
                         <button onClick={this.props.resetPose}>Reset Pose</button>
-                        <select value={this.selectedPose} onChange={e => { this.selectedPose = e.target.value; }}>
+                        <select value={this.state.selectedPose} onChange={e => this.setState({selectedPose: e.target.value})}>
                             { this.props.savedPoses.map(poseName => <option>{poseName}</option>) }
                         </select>
-                        <button onClick={() => this.props.loadPose(this.selectedPose)}>Load Pose</button>
-                        <button onClick={() => this.props.deletePose(this.selectedPose)}>Delete Pose</button>
+                        <button onClick={() => this.props.loadPose(this.state.selectedPose)}>Load Pose</button>
+                        <button onClick={() => this.props.deletePose(this.state.selectedPose)}>Delete Pose</button>
                         <button onClick={this.props.savePose}>Save New Pose</button>
                     </div>
                 </span>
@@ -625,6 +625,8 @@ class PaperDoll extends Component {
             window.alert("Unable to load! Pose is empty! You should probably delete it :/");
             return;
         }
+
+        this.resetPose();
 
         for (const [name, transform] of Object.entries(poseJson)) {
             const pivot = this.pivots[name]
