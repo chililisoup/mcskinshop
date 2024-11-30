@@ -19,7 +19,7 @@ body {
   color: white;
 }
 
-button, input, select {
+button, input, select, label:has(> img) {
   font-weight: bolder;
   background-color: rgba(0, 0, 0, 0.4);
   box-shadow: none;
@@ -33,7 +33,7 @@ input {
   font-family: monospace;
 }
 
-button:hover:enabled, input:hover:enabled {
+button:hover:enabled, input:hover:enabled, label:has(> img):has(+ input:enabled):hover {
   outline: 2px solid white;
   cursor: pointer;
 }
@@ -41,6 +41,28 @@ button:hover:enabled, input:hover:enabled {
 input::placeholder {
   color: black;
   opacity: 0.7;
+}
+
+button > img, label > img {
+  margin: 0;
+  padding: 0;
+  background: none;
+  image-rendering: auto;
+}
+
+button:has(> img), label:has(> img) {
+  display: inline-flex;
+  padding: 0;
+}
+
+label:has(+ input:disabled) > img {
+  filter: brightness(0.4);
+}
+
+label:has(+ input:checked) > img {
+  /* https://codepen.io/sosuke/pen/Pjoqqp for #4fc3ff */
+  /* Not a permanent solution */
+  filter: brightness(0) saturate(100%) invert(74%) sepia(10%) saturate(7451%) hue-rotate(172deg) brightness(101%) contrast(101%);
 }
 
 .appRoot {
@@ -138,10 +160,6 @@ input::placeholder {
   margin-bottom: -4px;
 }
 
-label {
-  margin: 10px 5px 0 10px;
-}
-
 img {
   width: 48px;
   height: 48px;
@@ -179,15 +197,40 @@ hr {
 }
 
 .paperdoll {
+  position: relative;
+  width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   flex: 1;
 }
 
-.paperdoll span {
-  width: 100%;
+.paperdoll-settings {
+  position: absolute;
+  max-width: calc(100% - 10px);
+  height: calc(100% - 10px);
   justify-content: space-evenly;
+  pointer-events: none;
+  display: flex;
+}
+
+.paperdoll-settings input, .paperdoll-settings button, .paperdoll-settings label {
+  pointer-events: all;
+}
+
+.paperdoll-settings button > img, .paperdoll-settings label > img {
+  width: 32px;
+  height: 32px;
+
+}
+
+.paperdoll-settings button:has(> img), .paperdoll-settings label:has(> img) {
+  display: inline-flex;
+  padding: 4px;
+}
+
+.paperdoll-settings span {
+  width: fit-content;
 }
 
 .paperdoll-canvas-container {
@@ -424,4 +467,29 @@ h3 {
 label {
   user-select: none;
   cursor: pointer;
+  margin: 10px 5px 0 10px;
+}
+
+label:has(+ input:disabled) {
+  cursor: default;
+}
+
+.left {
+  position: absolute;
+  left: 0;
+}
+
+.right {
+  position: absolute;
+  right: 0;
+}
+
+.top {
+  position: absolute;
+  top: 0;
+}
+
+.bottom {
+  position: absolute;
+  bottom: 0;
 }

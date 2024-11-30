@@ -11,6 +11,9 @@ import steve from "./assets/steve.png";
 import alex from "./assets/alex.png";
 import matcap from "./assets/matcap.png";
 import skinmodel from "./skinmodel.json";
+import explode from "./assets/explode.png";
+import reset_camera from "./assets/reset_camera.png";
+import save_render from "./assets/save_render.png";
 
 class PaperDollSettings extends React.Component {
     constructor(props) {
@@ -28,15 +31,20 @@ class PaperDollSettings extends React.Component {
             poseSettings: props.settings.poseSettings || {
                 mode: "Simple",
                 type: "Rotation",
-                space: "Global"
+                space: "Local"
             },
-            fov: props.settings.fov == null ? 80 : props.settings.fov
+            fov: props.settings.fov == null ? 80 : props.settings.fov,
+            usePerspectiveCam: props.settings.usePerspectiveCam == null ? true : props.settings.usePerspectiveCam
         }
+
+        this.selectedPose = this.props.savedPoses[0];
     }
 
     componentDidUpdate = prevProps => {
         if (this.props.settings.slim !== prevProps.settings.slim)
             this.setState({slim: this.props.settings.slim});
+        if (!this.selectedPose || this.props.savedPoses.indexOf(this.selectedPose) < 0)
+            this.selectedPose = this.props.savedPoses[0];
     }
 
     updateSetting = (setting, value) => {
@@ -100,7 +108,7 @@ class PaperDollSettings extends React.Component {
                 newValue = this.state.poseSettings.type === "Rotation" ? "Position" : "Rotation";
                 break;
             case "space":
-                newValue = this.state.poseSettings.space === "Global" ? "Local" : "Global";
+                newValue = this.state.poseSettings.space === "Local" ? "Global" : "Local";
                 break;
             default:
                 return;
@@ -114,15 +122,15 @@ class PaperDollSettings extends React.Component {
 
     render() {
         return (
-            <span>
+            <span className="paperdoll-settings">
                 <div>
                     <label htmlFor="slimToggle">Slim</label>
                     <input type="checkbox" id="slimToggle" checked={this.state.slim} onChange={e => this.updateSettingFinish("slim", e.target.checked)}/>
                     <label htmlFor="animToggle">Animate</label>
                     <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={e => this.toggleAnim(e.target.checked)}/>
-                    <input type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.updateSetting("animSpeed", e.target.value)}/>
-                    <label htmlFor="explodeToggle">Explode</label>
-                    <input disabled={this.state.pose} type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateSettingFinish("explode", e.target.checked)}/>
+                    <input disabled={this.state.pose} type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.updateSetting("animSpeed", e.target.value)}/>
+                    <label disabled={this.state.pose} title="Toggle Explode" htmlFor="explodeToggle"><img alt="Toggle Explode" src={explode} /></label>
+                    <input className="hidden" disabled={this.state.pose} type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateSettingFinish("explode", e.target.checked)}/>
                 </div>
                 <div>
                     <label htmlFor="shadeToggle">Shade</label>
@@ -134,9 +142,13 @@ class PaperDollSettings extends React.Component {
                     <label htmlFor="lightAngle">Light Angle</label>
                     <input type="range" id="lightAngle" min={0} max={2 * Math.PI} step={0.1} value={this.state.lightAngle} onChange={e => this.updateSetting("lightAngle", e.target.value)}/>
                     <label htmlFor="fov">FOV ({this.state.fov})</label>
-                    <input type="range" id="fov" min={30} max={120} step={1} value={this.state.fov} onChange={e => this.updateSetting("fov", e.target.value)}/>
+                    <input disabled={!this.state.usePerspectiveCam} type="range" id="fov" min={30} max={120} step={1} value={this.state.fov} onChange={e => this.updateSetting("fov", e.target.value)}/>
+                    <label htmlFor="cameraType">Camera Type</label>
+                    <button id="cameraType" onClick={() => this.updateSettingFinish("usePerspectiveCam", !this.state.usePerspectiveCam)}>
+                        {this.state.usePerspectiveCam ? "Perspective" : "Orthographic"}
+                    </button>
                 </div>
-                <span>
+                <span class="bottom right">
                     <div>
                         <label htmlFor="poseToggle">Pose</label>
                         <input type="checkbox" id="poseToggle" checked={this.state.pose} onChange={e => this.togglePose(e.target.checked)}/>
@@ -147,11 +159,18 @@ class PaperDollSettings extends React.Component {
                         <label htmlFor="poseSpace">Pose Space</label>
                         <button id="poseSpace" onClick={() => this.changePoseSetting("space")}>{this.state.poseSettings.space}</button>
                         <button onClick={this.props.deselect}>Deselect</button>
+                        <button onClick={this.props.resetPose}>Reset Pose</button>
+                        <select value={this.selectedPose} onChange={e => { this.selectedPose = e.target.value; }}>
+                            { this.props.savedPoses.map(poseName => <option>{poseName}</option>) }
+                        </select>
+                        <button onClick={() => this.props.loadPose(this.selectedPose)}>Load Pose</button>
+                        <button onClick={() => this.props.deletePose(this.selectedPose)}>Delete Pose</button>
+                        <button onClick={this.props.savePose}>Save New Pose</button>
                     </div>
                 </span>
-                <div>
-                    <button onClick={this.props.resetCamera}>Reset Camera</button>
-                    <button onClick={this.props.saveRender}>Save Render</button>
+                <div class="bottom left">
+                    <button title="Reset Camera" onClick={this.props.resetCamera}><img alt="Reset Camera" src={reset_camera} /></button>
+                    <button title="Save Render" onClick={this.props.saveRender}><img alt="Save Render" src={save_render} /></button>
                 </div>
             </span>
         );
@@ -173,9 +192,11 @@ class PaperDoll extends Component {
             poseSettings: {
                 mode: "Simple",
                 type: "Rotation",
-                space: "Global"
+                space: "Local"
             },
-            fov: 80
+            fov: 80,
+            usePerspectiveCam: true,
+            savedPoses: JSON.parse(localStorage.getItem("poses")) || []
         }
 
         this.canvasRef = React.createRef();
@@ -217,6 +238,9 @@ class PaperDoll extends Component {
     componentDidUpdate(prevProps, prevState) {
         if (this.state.explode !== prevState.explode) this.updateExplode();
 
+        if (this.state.usePerspectiveCam !== prevState.usePerspectiveCam)
+            this.changeCamera(this.state.usePerspectiveCam ? this.perspCam : this.orthoCam);
+
         if (this.state.lightAngle !== prevState.lightAngle ||
             this.state.lightFocus !== prevState.lightFocus
         ) {
@@ -241,7 +265,7 @@ class PaperDoll extends Component {
 
         if (updateTextures) this.textureSetup();
 
-        this.camera.fov = this.state.fov;
+        this.perspCam.fov = this.state.fov;
         this.handleWindowResize();
     }
 
@@ -261,27 +285,33 @@ class PaperDoll extends Component {
         this.renderer.setSize(width, height);
         this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 
-        this.camera = new THREE.PerspectiveCamera(this.state.fov, width / height, 0.1, 1000);
-        this.camera.position.set(0, 18, 40);
-        this.scene.add(this.camera);
+        this.perspCam = new THREE.PerspectiveCamera(this.state.fov, width / height, 0.1, 1000);
+        this.perspCam.position.set(0, 18, 40);
+        this.scene.add(this.perspCam);
 
-        this.controls = new OrbitControls(this.camera, this.canvasRef.current);
+        this.orthoCam = new THREE.OrthographicCamera(width / -2, width / 2, height / 2, height / -2, 0.1, 1000);
+        this.perspCam.position.set(0, 18, 40);
+        this.scene.add(this.orthoCam);
+
+        this.activeCam = this.perspCam;
+
+        this.controls = new OrbitControls(this.perspCam, this.canvasRef.current);
         this.controls.target.set(0, 18, 0);
         this.controls.update();
         this.controls.saveState();
 
         this.composer = new EffectComposer(this.renderer);
 
-        this.renderPass = new RenderPass(this.scene, this.camera);
+        this.renderPass = new RenderPass(this.scene, this.perspCam);
         this.composer.addPass(this.renderPass);
 
-        this.hoveredOutlinePass = new OutlinePass(new THREE.Vector2(width, height), this.scene, this.camera);
+        this.hoveredOutlinePass = new OutlinePass(new THREE.Vector2(width, height), this.scene, this.perspCam);
         this.hoveredOutlinePass.hiddenEdgeColor.set(0xffffff);
         this.hoveredOutlinePass.edgeStrength = 3;
         this.hoveredOutlinePass.edgeThickness = 1;
         this.composer.addPass(this.hoveredOutlinePass);
 
-        this.selectedOutlinePass = new OutlinePass(new THREE.Vector2(width, height), this.scene, this.camera);
+        this.selectedOutlinePass = new OutlinePass(new THREE.Vector2(width, height), this.scene, this.perspCam);
         this.selectedOutlinePass.hiddenEdgeColor.set(0xff7e1c);
         this.selectedOutlinePass.edgeStrength = 3;
         this.selectedOutlinePass.edgeThickness = 1;
@@ -297,7 +327,7 @@ class PaperDoll extends Component {
         this.scene.add(ambientLight);
 
         this.directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
-        this.camera.add(this.directionalLight);
+        this.perspCam.add(this.directionalLight);
 
         this.textureLoader = new THREE.TextureLoader();
         this.matcapMap = this.textureLoader.load(matcap, matcapMap => matcapMap);
@@ -314,6 +344,24 @@ class PaperDoll extends Component {
         // );
         // this.scene.add(this.sphere);
     };
+
+    changeCamera = camera => {
+        camera.position.copy(this.activeCam.position);
+        camera.zoom = this.activeCam.zoom * (camera === this.orthoCam ? 10 : 0.1);
+
+        this.activeCam = camera;
+
+        this.controls.object = camera;
+        this.controls.update();
+
+        this.directionalLight.removeFromParent();
+        camera.add(this.directionalLight);
+
+        this.composer.passes.forEach(pass => {
+            if (pass.renderCamera) pass.renderCamera = camera;
+            if (pass.camera) pass.camera = camera;
+        });
+    }
 
     createRotationHandle = (color, name, normal, rotation) => {
         const handle = new THREE.Mesh(
@@ -498,12 +546,109 @@ class PaperDoll extends Component {
     }
 
     resetPose = () => {
-        Object.values(this.pivots).forEach(pivot => {
+        for (const pivot of Object.values(this.pivots)) {
             pivot.position.copy(pivot.defaultPosition);
-            pivot.rotation.x = 0;
-            pivot.rotation.y = 0;
-            pivot.rotation.z = 0;
-        });
+            pivot.setRotationFromEuler(new THREE.Euler());
+        }
+    }
+
+    savePose = () => {
+        for (const pivot of Object.values(this.pivots)) {
+            if (!pivot.position.equals(pivot.defaultPosition))
+                pivot.savedPosition = pivot.position.clone();
+            if (!pivot.rotation.equals(new THREE.Euler()))
+                pivot.savedRotation = pivot.rotation.clone();
+        }
+    }
+
+    loadPose = () => {
+        for (const pivot of Object.values(this.pivots)) {
+            if (!pivot.savedPosition) pivot.position.copy(pivot.defaultPosition);
+            else pivot.position.copy(pivot.savedPosition);
+
+            if (!pivot.savedRotation) pivot.setRotationFromEuler(new THREE.Euler());
+            else pivot.setRotationFromEuler(pivot.savedRotation);
+        }
+    }
+
+    clearSavedPose = () => {
+        for (const pivot of Object.values(this.pivots)) {
+            pivot.savedPosition = null;
+            pivot.savedRotation = null;
+        }
+    }
+
+    savePoseJson = () => {
+        const poseName = window.prompt("Save pose as..,");
+        if (poseName === null) return;
+
+        const savedPoses = JSON.parse(localStorage.getItem("poses")) || [];
+
+        for (const savedPoseName of savedPoses) {
+            if (savedPoseName === poseName) {
+                window.alert("Unable to save! Name already used");
+                return;
+            }
+        }
+
+        const poseJson = {};
+
+        for (const [name, pivot] of Object.entries(this.pivots)) {
+            const entry = {};
+            if (!pivot.position.equals(pivot.defaultPosition))
+                entry.position = pivot.position.toArray();
+            if (!pivot.rotation.equals(new THREE.Euler()))
+                entry.rotation = pivot.rotation.toArray();
+
+            if (Object.keys(entry).length > 0) poseJson[name] = entry;
+        }
+
+        if (Object.keys(poseJson).length === 0) {
+            window.alert("Unable to save! Empty pose");
+            return;
+        }
+
+        savedPoses.push(poseName);
+        localStorage.setItem("poses", JSON.stringify(savedPoses));
+        localStorage.setItem("pose-" + poseName, JSON.stringify(poseJson));
+        this.setState({savedPoses: savedPoses});
+    }
+
+    loadPoseJson = poseName => {
+        const poseJson = JSON.parse(localStorage.getItem("pose-" + poseName));
+        if (!poseJson) {
+            window.alert("Unable to load! Pose '" + poseName + "' not found");
+            return;
+        }
+
+        if (Object.keys(poseJson).length === 0) {
+            window.alert("Unable to load! Pose is empty! You should probably delete it :/");
+            return;
+        }
+
+        for (const [name, transform] of Object.entries(poseJson)) {
+            const pivot = this.pivots[name]
+            if (!pivot) continue;
+
+            if (transform.position)
+                pivot.position.fromArray(transform.position);
+            if (transform.rotation)
+                pivot.setRotationFromEuler(new THREE.Euler().fromArray(transform.rotation));
+        }
+    }
+
+    deletePoseJson = poseName => {
+        localStorage.removeItem("pose-" + poseName);
+
+        const savedPoses = JSON.parse(localStorage.getItem("poses"));
+        if (!savedPoses) return;
+
+        const index = savedPoses.indexOf(poseName);
+        if (index < 0) return;
+
+        savedPoses.splice(index, 1);
+        localStorage.setItem("poses", JSON.stringify(savedPoses));
+        this.setState({savedPoses: savedPoses});
     }
 
     animate = delta => {
@@ -545,7 +690,7 @@ class PaperDoll extends Component {
     }
 
     getClipZ = part => {
-        return part.getWorldPosition(new THREE.Vector3()).project(this.camera).z;
+        return part.getWorldPosition(new THREE.Vector3()).project(this.activeCam).z;
     }
 
     clipToWorldSpace = (position, clipZ) => {
@@ -553,7 +698,7 @@ class PaperDoll extends Component {
             position.x,
             position.y,
             clipZ
-        ).unproject(this.camera);
+        ).unproject(this.activeCam);
     }
 
     poseRotation = () => {
@@ -562,7 +707,9 @@ class PaperDoll extends Component {
 
             const localRotation = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
             const worldPivotPos = this.selectedObject.getWorldPosition(new THREE.Vector3());
-            const norm = this.handle.normal.clone().applyQuaternion(localRotation);
+            const norm = this.handle.normal.clone();
+            if (this.state.poseSettings.space === "Local")
+                norm.applyQuaternion(localRotation);
 
             const start = this.clipToWorldSpace(this.mousePos, 0.5);
             const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9).sub(start).normalize();
@@ -598,24 +745,29 @@ class PaperDoll extends Component {
                 vec1.dot(vec2)
             );
 
-            this.selectedObject.rotateOnAxis(this.handle.normal, angle);
+            if (this.state.poseSettings.space === "Global") {
+                this.selectedObject.rotateOnAxis(
+                    norm.applyQuaternion(localRotation.invert()),
+                    angle
+                );
+            } else this.selectedObject.rotateOnAxis(this.handle.normal, angle);
 
             this.oldHandlePos = intersect;
 
         } else { // Simple mode
-            const axis = this.camera.getWorldDirection(new THREE.Vector3());
+            const axis = this.activeCam.getWorldDirection(new THREE.Vector3());
 
             const oldRad = this.oldMousePos.clone().sub(this.posePivot).angle();
             const newRad = this.mousePos.clone().sub(this.posePivot).angle();
             const angle = oldRad - newRad;
 
-            const parentInvQuat = this.selectedObject.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+            const quat = this.selectedObject.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
             const rotQuat = new THREE.Quaternion().setFromAxisAngle(axis, angle);
             const worldQuat = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
 
-            const finalQuat = parentInvQuat.clone().multiply(new THREE.Quaternion().multiplyQuaternions(rotQuat, worldQuat));
+            quat.multiply(new THREE.Quaternion().multiplyQuaternions(rotQuat, worldQuat));
 
-            this.selectedObject.setRotationFromQuaternion(finalQuat);
+            this.selectedObject.setRotationFromQuaternion(quat);
         }
     }
 
@@ -625,9 +777,10 @@ class PaperDoll extends Component {
         if (this.state.poseSettings.mode === "Controlled") {
             if (!this.handle) return;
 
-            const localRotation = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
             const worldPivotPos = this.selectedObject.getWorldPosition(new THREE.Vector3());
-            const norm = this.handle.normal.clone().applyQuaternion(localRotation);
+            const norm = this.handle.normal.clone();
+            if (this.state.poseSettings.space === "Local")
+                norm.applyQuaternion(this.selectedObject.getWorldQuaternion(new THREE.Quaternion()));
 
             const line = new THREE.Line3(
                 worldPivotPos,
@@ -638,26 +791,38 @@ class PaperDoll extends Component {
             const oldLinePos = line.closestPointToPoint(this.clipToWorldSpace(this.oldMousePos, clipZ), false, new THREE.Vector3());
 
             const movement = linePos.sub(oldLinePos);
+            movement.add(this.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
+            this.selectedObject.parent.worldToLocal(movement);
+
             this.selectedObject.position.add(movement);
 
         } else { // Simple mode
-            const movement = this.clipToWorldSpace(this.mousePos, clipZ)
-                .sub(this.clipToWorldSpace(this.oldMousePos, clipZ));
+            const movement = this.clipToWorldSpace(this.mousePos, clipZ);
+            movement.sub(this.clipToWorldSpace(this.oldMousePos, clipZ));
+            movement.add(this.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
+            this.selectedObject.parent.worldToLocal(movement);
 
             this.selectedObject.position.add(movement);
         }
     }
 
     pose = () => {
-        this.raycaster.setFromCamera(this.mousePos, this.camera);
+        this.raycaster.setFromCamera(this.mousePos, this.activeCam);
         this.hoveredHandle = null;
         const isRotationMode = this.state.poseSettings.type === "Rotation";
 
         if (this.selectedObject) {
             if (this.state.poseSettings.mode === "Controlled") {
-                this.selectedObject.add(this.handles);
                 this.handles.getObjectByName("rotationHandles").visible = isRotationMode;
                 this.handles.getObjectByName("positionHandles").visible = !isRotationMode;
+
+                if (this.state.poseSettings.space === "Global") {
+                    this.handles.position.copy(this.selectedObject.getWorldPosition(new THREE.Vector3()));
+                    this.scene.add(this.handles);
+                } else {
+                    this.handles.position.copy(new THREE.Vector3());
+                    this.selectedObject.add(this.handles);
+                }
 
                 if (!this.handle) {
                     const handleIntersects = this.raycaster.intersectObject(this.handles, true);
@@ -697,7 +862,7 @@ class PaperDoll extends Component {
         this.hoveredObject = null;
         this.hoveredOutlinePass.selectedObjects = [];
 
-        if (!this.hoveredHandle && !this.handle) {
+        if (!this.hoveredHandle && !this.handle && !(this.selectedObject && this.state.poseSettings.mode === "Simple")) {
             const intersects = this.raycaster.intersectObject(this.scene, true);
             const poseable = intersects.length > 0 ? this.findPosableAncestor(intersects[0].object) : false;
 
@@ -780,7 +945,7 @@ class PaperDoll extends Component {
             if (!this.hoveredObject) return;
             this.selectedObject = this.hoveredObject;
 
-            const posePivot = this.selectedObject.getWorldPosition(new THREE.Vector3()).project(this.camera);
+            const posePivot = this.selectedObject.getWorldPosition(new THREE.Vector3()).project(this.activeCam);
             this.posePivot = new THREE.Vector2(posePivot.x, posePivot.y);
         }
 
@@ -845,8 +1010,14 @@ class PaperDoll extends Component {
         this.renderer.setSize(width, height);
         this.composer.setSize(width, height);
 
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
+        this.perspCam.aspect = width / height;
+        this.perspCam.updateProjectionMatrix();
+
+        this.orthoCam.left = width / -2;
+        this.orthoCam.right = width / 2;
+        this.orthoCam.top = height / 2;
+        this.orthoCam.bottom = height / -2;
+        this.orthoCam.updateProjectionMatrix();
     };
 
     saveRender = () => {
@@ -909,6 +1080,7 @@ class PaperDoll extends Component {
                 this.selectedOutlinePass.selectedObjects = [];
                 this.handles.removeFromParent();
                 this.resetPose();
+                this.updateExplode();
                 break;
             case "pose":
                 this.setState({
@@ -919,7 +1091,13 @@ class PaperDoll extends Component {
                 this.hoveredOutlinePass.selectedObjects = [];
                 this.selectedOutlinePass.selectedObjects = [];
                 this.handles.removeFromParent();
-                this.resetPose();
+                if (!value) {
+                    this.savePose();
+                    this.resetPose();
+                } else {
+                    this.loadPose();
+                    this.clearSavedPose();
+                }
                 break;
             case "poseSettings":
                 if (this.state.poseSettings.mode !== value.mode) this.selectedObject = null;
@@ -953,13 +1131,22 @@ class PaperDoll extends Component {
                         lightFocus: this.state.lightFocus,
                         pose: this.state.pose,
                         poseSettings: this.state.poseSettings,
-                        fov: this.state.fov
+                        fov: this.state.fov,
+                        usePerspectiveCam: this.state.usePerspectiveCam
                     }}
                     updateSetting={this.updateSetting}
                     saveRender={this.saveRender}
                     resetCamera={() => this.controls.reset()}
                     addEdit={this.props.addEdit}
                     deselect={this.deselect}
+                    resetPose={() => {
+                        this.resetPose();
+                        if (this.state.explode) this.updateExplode();
+                    }}
+                    savedPoses={this.state.savedPoses}
+                    savePose={this.savePoseJson}
+                    loadPose={this.loadPoseJson}
+                    deletePose={this.deletePoseJson}
                 />
                 <div className="paperdoll-canvas-container">
                     <canvas className="paperdoll-canvas" ref={this.canvasRef} />
