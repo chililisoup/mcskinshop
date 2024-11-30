@@ -579,7 +579,7 @@ class PaperDoll extends Component {
     }
 
     savePoseJson = () => {
-        const poseName = window.prompt("Save pose as..,");
+        const poseName = window.prompt("Save pose as...");
         if (poseName === null) return;
 
         const savedPoses = JSON.parse(localStorage.getItem("poses")) || [];
