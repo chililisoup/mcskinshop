@@ -42,9 +42,14 @@ class PaperDollSettings extends React.Component {
     componentDidUpdate = prevProps => {
         if (this.props.settings.slim !== prevProps.settings.slim)
             this.setState({slim: this.props.settings.slim});
-        if ((this.props.savedPoses.indexOf(this.state.selectedPose) < 0) ||
-            (!this.state.selectedPose && this.props.savedPoses.length)
-        ) this.setState({selectedPose: this.props.savedPoses[0]});
+
+        if (this.props.savedPoses.length) {
+            if (this.props.savedPoses.indexOf(this.state.selectedPose) < 0) {
+                this.setState({selectedPose: this.props.savedPoses[0]});
+            }
+        } else if (this.state.selectedPose !== undefined) {
+            this.setState({selectedPose: undefined});
+        }
     }
 
     updateSetting = (setting, value) => {
@@ -148,7 +153,7 @@ class PaperDollSettings extends React.Component {
                         {this.state.usePerspectiveCam ? "Perspective" : "Orthographic"}
                     </button>
                 </div>
-                <span class="bottom right">
+                <span className="bottom right">
                     <div>
                         <label htmlFor="poseToggle">Pose</label>
                         <input type="checkbox" id="poseToggle" checked={this.state.pose} onChange={e => this.togglePose(e.target.checked)}/>
@@ -161,14 +166,14 @@ class PaperDollSettings extends React.Component {
                         <button onClick={this.props.deselect}>Deselect</button>
                         <button onClick={this.props.resetPose}>Reset Pose</button>
                         <select value={this.state.selectedPose} onChange={e => this.setState({selectedPose: e.target.value})}>
-                            { this.props.savedPoses.map(poseName => <option>{poseName}</option>) }
+                            { this.props.savedPoses.map(poseName => <option key={poseName}>{poseName}</option>) }
                         </select>
                         <button onClick={() => this.props.loadPose(this.state.selectedPose)}>Load Pose</button>
                         <button onClick={() => this.props.deletePose(this.state.selectedPose)}>Delete Pose</button>
                         <button onClick={this.props.savePose}>Save New Pose</button>
                     </div>
                 </span>
-                <div class="bottom left">
+                <div className="bottom left">
                     <button title="Reset Camera" onClick={this.props.resetCamera}><img alt="Reset Camera" src={reset_camera} /></button>
                     <button title="Save Render" onClick={this.props.saveRender}><img alt="Save Render" src={save_render} /></button>
                 </div>
