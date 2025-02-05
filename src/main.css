@@ -335,6 +335,14 @@ h3 {
   text-align: center;
 }
 
+.highlighted {
+  outline: 2px solid white;
+}
+
+.model-features {
+  width: 325px;
+}
+
 .color-picker-parent {
   display: flex;
   flex-direction: column;
@@ -430,6 +438,35 @@ h3 {
   border: 2px solid white;
 }
 
+.dropdown > div > hr:first-of-type {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.dropdown-bar {
+  user-select: none;
+  cursor: pointer;
+  justify-content: space-around;
+  flex-wrap: nowrap;
+}
+
+.dropdown-bar:hover {
+  outline: 2px solid white;
+}
+
+.dropdown-bar > * {
+  flex-grow: 1;
+}
+
+.dropdown-bar > span {
+  justify-content: end;
+  width: min-content;
+}
+
+.dropdown-bar > span > button:hover {
+  outline: none;
+}
+
 .draggable {
   position: absolute;
   z-index: 80;
@@ -456,6 +493,42 @@ h3 {
 
 .draggable > span > button {
   margin: 0;
+}
+
+.grid-select {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.grid-select > * {
+  margin: 3px;
+  padding: 0;
+  height: auto;
+  cursor: pointer;
+  background: none;
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.grid-select > *:hover {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.grid-select > div {
+  display: flex;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+}
+
+.grid-select > div > img {
+  position: absolute;
+  padding: 0;
+  height: 100%;
+  width: auto;
+  image-rendering: auto;
+  background: none;
 }
 
 *:disabled {
@@ -492,4 +565,9 @@ label:has(+ input:disabled) {
 .bottom {
   position: absolute;
   bottom: 0;
+}
+
+.vertical {
+  display: flex;
+  justify-content: center;
 }

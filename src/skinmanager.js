@@ -6,6 +6,7 @@ import LayerAdder from './layeradder';
 import AssetCreator from './assetcreator';
 import MenuBar from './menubar';
 import Preview from './preview';
+import ModelFeatures from './modelfeatures';
 
 class SkinManager extends Component {
     constructor(props) {
@@ -15,11 +16,15 @@ class SkinManager extends Component {
             skin: null,
             slim: false,
             editHints: ["", ""],
+            modelFeatures: {
+                cape: false
+            },
             layerManager: true,
             paperDoll: true,
             preview: true,
             assetCreator: false,
-            layerAdder: false
+            layerAdder: false,
+            modelFeaturesWindow: false
         }
         this.layers = new ImgMod.Layer();
         this.editHistory = [];
@@ -137,14 +142,16 @@ class SkinManager extends Component {
                         ["Preview", this.state.preview, () => this.updateState("preview", !this.state.preview)],
                         ["Asset Creator", this.state.assetCreator, () => this.updateState("assetCreator", !this.state.assetCreator)],
                         ["Layer Adder", this.state.layerAdder, () => this.updateState("layerAdder", !this.state.layerAdder)],
+                        ["Model Features", this.state.modelFeaturesWindow, () => this.updateState("modelFeaturesWindow", !this.state.modelFeaturesWindow)],
                     ]}
                 />
                 <div className="SkinManager">
                     {this.state.layerManager && <LayerManager layers={this.layers} updateLayers={this.updateLayers} slim={this.state.slim} />}
-                    {this.state.paperDoll && <PaperDoll skin={this.state.skin} slim={this.state.slim} updateSlim={this.updateSlim} addEdit={this.addEdit} />}
+                    {this.state.paperDoll && <PaperDoll skin={this.state.skin} slim={this.state.slim} updateSlim={this.updateSlim} modelFeatures={this.state.modelFeatures} addEdit={this.addEdit} />}
                     {this.state.preview && <Preview skin={this.state.skin} close={() => this.updateState("preview", false)} />}
                     {this.state.assetCreator && <AssetCreator addLayer={this.addLayer} />}
                     {this.state.layerAdder && <LayerAdder addLayer={this.addLayer} />}
+                    {this.state.modelFeaturesWindow && <ModelFeatures updateFeatures={features => this.updateState("modelFeatures", features)} />}
                 </div>
             </div>
         );

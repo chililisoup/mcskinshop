@@ -68,7 +68,10 @@ class DraggableWindow extends Component {
     render() {
         return (
             <div ref={this.windowRef} className="draggable container" style={{ left: this.state.pos.x, top: this.state.pos.y }}>
-                <span ref={this.handleRef}><p>{this.props.title}</p>{this.props.close && <button onClick={this.props.close}>X</button>}</span>
+                <span ref={this.handleRef}>
+                    <p>{this.props.title}</p>
+                    {this.props.close && <button onClick={this.props.close}>X</button>}
+                </span>
                 <div>{this.props.children}</div>
             </div>
         );

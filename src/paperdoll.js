@@ -15,6 +15,13 @@ import explode from "./assets/explode.png";
 import reset_camera from "./assets/reset_camera.png";
 import save_render from "./assets/save_render.png";
 
+/*
+
+All the user data for Object3Ds are stored plainly inside the object
+instead of inside the allocated userData object, please change
+
+*/
+
 class PaperDollSettings extends React.Component {
     constructor(props) {
         super(props);
@@ -128,31 +135,33 @@ class PaperDollSettings extends React.Component {
     render() {
         return (
             <span className="paperdoll-settings">
-                <div>
-                    <label htmlFor="slimToggle">Slim</label>
-                    <input type="checkbox" id="slimToggle" checked={this.state.slim} onChange={e => this.updateSettingFinish("slim", e.target.checked)}/>
-                    <label htmlFor="animToggle">Animate</label>
-                    <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={e => this.toggleAnim(e.target.checked)}/>
-                    <input disabled={this.state.pose} type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.updateSetting("animSpeed", e.target.value)}/>
-                    <label disabled={this.state.pose} title="Toggle Explode" htmlFor="explodeToggle"><img alt="Toggle Explode" src={explode} /></label>
-                    <input className="hidden" disabled={this.state.pose} type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateSettingFinish("explode", e.target.checked)}/>
-                </div>
-                <div>
-                    <label htmlFor="shadeToggle">Shade</label>
-                    <input type="checkbox" id="shadeToggle" checked={this.state.shade} onChange={e => this.updateSettingFinish("shade", e.target.checked)}/>
-                    <label htmlFor="lightFocus">Light Focus</label>
-                    <input type="range" id="lightFocus" min={0} max={10} step={0.1} value={Math.sqrt(this.state.lightFocus)} onChange={e => this.updateSetting("lightFocus", e.target.value ** 2)}/>
-                </div>
-                <div>
-                    <label htmlFor="lightAngle">Light Angle</label>
-                    <input type="range" id="lightAngle" min={0} max={2 * Math.PI} step={0.1} value={this.state.lightAngle} onChange={e => this.updateSetting("lightAngle", e.target.value)}/>
-                    <label htmlFor="fov">FOV ({this.state.fov})</label>
-                    <input disabled={!this.state.usePerspectiveCam} type="range" id="fov" min={30} max={120} step={1} value={this.state.fov} onChange={e => this.updateSetting("fov", e.target.value)}/>
-                    <label htmlFor="cameraType">Camera Type</label>
-                    <button id="cameraType" onClick={() => this.updateSettingFinish("usePerspectiveCam", !this.state.usePerspectiveCam)}>
-                        {this.state.usePerspectiveCam ? "Perspective" : "Orthographic"}
-                    </button>
-                </div>
+                <span className="top vertical">
+                    <div>
+                        <label htmlFor="slimToggle">Slim</label>
+                        <input type="checkbox" id="slimToggle" checked={this.state.slim} onChange={e => this.updateSettingFinish("slim", e.target.checked)}/>
+                        <label htmlFor="animToggle">Animate</label>
+                        <input type="checkbox" id="animToggle" checked={this.state.anim} onChange={e => this.toggleAnim(e.target.checked)}/>
+                        <input disabled={this.state.pose} type="range" min={0} max={2} step={0.01} value={this.state.animSpeed} onChange={e => this.updateSetting("animSpeed", e.target.value)}/>
+                        <label disabled={this.state.pose} title="Toggle Explode" htmlFor="explodeToggle"><img alt="Toggle Explode" src={explode} /></label>
+                        <input className="hidden" disabled={this.state.pose} type="checkbox" id="explodeToggle" checked={this.state.explode} onChange={e => this.updateSettingFinish("explode", e.target.checked)}/>
+                    </div>
+                    <div>
+                        <label htmlFor="shadeToggle">Shade</label>
+                        <input type="checkbox" id="shadeToggle" checked={this.state.shade} onChange={e => this.updateSettingFinish("shade", e.target.checked)}/>
+                        <label htmlFor="lightFocus">Light Focus</label>
+                        <input type="range" id="lightFocus" min={0} max={10} step={0.1} value={Math.sqrt(this.state.lightFocus)} onChange={e => this.updateSetting("lightFocus", e.target.value ** 2)}/>
+                    </div>
+                    <div>
+                        <label htmlFor="lightAngle">Light Angle</label>
+                        <input type="range" id="lightAngle" min={0} max={2 * Math.PI} step={0.1} value={this.state.lightAngle} onChange={e => this.updateSetting("lightAngle", e.target.value)}/>
+                        <label htmlFor="fov">FOV ({this.state.fov})</label>
+                        <input disabled={!this.state.usePerspectiveCam} type="range" id="fov" min={30} max={120} step={1} value={this.state.fov} onChange={e => this.updateSetting("fov", e.target.value)}/>
+                        <label htmlFor="cameraType">Camera Type</label>
+                        <button id="cameraType" onClick={() => this.updateSettingFinish("usePerspectiveCam", !this.state.usePerspectiveCam)}>
+                            {this.state.usePerspectiveCam ? "Perspective" : "Orthographic"}
+                        </button>
+                    </div>
+                </span>
                 <span className="bottom right">
                     <div>
                         <label htmlFor="poseToggle">Pose</label>
@@ -214,6 +223,7 @@ class PaperDoll extends Component {
         this.createHandles();
         this.modelSetup();
         this.updateSlim();
+        this.updateCape();
         this.updateExplode();
         this.updateLighting();
         this.propagateShade(this.doll);
@@ -259,6 +269,10 @@ class PaperDoll extends Component {
             updateTextures = true;
         }
 
+        if (this.props.modelFeatures.cape !== prevProps.modelFeatures.cape) {
+            this.updateCape();
+        }
+
         if (this.state.shade !== prevState.shade) {
             this.propagateShade(this.doll);
             updateTextures = true;
@@ -295,7 +309,7 @@ class PaperDoll extends Component {
         this.scene.add(this.perspCam);
 
         this.orthoCam = new THREE.OrthographicCamera(width / -2, width / 2, height / 2, height / -2, 0.1, 1000);
-        this.perspCam.position.set(0, 18, 40);
+        this.orthoCam.position.set(0, 18, 40);
         this.scene.add(this.orthoCam);
 
         this.activeCam = this.perspCam;
@@ -432,6 +446,7 @@ class PaperDoll extends Component {
             texture.magFilter = THREE.NearestFilter;
 
             this.materials[this.state.shade ? "shaded" : "flat"].forEach(mat => {
+                if (mat.uniqueMaterial) return;
                 mat.map = texture;
                 mat.needsUpdate = true;
             });
@@ -462,7 +477,9 @@ class PaperDoll extends Component {
 
             if (child.uv) {
                 const uvAttribute = geometry.getAttribute("uv");
-                child.uv.forEach((v, i) => uvAttribute.setXY(i, v[0] / 64, v[1] / 64));
+                const textureSize = child.textureSize || [64, 64];
+
+                child.uv.forEach((v, i) => uvAttribute.setXY(i, v[0] / textureSize[0], v[1] / textureSize[1]));
             }
 
             let shadedMat, flatMat;
@@ -485,7 +502,7 @@ class PaperDoll extends Component {
                     alphaTest: 0.001,
                     matcap: this.matcapMap
                 });
-            } else {
+            } else if (child.renderType !== "uniqe") {
                 shadedMat = new THREE.MeshLambertMaterial({
                     flatShading: true
                 });
@@ -498,6 +515,11 @@ class PaperDoll extends Component {
 
             part.materialIndex = this.materials.shaded.push(shadedMat) - 1;
             this.materials.flat.push(flatMat);
+
+            if (child.uniqueMaterial) {
+                shadedMat.uniqueMaterial = true;
+                flatMat.uniqueMaterial = true;
+            }
 
         } else part = new THREE.Group();
 
@@ -538,6 +560,33 @@ class PaperDoll extends Component {
         this.pivots.leftArm.children[1].visible = this.props.slim;
     };
 
+    updateCape = () => {
+        const cape = this.pivots.cape.children[0];
+        const enabled = !!this.props.modelFeatures.cape;
+        if (enabled) {
+            cape.layers.enable(0);
+        } else {
+            cape.layers.disable(0);
+            if (this.selectedObject === cape.parent)
+                this.deselect();
+            return;
+        }
+
+        this.textureLoader.load(this.props.modelFeatures.cape, texture => {
+            texture.magFilter = THREE.NearestFilter;
+
+            const mats = [
+                this.materials["shaded"][cape.materialIndex],
+                this.materials["flat"][cape.materialIndex]
+            ]
+
+            mats.forEach(mat => {
+                mat.map = texture;
+                mat.needsUpdate = true;
+            });
+        });
+    }
+
     updateExplode = () => {
         let mod = this.state.explode ? 2.5 : 0;
 
@@ -548,6 +597,8 @@ class PaperDoll extends Component {
 
         this.pivots.leftArm.position.x = skinmodel.torso.children.leftArm.position[0] + mod;
         this.pivots.rightArm.position.x = skinmodel.torso.children.rightArm.position[0] - mod;
+
+        this.pivots.cape.position.z = skinmodel.torso.children.cape.position[2] - (mod * 5);
     }
 
     resetPose = () => {
@@ -675,6 +726,8 @@ class PaperDoll extends Component {
 
         this.pivots.leftArm.rotation.z = Math.sin(this.idleTime * 0.3) * 0.075 + 0.075;
         this.pivots.rightArm.rotation.z = -this.pivots.leftArm.rotation.z;
+
+        this.pivots.cape.rotation.x = Math.sin(this.idleTime * 0.1) * 0.05 + 0.5 * this.state.animSpeed + 0.1;
     }
 
     findPosableAncestor = part => {

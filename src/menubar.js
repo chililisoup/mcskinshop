@@ -59,21 +59,6 @@ class MenuBar extends Component {
     }
 
     addLayerFromUsername = () => {
-        /* This might be better but CORS makes it annoying
-
-        fetch("https://api.mojang.com/users/profiles/minecraft/" + username)
-        .then(response => response.json())
-        .then(data => fetch("https://sessionserver.mojang.com/session/minecraft/profile/" + data.id))
-        .then(response => response.json())
-        .then(data => {
-            const skin = new ImgMod.Img();
-            this.layers.sublayers.push(skin);
-            skin.render(JSON.parse(atob(data.properties[0].value)).textures.SKIN.url).then(() => {
-                this.updateSkin();
-            });
-        });
-        */
-
         const username = prompt("Enter username:").replace(/[^0-9A-Za-z_]/g, "");
 
         const image = new ImgMod.Img();
