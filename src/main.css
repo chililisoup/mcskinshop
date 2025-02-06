@@ -341,6 +341,7 @@ h3 {
 
 .model-features {
   width: 325px;
+  overflow-y: auto;
 }
 
 .color-picker-parent {

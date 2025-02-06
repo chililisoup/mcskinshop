@@ -17,7 +17,11 @@ class SkinManager extends Component {
             slim: false,
             editHints: ["", ""],
             modelFeatures: {
-                cape: false
+                cape: false,
+                helmet: false,
+                chestplate: false,
+                leggings: false,
+                boots: false,
             },
             layerManager: true,
             paperDoll: true,

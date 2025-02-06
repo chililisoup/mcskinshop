@@ -224,6 +224,10 @@ class PaperDoll extends Component {
         this.modelSetup();
         this.updateSlim();
         this.updateCape();
+        this.updateHelmet();
+        this.updateChestplate();
+        this.updateLeggings();
+        this.updateBoots();
         this.updateExplode();
         this.updateLighting();
         this.propagateShade(this.doll);
@@ -271,6 +275,22 @@ class PaperDoll extends Component {
 
         if (this.props.modelFeatures.cape !== prevProps.modelFeatures.cape) {
             this.updateCape();
+        }
+
+        if (this.props.modelFeatures.helmet !== prevProps.modelFeatures.helmet) {
+            this.updateHelmet();
+        }
+
+        if (this.props.modelFeatures.chestplate !== prevProps.modelFeatures.chestplate) {
+            this.updateChestplate();
+        }
+
+        if (this.props.modelFeatures.leggings !== prevProps.modelFeatures.leggings) {
+            this.updateLeggings();
+        }
+
+        if (this.props.modelFeatures.boots !== prevProps.modelFeatures.boots) {
+            this.updateBoots();
         }
 
         if (this.state.shade !== prevState.shade) {
@@ -469,17 +489,103 @@ class PaperDoll extends Component {
         );
     }
 
+    createCuboidUVQuad = (x, y, w, h, mirrored) => {
+        const mod = (mirrored ? 1 : 0) * w;
+
+        return [
+            [x + mod,     y    ],
+            [x + w - mod, y    ],
+            [x + mod,     y + h],
+            [x + w - mod, y + h]
+        ]
+    }
+
+    // uv: array of [x, y] to offset from top left corner
+    // size: array of [width, height, depth] for cuboid uv size
+    // textureHeight: int for texture vertical resolution
+    createCuboidUVMap = (uv, size, textureHeight, mirrored) => {
+        const [width, height, depth] = size;
+
+        const right = this.createCuboidUVQuad( // RIGHT
+            depth + width,
+            depth,
+            depth,
+            height,
+            mirrored
+        );
+
+        const left = this.createCuboidUVQuad( // LEFT
+            0,
+            depth,
+            depth,
+            height,
+            mirrored
+        );
+
+        const faces = [
+            mirrored ? left : right,
+            mirrored ? right : left,
+            this.createCuboidUVQuad( // TOP
+                depth,
+                0,
+                width,
+                depth,
+                mirrored
+            ),
+            this.createCuboidUVQuad( // BOTTOM
+                depth + width,
+                depth,
+                width,
+                -depth,
+                mirrored
+            ),
+            this.createCuboidUVQuad( // FRONT
+                depth,
+                depth,
+                width,
+                height,
+                mirrored
+            ),
+            this.createCuboidUVQuad( // BACK
+                depth + width + depth,
+                depth,
+                width,
+                height,
+                mirrored
+            ),
+        ]
+
+        const uvMap = [];
+        for (const face of Object.values(faces)) {
+            for (const vert of Object.values(face)) {
+                uvMap.push([
+                    vert[0] + uv[0],
+                    textureHeight - (vert[1] + uv[1])
+                ]);
+            }
+        }
+
+        return uvMap;
+    }
+
     eatChild = (name, child) => {
         let part;
 
         if (child.shape) {
             const geometry = new THREE.BoxGeometry(child.shape[0], child.shape[1], child.shape[2]);
 
-            if (child.uv) {
+            if (child.uv || child.customUV) {
                 const uvAttribute = geometry.getAttribute("uv");
                 const textureSize = child.textureSize || [64, 64];
 
-                child.uv.forEach((v, i) => uvAttribute.setXY(i, v[0] / textureSize[0], v[1] / textureSize[1]));
+                const uv = child.customUV || this.createCuboidUVMap(
+                    child.uv,
+                    child.uvSize || child.shape,
+                    textureSize[1],
+                    child.uvMirrored
+                );
+                
+                uv.forEach((v, i) => uvAttribute.setXY(i, v[0] / textureSize[0], v[1] / textureSize[1]));
             }
 
             let shadedMat, flatMat;
@@ -528,6 +634,12 @@ class PaperDoll extends Component {
 
         if (child.position) part.position.fromArray(child.position);
 
+        if (child.rotation) part.setRotationFromEuler(
+            new THREE.Euler().fromArray(
+                child.rotation.map(degrees => (degrees * Math.PI) / 180)
+            )
+        );
+
         if (child.poseable) {
             part.poseable = true;
             part.defaultPosition = part.position.clone();
@@ -560,31 +672,68 @@ class PaperDoll extends Component {
         this.pivots.leftArm.children[1].visible = this.props.slim;
     };
 
-    updateCape = () => {
-        const cape = this.pivots.cape.children[0];
-        const enabled = !!this.props.modelFeatures.cape;
-        if (enabled) {
-            cape.layers.enable(0);
-        } else {
-            cape.layers.disable(0);
-            if (this.selectedObject === cape.parent)
+    updateFeaturePart = (feature, part, deselect) => {
+        if (!feature) {
+            part.layers.disable(0);
+            if (deselect && this.selectedObject && this.selectedObject === this.findPosableAncestor(part))
                 this.deselect();
             return;
         }
 
-        this.textureLoader.load(this.props.modelFeatures.cape, texture => {
+        this.textureLoader.load(feature, texture => {
             texture.magFilter = THREE.NearestFilter;
 
             const mats = [
-                this.materials["shaded"][cape.materialIndex],
-                this.materials["flat"][cape.materialIndex]
+                this.materials["shaded"][part.materialIndex],
+                this.materials["flat"][part.materialIndex]
             ]
 
             mats.forEach(mat => {
                 mat.map = texture;
                 mat.needsUpdate = true;
             });
+
+            part.layers.enable(0);
         });
+    }
+
+    updateFeature = (name, parts, deselect) => {
+        const feature = this.props.modelFeatures[name];
+
+        for (const part of Object.values(parts)) {
+            this.updateFeaturePart(feature, part, deselect);
+        }
+    }
+
+    updateCape = () => {
+        this.updateFeature("cape", [this.pivots.cape.children[0]], true);
+    }
+
+    updateHelmet = () => {
+        this.updateFeature("helmet", [this.pivots.head.children[2]]);
+    }
+
+    updateChestplate = () => {
+        this.updateFeature("chestplate", [
+            this.pivots.torso.children[2],
+            this.pivots.rightArm.children[2],
+            this.pivots.leftArm.children[2]
+        ]);
+    }
+
+    updateLeggings = () => {
+        this.updateFeature("leggings", [
+            this.pivots.torso.children[3],
+            this.pivots.rightLeg.children[2],
+            this.pivots.leftLeg.children[2]
+        ]);
+    }
+
+    updateBoots = () => {
+        this.updateFeature("boots", [
+            this.pivots.rightLeg.children[3],
+            this.pivots.leftLeg.children[3]
+        ]);
     }
 
     updateExplode = () => {
@@ -727,7 +876,7 @@ class PaperDoll extends Component {
         this.pivots.leftArm.rotation.z = Math.sin(this.idleTime * 0.3) * 0.075 + 0.075;
         this.pivots.rightArm.rotation.z = -this.pivots.leftArm.rotation.z;
 
-        this.pivots.cape.rotation.x = Math.sin(this.idleTime * 0.1) * 0.05 + 0.5 * this.state.animSpeed + 0.1;
+        this.pivots.cape.rotation.x = Math.sin(this.idleTime * 0.1) * 0.05 + 0.75 * this.state.animSpeed + 0.1;
     }
 
     findPosableAncestor = part => {

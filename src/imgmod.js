@@ -21,6 +21,7 @@ export class Img {
         this.active = true;
         this.src = emptyImageSource;
         this.rawSrc = emptyImageSource;
+        this.size = [64, 64];
     }
 
     render = url => new Promise((resolve, reject) => {
@@ -34,19 +35,19 @@ export class Img {
         image.onload = () => {
             createImageBitmap(image).then(result => {
                 const canvas = document.createElement("canvas");
-                canvas.width = 64;
-                canvas.height = 64;
+                canvas.width = this.size[0];
+                canvas.height = this.size[1];
                 const ctx = canvas.getContext("2d");
 
                 const copyCanvas = document.createElement("canvas");
-                copyCanvas.width = 64;
-                copyCanvas.height = 64;
+                copyCanvas.width = this.size[0];
+                copyCanvas.height = this.size[1];
                 const copyCtx = copyCanvas.getContext("2d");
                 copyCtx.filter = this.filter;
 
                 ctx.drawImage(result, 0, 0);
 
-                if (image.height === 32) {
+                if (image.height === 32 && this.size[1] === 64) {
                     ctx.setTransform(-1, 0, 0, 1, 64, 0); // Mirror, move into frame
 
                     ctx.drawImage(result, 44, 16, 4,  4,  24, 48, 4,  4 ); // Arm top
@@ -104,14 +105,14 @@ export class Img {
         }
 
         const canvas = document.createElement("canvas");
-        canvas.width = 64;
-        canvas.height = 64;
+        canvas.width = this.size[0];
+        canvas.height = this.size[1];
         const ctx = canvas.getContext("2d");
 
         ctx.drawImage(this.image, 0, 0);
         ctx.globalCompositeOperation = "source-in";
         ctx.fillStyle = color;
-        ctx.fillRect(0, 0, 64, 64);
+        ctx.fillRect(0, 0, this.size[0], this.size[1]);
 
         createImageBitmap(canvas).then(result => {
             this.src = canvas.toDataURL();
@@ -124,12 +125,12 @@ export class Img {
         if (!this.image) return;
 
         const canvas = document.createElement("canvas");
-        canvas.width = 64;
-        canvas.height = 64;
+        canvas.width = this.size[0];
+        canvas.height = this.size[1];
         const ctx = canvas.getContext("2d");
 
         ctx.drawImage(this.image, 0, 0);
-        return(ctx.getImageData(0, 0, 64, 64));
+        return(ctx.getImageData(0, 0, this.size[0], this.size[1]));
     }
 
     propagateBlendMode = blend => this.blend = blend || this.blend || "source-over";
@@ -139,8 +140,8 @@ export class Img {
         if (!this.image) return;
 
         const canvas = document.createElement("canvas");
-        canvas.width = 64;
-        canvas.height = 64;
+        canvas.width = this.size[0];
+        canvas.height = this.size[1];
         const ctx = canvas.getContext("2d");
 
         ctx.drawImage(this.image, 0, 0);
@@ -149,8 +150,8 @@ export class Img {
 
     flattenWithRespect = ctx => {
         const canvas = document.createElement("canvas");
-        canvas.width = 64;
-        canvas.height = 64;
+        canvas.width = this.size[0];
+        canvas.height = this.size[1];
         const context = canvas.getContext("2d");
 
         context.drawImage(ctx.canvas, 0, 0);
