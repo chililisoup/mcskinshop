@@ -1,6 +1,6 @@
-import React, { Component } from 'react';
-import * as ImgMod from './imgmod';
-import DraggableWindow from './draggablewindow';
+import React, { Component } from "react";
+import * as ImgMod from "../../tools/imgmod";
+import DraggableWindow from "../basic/draggablewindow";
 
 class Preview extends Component {
     constructor(props) {

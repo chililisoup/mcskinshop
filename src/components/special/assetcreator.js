@@ -1,6 +1,6 @@
-import React, { Component } from 'react';
-import * as ImgMod from './imgmod';
-import ColorPicker from './colorpicker';
+import React, { Component } from "react";
+import * as ImgMod from "../../tools/imgmod";
+import ColorPicker from "../basic/colorpicker";
 
 class AssetLayer extends Component {
     constructor(props) {

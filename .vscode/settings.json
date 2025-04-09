@@ -1,0 +1,9 @@
+{
+    "eslint.workingDirectories": [
+        {
+            "mode": "auto"
+        }
+    ],
+    "eslint.useFlatConfig": true,
+    "editor.tabSize": 2
+}

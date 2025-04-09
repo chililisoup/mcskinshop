@@ -1,19 +1,20 @@
 import React, { Component } from "react";
-import * as THREE from 'three';
-import * as ImgMod from './imgmod';
+import * as THREE from "three";
+import * as ImgMod from "../../tools/imgmod";
+import * as Util from "../../tools/util";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { SMAAPass } from "three/addons/postprocessing/SMAAPass";
-import steve from "./assets/steve.png";
-import alex from "./assets/alex.png";
-import matcap from "./assets/matcap.png";
-import skinmodel from "./skinmodel.json";
-import explode from "./assets/explode.png";
-import reset_camera from "./assets/reset_camera.png";
-import save_render from "./assets/save_render.png";
+import steve from "../../assets/steve.png";
+import alex from "../../assets/alex.png";
+import matcap from "../../assets/matcap.png";
+import skinmodel from "../../skinmodel.json";
+import explode from "../../assets/explode.png";
+import reset_camera from "../../assets/reset_camera.png";
+import save_render from "../../assets/save_render.png";
 
 /*
 
@@ -44,6 +45,8 @@ class PaperDollSettings extends React.Component {
             usePerspectiveCam: props.settings.usePerspectiveCam == null ? true : props.settings.usePerspectiveCam,
             selectedPose: this.props.savedPoses[0]
         }
+        
+        this.uploadRef = React.createRef();
     }
 
     componentDidUpdate = prevProps => {
@@ -132,6 +135,16 @@ class PaperDollSettings extends React.Component {
         this.props.updateSetting("poseSettings", poseSettings);
     }
 
+    uploadPose = e => {
+        const name = e.target.files[0].name.replace(/\.[^/.]+$/, "");
+        const reader = new FileReader();
+        reader.onload = () => {
+            this.props.uploadPose(name, reader.result);
+            e.target.value = "";
+        }
+        reader.readAsText(e.target.files[0]);
+    }
+
     render() {
         return (
             <span className="paperdoll-settings">
@@ -180,6 +193,9 @@ class PaperDollSettings extends React.Component {
                         <button onClick={() => this.props.loadPose(this.state.selectedPose)}>Load Pose</button>
                         <button onClick={() => this.props.deletePose(this.state.selectedPose)}>Delete Pose</button>
                         <button onClick={this.props.savePose}>Save New Pose</button>
+                        <button onClick={() => this.props.downloadPose(this.state.selectedPose)}>Download Pose</button>
+                        <button onClick={() => this.uploadRef.current.click()}>Upload Pose</button>
+                        <input className="hidden" ref={this.uploadRef} type="file" accept="application/json" onChange={this.uploadPose} />
                     </div>
                 </span>
                 <div className="bottom left">
@@ -789,11 +805,10 @@ class PaperDoll extends Component {
 
         const savedPoses = JSON.parse(localStorage.getItem("poses")) || [];
 
-        for (const savedPoseName of savedPoses) {
-            if (savedPoseName === poseName) {
-                window.alert("Unable to save! Name already used");
-                return;
-            }
+        let overwrite = false;
+        if (savedPoses.includes(poseName)) {
+            overwrite = window.confirm(`Overwrite existing pose '${poseName}'?`);
+            if (!overwrite) return;
         }
 
         const poseJson = {};
@@ -812,17 +827,20 @@ class PaperDoll extends Component {
             window.alert("Unable to save! Empty pose");
             return;
         }
-
-        savedPoses.push(poseName);
-        localStorage.setItem("poses", JSON.stringify(savedPoses));
+        
         localStorage.setItem("pose-" + poseName, JSON.stringify(poseJson));
-        this.setState({savedPoses: savedPoses});
+
+        if (!overwrite) {
+            savedPoses.push(poseName);
+            localStorage.setItem("poses", JSON.stringify(savedPoses));
+            this.setState({savedPoses: savedPoses});
+        }
     }
 
     loadPoseJson = poseName => {
         const poseJson = JSON.parse(localStorage.getItem("pose-" + poseName));
         if (!poseJson) {
-            window.alert("Unable to load! Pose '" + poseName + "' not found");
+            window.alert(`Unable to load! Pose '${poseName}' not found`);
             return;
         }
 
@@ -855,6 +873,29 @@ class PaperDoll extends Component {
 
         savedPoses.splice(index, 1);
         localStorage.setItem("poses", JSON.stringify(savedPoses));
+        this.setState({savedPoses: savedPoses});
+    }
+
+    downloadPoseJson = poseName => {
+        Util.download(
+            poseName + ".json",
+            "data:text/plain;charset=utf-8," + encodeURIComponent(localStorage.getItem("pose-" + poseName))
+        );
+    }
+
+    uploadPoseJson = (poseName, poseJsonString) => {
+        const savedPoses = JSON.parse(localStorage.getItem("poses")) || [];
+
+        let usedName = poseName;
+        if (savedPoses.includes(poseName)) {
+            let i = 1;
+            do usedName = `${poseName}(${i++})`;
+            while (savedPoses.includes(usedName));
+        }
+
+        savedPoses.push(usedName);
+        localStorage.setItem("poses", JSON.stringify(savedPoses));
+        localStorage.setItem("pose-" + usedName, poseJsonString);
         this.setState({savedPoses: savedPoses});
     }
 
@@ -1356,6 +1397,8 @@ class PaperDoll extends Component {
                     savePose={this.savePoseJson}
                     loadPose={this.loadPoseJson}
                     deletePose={this.deletePoseJson}
+                    downloadPose={this.downloadPoseJson}
+                    uploadPose={this.uploadPoseJson}
                 />
                 <div className="paperdoll-canvas-container">
                     <canvas className="paperdoll-canvas" ref={this.canvasRef} />

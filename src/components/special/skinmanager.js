@@ -1,12 +1,13 @@
-import React, { Component } from 'react';
-import * as ImgMod from './imgmod';
-import PaperDoll from './paperdoll'
-import LayerManager from './layermanager';
-import LayerAdder from './layeradder';
-import AssetCreator from './assetcreator';
-import MenuBar from './menubar';
-import Preview from './preview';
-import ModelFeatures from './modelfeatures';
+import React, { Component } from "react";
+import * as ImgMod from "../../tools/imgmod";
+import * as Util from "../../tools/util";
+import PaperDoll from "./paperdoll"
+import LayerManager from "./layermanager";
+import LayerAdder from "./layeradder";
+import AssetCreator from "./assetcreator";
+import MenuBar from "./menubar";
+import Preview from "./preview";
+import ModelFeatures from "./modelfeatures";
 
 class SkinManager extends Component {
     constructor(props) {
@@ -115,12 +116,7 @@ class SkinManager extends Component {
     }
 
     downloadSkin = () => {
-        const link = document.createElement("a");
-        link.href = this.state.skin;
-        const name = window.prompt("Download as...", "My Skin");
-        if (name === null) return;
-        link.download = name + ".png";
-        link.click();
+        Util.download("My Skin.png", this.state.skin);
     }
 
     updateState = (setting, value) => {

@@ -15,7 +15,7 @@ body {
   background-repeat: no-repeat;
   background-attachment: fixed;
   margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   color: white;
 }
 
@@ -26,7 +26,7 @@ button, input, select, label:has(> img) {
   color: white;
   border-radius: 0;
   margin: 3px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 input {

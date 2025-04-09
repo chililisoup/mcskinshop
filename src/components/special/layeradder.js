@@ -1,6 +1,6 @@
-import React, { Component } from 'react';
-import * as ImgMod from './imgmod';
-import fakedatabase from './fakedatabase.json';
+import React, { Component } from "react";
+import * as ImgMod from "../../tools/imgmod";
+import fakedatabase from "../../fakedatabase.json";
 
 class LayerAdder extends Component {
     constructor(props) {

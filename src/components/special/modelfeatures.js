@@ -1,8 +1,8 @@
-import React, { Component } from 'react';
-import * as ImgMod from './imgmod';
-import asset_map from './asset_map.json';
-import Dropdown from './dropdown';
-import GridSelect from './gridselect';
+import React, { Component } from "react";
+import * as ImgMod from "../../tools/imgmod";
+import asset_map from "../../asset_map.json";
+import Dropdown from "../basic/dropdown";
+import GridSelect from "../basic/gridselect";
 
 class FeatureEntry extends Component {
     render() {

@@ -1,8 +1,8 @@
-import React, { Component } from 'react';
-import ColorPicker from './colorpicker';
-import checkerboard from "./assets/checkerboard.png";
-import fullref from "./assets/fullref.png";
-import slimref from "./assets/slimref.png";
+import React, { Component } from "react";
+import ColorPicker from "../basic/colorpicker";
+import checkerboard from "../../assets/checkerboard.png";
+import fullref from "../../assets/fullref.png";
+import slimref from "../../assets/slimref.png";
 
 class LayerEditor extends Component {
     constructor(props) {

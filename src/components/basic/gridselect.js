@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import no from "./assets/no.png";
+import no from "../../assets/no.png";
 
 class GridSelect extends Component {
     constructor(props) {

@@ -1,8 +1,8 @@
-import React, { Component } from 'react';
-import * as ImgMod from './imgmod';
-import LayerEditor from './layereditor';
-import ColorPicker from './colorpicker';
-import DraggableWindow from './draggablewindow';
+import React, { Component } from "react";
+import * as ImgMod from "../../tools/imgmod";
+import LayerEditor from "./layereditor";
+import ColorPicker from "../basic/colorpicker";
+import DraggableWindow from "../basic/draggablewindow";
 
 class LayerPreview extends Component {
     constructor(props) {
@@ -251,7 +251,7 @@ class LayerManager extends Component {
             layers: props.layers,
             selectedLayer: null
         };
-        // Should be receiving the sublayers of the layers, it doesn't need the actual full layers object
+        // Should be receiving the sublayers of the layers, it doesn"t need the actual full layers object
         // Also why tf is layers a state and also not a state make it just a state bitch
         this.layers = props.layers;
     }
