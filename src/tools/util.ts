@@ -1,6 +1,6 @@
 export const fileSystemAccess = 'showOpenFilePicker' in window && 'FileSystemObserver' in window;
 
-export const getBlob = async (content: string) => await fetch(content).then((r) => r.blob());
+export const getBlob = async (content: string) => await fetch(content).then(r => r.blob());
 
 export const download = async (filename: string, content: string) => {
   if (content === null) return;

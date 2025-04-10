@@ -14,19 +14,25 @@ const hatFlattenerOffsets = [
 export const emptyImageSource =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIW2NgAAIAAAUAAR4f7BQAAAAASUVORK5CYII=';
 
-abstract class AbstractLayer {
-  blend: string;
+export type LayerType = 'normal' | 'erase' | 'flatten' | 'null';
+
+export abstract class AbstractLayer {
+  blend: GlobalCompositeOperation;
   filter: string;
   active = true;
   src = emptyImageSource;
   image?: ImageBitmap;
+  name?: string;
+  id?: string;
 
-  constructor(blend?: string, filter?: string) {
+  constructor(blend?: GlobalCompositeOperation, filter?: string) {
     this.blend = blend ?? 'source-over';
     this.filter = filter ?? '';
   }
 
-  abstract propagateBlendMode: (blend?: string) => string;
+  abstract render: () => Promise<void> | undefined;
+
+  abstract propagateBlendMode: (blend?: GlobalCompositeOperation) => string;
 
   abstract propagateFilter: (filter?: string) => string;
 
@@ -44,74 +50,67 @@ export class Img extends AbstractLayer {
   observer?: FileSystemObserver;
   internalUpdateCallback?: () => void;
 
-  constructor(type?: string, blend?: string, filter?: string) {
+  constructor(type?: LayerType, blend?: GlobalCompositeOperation, filter?: string) {
     super(blend, filter);
 
     this.type = type ?? 'normal';
   }
 
-  render = (url: string) =>
-    new Promise<void>((resolve, reject) => {
-      if (!url) url = this.rawSrc;
-      if (!url) resolve();
-      if (typeof url !== 'string') reject(new Error('Nothing to render'));
+  loadImage = async (image: HTMLImageElement) => {
+    const result = await createImageBitmap(image);
 
+    const canvas = document.createElement('canvas');
+    canvas.width = this.size[0];
+    canvas.height = this.size[1];
+    const ctx = canvas.getContext('2d')!;
+
+    const copyCanvas = document.createElement('canvas');
+    copyCanvas.width = this.size[0];
+    copyCanvas.height = this.size[1];
+    const copyCtx = copyCanvas.getContext('2d')!;
+    copyCtx.filter = this.filter;
+
+    ctx.drawImage(result, 0, 0);
+
+    if (image.height === 32 && this.size[1] === 64) {
+      ctx.setTransform(-1, 0, 0, 1, 64, 0); // Mirror, move into frame
+
+      ctx.drawImage(result, 44, 16, 4, 4, 24, 48, 4, 4); // Arm top
+      ctx.drawImage(result, 48, 16, 4, 4, 20, 48, 4, 4); // Arm bottom
+      ctx.drawImage(result, 40, 20, 12, 12, 20, 52, 12, 12); // Arm front/sides
+      ctx.drawImage(result, 52, 20, 4, 12, 16, 52, 4, 12); // Arm back
+
+      ctx.drawImage(result, 4, 16, 4, 4, 40, 48, 4, 4); // Leg top
+      ctx.drawImage(result, 8, 16, 4, 4, 36, 48, 4, 4); // Leg bottom
+      ctx.drawImage(result, 0, 20, 12, 12, 36, 52, 12, 12); // Leg front/sides
+      ctx.drawImage(result, 12, 20, 4, 12, 32, 52, 4, 12); // Leg back
+
+      this.rawSrc = canvas.toDataURL();
+
+      const imageResult = await createImageBitmap(canvas);
+      this.image = imageResult;
+    } else this.image = result;
+
+    this.rawSrc = canvas.toDataURL();
+    copyCtx.drawImage(canvas, 0, 0);
+    this.src = copyCanvas.toDataURL();
+  };
+
+  render = (url?: string) => {
+    url ??= this.rawSrc;
+    if (!url) return;
+    if (typeof url !== 'string') return Promise.reject(new Error('Nothing to render'));
+
+    return new Promise<void>((resolve, reject) => {
       const image = new Image();
 
       image.onerror = reject;
-      image.onload = () => {
-        createImageBitmap(image).then((result) => {
-          const canvas = document.createElement('canvas');
-          canvas.width = this.size[0];
-          canvas.height = this.size[1];
-          const ctx = canvas.getContext('2d')!;
-
-          const copyCanvas = document.createElement('canvas');
-          copyCanvas.width = this.size[0];
-          copyCanvas.height = this.size[1];
-          const copyCtx = copyCanvas.getContext('2d')!;
-          copyCtx.filter = this.filter;
-
-          ctx.drawImage(result, 0, 0);
-
-          if (image.height === 32 && this.size[1] === 64) {
-            ctx.setTransform(-1, 0, 0, 1, 64, 0); // Mirror, move into frame
-
-            ctx.drawImage(result, 44, 16, 4, 4, 24, 48, 4, 4); // Arm top
-            ctx.drawImage(result, 48, 16, 4, 4, 20, 48, 4, 4); // Arm bottom
-            ctx.drawImage(result, 40, 20, 12, 12, 20, 52, 12, 12); // Arm front/sides
-            ctx.drawImage(result, 52, 20, 4, 12, 16, 52, 4, 12); // Arm back
-
-            ctx.drawImage(result, 4, 16, 4, 4, 40, 48, 4, 4); // Leg top
-            ctx.drawImage(result, 8, 16, 4, 4, 36, 48, 4, 4); // Leg bottom
-            ctx.drawImage(result, 0, 20, 12, 12, 36, 52, 12, 12); // Leg front/sides
-            ctx.drawImage(result, 12, 20, 4, 12, 32, 52, 4, 12); // Leg back
-
-            this.rawSrc = canvas.toDataURL();
-
-            createImageBitmap(canvas).then((imageResult) => {
-              this.image = imageResult;
-
-              copyCtx.drawImage(canvas, 0, 0);
-              this.src = copyCanvas.toDataURL();
-
-              resolve();
-            });
-          } else {
-            this.rawSrc = canvas.toDataURL();
-            this.image = result;
-
-            copyCtx.drawImage(canvas, 0, 0);
-            this.src = copyCanvas.toDataURL();
-
-            resolve();
-          }
-        });
-      };
+      image.onload = () => this.loadImage(image).then(resolve);
 
       image.crossOrigin = 'anonymous';
       image.src = url;
     });
+  };
 
   copy = () => {
     const copy = new Img(this.type, this.blend, this.filter);
@@ -122,31 +121,29 @@ export class Img extends AbstractLayer {
     return copy;
   };
 
-  color = (color: string) =>
-    new Promise<void>((resolve, reject) => {
-      if (!this.image) return reject(new Error('No image to color'));
+  color = async (color: string) => {
+    if (!this.image) return Promise.reject(new Error('No image to color'));
 
-      if (color === 'erase' || color === 'null' || color === 'flatten') {
-        this.type = color;
-        return resolve();
-      }
+    if (color === 'erase' || color === 'null' || color === 'flatten') {
+      this.type = color;
+      return;
+    }
 
-      const canvas = document.createElement('canvas');
-      canvas.width = this.size[0];
-      canvas.height = this.size[1];
-      const ctx = canvas.getContext('2d')!;
+    const canvas = document.createElement('canvas');
+    canvas.width = this.size[0];
+    canvas.height = this.size[1];
+    const ctx = canvas.getContext('2d')!;
 
-      ctx.drawImage(this.image, 0, 0);
-      ctx.globalCompositeOperation = 'source-in';
-      ctx.fillStyle = color;
-      ctx.fillRect(0, 0, this.size[0], this.size[1]);
+    ctx.drawImage(this.image, 0, 0);
+    ctx.globalCompositeOperation = 'source-in';
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, this.size[0], this.size[1]);
 
-      createImageBitmap(canvas).then((result) => {
-        this.src = canvas.toDataURL();
-        this.image = result;
-        resolve();
-      });
+    await createImageBitmap(canvas).then(result => {
+      this.src = canvas.toDataURL();
+      this.image = result;
     });
+  };
 
   getImageData = () => {
     if (!this.image) return;
@@ -160,11 +157,12 @@ export class Img extends AbstractLayer {
     return ctx.getImageData(0, 0, this.size[0], this.size[1]);
   };
 
-  propagateBlendMode = (blend?: string) => (this.blend = blend ?? this.blend ?? 'source-over');
+  propagateBlendMode = (blend?: GlobalCompositeOperation) =>
+    (this.blend = blend ?? this.blend ?? 'source-over');
   propagateFilter = (filter?: string) => (this.filter = filter ?? this.filter ?? '');
 
   detectSlimModel = () => {
-    if (!this.image) return;
+    if (!this.image) return false;
 
     const canvas = document.createElement('canvas');
     canvas.width = this.size[0];
@@ -185,7 +183,7 @@ export class Img extends AbstractLayer {
     context.globalCompositeOperation = 'destination-in';
     if (this.image) context.drawImage(this.image, 0, 0);
 
-    hatFlattenerOffsets.forEach((offset) =>
+    hatFlattenerOffsets.forEach(offset =>
       ctx.drawImage(
         canvas,
         offset.from[0],
@@ -208,10 +206,9 @@ export class Img extends AbstractLayer {
       fileHandle = record.root;
 
       const file = await fileHandle.getFile();
-      this.render(URL.createObjectURL(file)).then(() => {
-        if (this.internalUpdateCallback)
-          this.internalUpdateCallback();
-      });
+
+      await this.render(URL.createObjectURL(file));
+      if (this.internalUpdateCallback) this.internalUpdateCallback();
 
       return;
     }
@@ -221,7 +218,7 @@ export class Img extends AbstractLayer {
     observer.disconnect();
   };
 
-  observeDynamic = async (fileHandle: FileSystemFileHandle) => {
+  observeDynamic: (fileHandle: FileSystemFileHandle) => void = async fileHandle => {
     this.dynamic = true;
     this.observer = new window.FileSystemObserver(() => this.onDynamicChange);
     await this.observer.observe(fileHandle);
@@ -238,13 +235,12 @@ export class Img extends AbstractLayer {
 export class Layer extends AbstractLayer {
   sublayers;
   colors;
-  advanced?: boolean;
-  name?: string;
+  advanced?: boolean[];
 
   constructor(
     sublayers?: AbstractLayer[],
     colors?: string | string[],
-    blend?: string,
+    blend?: GlobalCompositeOperation,
     filter?: string
   ) {
     super(blend, filter);
@@ -253,27 +249,25 @@ export class Layer extends AbstractLayer {
     this.colors = colors ?? '#FFFFFF';
   }
 
-  color = (colors: string | string[]) =>
-    new Promise((resolve, reject) => {
-      this.colors = colors ?? this.colors;
-      if (this.colors instanceof String)
-        this.colors = new Array(this.sublayers.length).fill(this.colors);
-      if (this.colors.length !== this.sublayers.length) reject(new Error('Color count does not match sublayer count'));
+  color: (colors?: string | string[]) => Promise<unknown> = colors => {
+    this.colors = colors ?? this.colors;
+    if (this.colors instanceof String)
+      this.colors = new Array(this.sublayers.length).fill(this.colors);
+    if (this.colors.length !== this.sublayers.length)
+      return Promise.reject(new Error('Color count does not match sublayer count'));
 
-      Promise.all(
-        this.sublayers.map(
-          (layer, i) =>
-            new Promise((resolve, reject) => {
-              if (!(layer instanceof Img) && !(layer instanceof Layer)) return reject(new Error('Incompatible layer type'));
-              layer.color(this.colors[i]).then(resolve);
-            })
-        )
-      ).then(resolve);
-    });
+    return Promise.all(
+      this.sublayers.map((layer, i) => {
+        return layer instanceof Img || layer instanceof Layer
+          ? layer.color(this.colors[i])
+          : Promise.reject(new Error('Incompatible layer type'));
+      })
+    );
+  };
 
-  propagateBlendMode = (blend?: string) => {
+  propagateBlendMode = (blend?: GlobalCompositeOperation) => {
     this.blend = blend ?? this.blend ?? 'source-over';
-    this.sublayers.forEach((sublayer) => {
+    this.sublayers.forEach(sublayer => {
       sublayer.propagateBlendMode(this.blend);
     });
     return this.blend;
@@ -281,30 +275,30 @@ export class Layer extends AbstractLayer {
 
   propagateFilter = (filter?: string) => {
     this.filter = filter ?? this.filter ?? '';
-    this.sublayers.forEach((sublayer) => {
+    this.sublayers.forEach(sublayer => {
       sublayer.propagateFilter(this.filter);
     });
     return this.filter;
   };
 
-  render = (ctx: CanvasRenderingContext2D) => {
+  render = (ctx?: CanvasRenderingContext2D) => {
     const dom = !ctx;
 
-    if (dom) {
+    if (!ctx) {
       const canvas = document.createElement('canvas');
       canvas.width = 64;
       canvas.height = 64;
       ctx = canvas.getContext('2d')!;
     }
 
-    this.sublayers.forEach((sublayer) => {
+    this.sublayers.forEach(sublayer => {
       if (!sublayer) return;
       if (!sublayer.active) return;
 
       ctx.filter =
         'opacity(100%) hue-rotate(0) saturate(100%) brightness(100%) contrast(100%) invert(0) sepia(0)';
       if (sublayer instanceof Layer) {
-        sublayer.render(ctx);
+        void sublayer.render(ctx);
         return;
       }
       if (!(sublayer instanceof Img)) return;
@@ -317,14 +311,14 @@ export class Layer extends AbstractLayer {
         return;
       }
 
-      ctx.globalCompositeOperation = sublayer.blend as GlobalCompositeOperation;
+      ctx.globalCompositeOperation = sublayer.blend;
       ctx.filter = sublayer.filter;
       if (sublayer.type === 'erase') ctx.globalCompositeOperation = 'destination-out';
       ctx.drawImage(sublayer.image, 0, 0);
     });
 
     if (dom)
-      return createImageBitmap(ctx.canvas).then((result) => {
+      return createImageBitmap(ctx.canvas).then(result => {
         this.src = ctx.canvas.toDataURL();
         this.image = result;
       });
@@ -335,13 +329,13 @@ export class Layer extends AbstractLayer {
     if (this.advanced) copy.advanced = this.advanced;
     if (this.name) copy.name = this.name;
 
-    this.sublayers.forEach((layer) => copy.sublayers.push(layer.copy()));
+    this.sublayers.forEach(layer => copy.sublayers.push(layer.copy()));
 
     return copy;
   };
 
   cleanup = () => {
-    this.sublayers.forEach((sublayer) => {
+    this.sublayers.forEach(sublayer => {
       if (!sublayer) return;
       sublayer.cleanup();
     });

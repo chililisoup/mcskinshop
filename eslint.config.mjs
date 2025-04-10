@@ -22,9 +22,11 @@ export default tseslint.config(
     rules: {
       semi: ['error', 'always'],
       quotes: ['error', 'single'],
+      eqeqeq: 'error',
+      '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
       '@typescript-eslint/no-floating-promises': 'warn'
     },
-    files: ['src/**/*.ts']
+    files: ['src/**/*.ts', 'src/**/*.tsx']
   }
 );
 
