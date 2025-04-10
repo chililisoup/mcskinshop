@@ -316,7 +316,7 @@ hr {
 .layer-manager {
   flex: 1;
   flex-direction: column-reverse;
-  min-width: 325px;
+  width: 325px;
   overflow-y: auto;
   background: rgba(0, 0, 0, 0.3);
   padding: 0;
@@ -357,6 +357,12 @@ hr {
 
 span.layerTitle {
   height: auto;
+  flex-wrap: nowrap;
+}
+
+span.layerTitle p {
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 span.layerTitle input {
