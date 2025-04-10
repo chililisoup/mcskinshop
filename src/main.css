@@ -221,7 +221,6 @@ hr {
 .paperdoll-settings button > img, .paperdoll-settings label > img {
   width: 32px;
   height: 32px;
-
 }
 
 .paperdoll-settings button:has(> img), .paperdoll-settings label:has(> img) {
@@ -229,8 +228,63 @@ hr {
   padding: 4px;
 }
 
-.paperdoll-settings span {
-  width: fit-content;
+.paperdoll-settings > span {
+  flex-wrap: nowrap;
+  pointer-events: all;
+  overflow-x: scroll;
+  height: 34px;
+}
+
+.paperdoll-settings > span > div:first-child {
+  background-color: rgb(67, 70, 100);
+  padding: 4px 8px;
+  margin-right: 8px;
+}
+
+.paperdoll-settings > span > span {
+  gap: 12px;
+}
+
+.paperdoll-settings > span > span > span {
+  width: min-content;
+}
+
+.paperdoll-settings > span > * {
+  padding: 4px 0;
+}
+
+.paperdoll-settings > span * {
+  white-space: nowrap;
+  min-width: max-content;
+}
+
+.panel {
+  margin: 36px 0 0;
+}
+
+.panel > button {
+  position: absolute;
+  left: -24px;
+  height: 24px;
+  width: min-content;
+  aspect-ratio: 1/1;
+  float: right;
+  margin: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.panel-content {
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.4);
+  min-width: 256px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.n-panel > span {
+  display: inline;
+  margin: 0;
 }
 
 .paperdoll-canvas-container {
@@ -457,6 +511,7 @@ h3 {
 
 .dropdown-bar > * {
   flex-grow: 1;
+  pointer-events: all;
 }
 
 .dropdown-bar > span {

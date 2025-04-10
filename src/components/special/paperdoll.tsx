@@ -11,11 +11,10 @@ import steve from '@assets/steve.png';
 import alex from '@assets/alex.png';
 import matcap from '@assets/matcap.png';
 import skinmodel from '../../skinmodel.json';
-import explode from '@assets/explode.png';
-import reset_camera from '@assets/reset_camera.png';
 import save_render from '@assets/save_render.png';
 import { Features } from './modelfeatures';
 import { UndoCallback } from './skinmanager';
+import Dropdown from '../basic/dropdown';
 
 type ModelPart = {
   poseable?: boolean;
@@ -65,6 +64,11 @@ type AState = {
 // This whole shared settings thing is cursed, wack, and most definitely wildly incorrect
 type SharedSettings = AState & {
   slim: boolean;
+};
+
+const defaultLighting = {
+  lightAngle: Math.PI / 4,
+  lightFocus: Math.SQRT2
 };
 
 class PaperDoll extends Component<AProps, AState> {
@@ -121,8 +125,8 @@ class PaperDoll extends Component<AProps, AState> {
       animSpeed: 0.5,
       explode: false,
       shade: true,
-      lightAngle: Math.PI / 4,
-      lightFocus: Math.SQRT2,
+      lightAngle: defaultLighting.lightAngle,
+      lightFocus: defaultLighting.lightFocus,
       pose: false,
       poseSettings: {
         mode: 'Simple',
@@ -348,6 +352,16 @@ class PaperDoll extends Component<AProps, AState> {
       if ('renderCamera' in pass) pass.renderCamera = camera;
       if ('camera' in pass) pass.camera = camera;
     });
+  };
+
+  resetCamera = () => {
+    if (!this.controls || !this.perspCam || !this.orthoCam) return;
+
+    if (this.activeCam === this.orthoCam) {
+      this.changeCamera(this.perspCam);
+      this.controls.reset();
+      this.changeCamera(this.orthoCam);
+    } else this.controls.reset();
   };
 
   createRotationHandle = (
@@ -1326,8 +1340,7 @@ class PaperDoll extends Component<AProps, AState> {
         break;
       case 'anim':
         this.setState({
-          anim: !!value,
-          pose: false
+          anim: !!value
         });
         if (this.hoveredOutlinePass) this.hoveredOutlinePass.selectedObjects = [];
         if (this.selectedOutlinePass) this.selectedOutlinePass.selectedObjects = [];
@@ -1338,7 +1351,6 @@ class PaperDoll extends Component<AProps, AState> {
       case 'pose':
         this.setState({
           pose: !!value,
-          anim: false,
           explode: false
         });
         if (this.hoveredOutlinePass) this.hoveredOutlinePass.selectedObjects = [];
@@ -1389,7 +1401,8 @@ class PaperDoll extends Component<AProps, AState> {
           }}
           updateSetting={this.updateSetting}
           saveRender={this.saveRender}
-          resetCamera={() => this.controls?.reset()}
+          resetCamera={this.resetCamera}
+          resetLighting={() => this.setState(defaultLighting)}
           addEdit={this.props.addEdit}
           deselect={this.deselect}
           resetPose={() => {
@@ -1432,6 +1445,7 @@ type BProps = {
   ) => void;
   saveRender: () => void;
   resetCamera: () => void;
+  resetLighting: () => void;
   addEdit: (name: string, undoCallback: UndoCallback) => void;
   deselect: () => void;
   resetPose: () => void;
@@ -1445,6 +1459,7 @@ type BProps = {
 
 type BState = BProps['settings'] & {
   selectedPose?: string;
+  panel: boolean;
 };
 
 class PaperDollSettings extends Component<BProps, BState> {
@@ -1465,7 +1480,8 @@ class PaperDollSettings extends Component<BProps, BState> {
       poseSettings: props.settings.poseSettings,
       fov: props.settings.fov,
       usePerspectiveCam: props.settings.usePerspectiveCam,
-      selectedPose: this.props.savedPoses[0]
+      selectedPose: this.props.savedPoses[0],
+      panel: true
     };
   }
 
@@ -1512,10 +1528,14 @@ class PaperDollSettings extends Component<BProps, BState> {
     this.props.addEdit('change ' + setting, () => this.settingEdit(setting, from, value));
   };
 
+  resetLighting = () => {
+    this.setState(defaultLighting);
+    this.props.resetLighting();
+  };
+
   toggleAnim = (anim: boolean) => {
     this.setState({
-      anim: anim,
-      pose: false
+      anim: anim
     });
     this.props.updateSetting('anim', anim);
   };
@@ -1523,7 +1543,6 @@ class PaperDollSettings extends Component<BProps, BState> {
   togglePose = (pose: boolean) => {
     this.setState({
       pose: pose,
-      anim: false,
       explode: false
     });
     this.props.updateSetting('pose', pose);
@@ -1575,164 +1594,210 @@ class PaperDollSettings extends Component<BProps, BState> {
   render() {
     return (
       <span className="paperdoll-settings">
-        <span className="top vertical">
+        <div className="top right panel">
+          <button onClick={() => this.setState({ panel: !this.state.panel })}>
+            {this.state.panel ? '>' : '<'}
+          </button>
+          {this.state.panel && (
+            <div className="panel-content">
+              <span>
+                <label htmlFor="slimToggle">Slim</label>
+                <input
+                  type="checkbox"
+                  id="slimToggle"
+                  checked={this.state.slim}
+                  onChange={e => this.updateSettingFinish('slim', e.target.checked)}
+                />
+              </span>
+              <Dropdown
+                title="Camera"
+                children={
+                  <div>
+                    <span>
+                      <label htmlFor="cameraType">Camera Type</label>
+                      <button
+                        id="cameraType"
+                        onClick={() =>
+                          this.updateSettingFinish(
+                            'usePerspectiveCam',
+                            !this.state.usePerspectiveCam
+                          )
+                        }
+                      >
+                        {this.state.usePerspectiveCam ? 'Perspective' : 'Orthographic'}
+                      </button>
+                    </span>
+                    <span>
+                      <label htmlFor="fov">FOV ({this.state.fov})</label>
+                      <input
+                        disabled={!this.state.usePerspectiveCam}
+                        type="range"
+                        id="fov"
+                        min={30}
+                        max={120}
+                        step={1}
+                        value={this.state.fov}
+                        onChange={e => this.updateSetting('fov', Number(e.target.value))}
+                      />
+                    </span>
+                    <button onClick={this.props.resetCamera}>Reset Camera</button>
+                  </div>
+                }
+              />
+              <Dropdown
+                title="Lighting"
+                children={
+                  <div>
+                    <span>
+                      <label htmlFor="shadeToggle">Shade</label>
+                      <input
+                        type="checkbox"
+                        id="shadeToggle"
+                        checked={this.state.shade}
+                        onChange={e => this.updateSettingFinish('shade', e.target.checked)}
+                      />
+                    </span>
+                    <span>
+                      <label htmlFor="lightFocus">Light Focus</label>
+                      <input
+                        disabled={!this.state.shade}
+                        type="range"
+                        id="lightFocus"
+                        min={0}
+                        max={10}
+                        step={0.1}
+                        value={Math.sqrt(this.state.lightFocus)}
+                        onChange={e =>
+                          this.updateSetting('lightFocus', Number(e.target.value) ** 2)
+                        }
+                      />
+                    </span>
+                    <span>
+                      <label htmlFor="lightAngle">Light Angle</label>
+                      <input
+                        disabled={!this.state.shade}
+                        type="range"
+                        id="lightAngle"
+                        min={0}
+                        max={2 * Math.PI}
+                        step={0.1}
+                        value={this.state.lightAngle}
+                        onChange={e => this.updateSetting('lightAngle', Number(e.target.value))}
+                      />
+                    </span>
+                    <button disabled={!this.state.shade} onClick={this.resetLighting}>
+                      Reset Lighting
+                    </button>
+                  </div>
+                }
+              />
+            </div>
+          )}
+        </div>
+        <span className="top left">
           <div>
-            <label htmlFor="slimToggle">Slim</label>
-            <input
-              type="checkbox"
-              id="slimToggle"
-              checked={this.state.slim}
-              onChange={e => this.updateSettingFinish('slim', e.target.checked)}
-            />
-            <label htmlFor="animToggle">Animate</label>
-            <input
-              type="checkbox"
-              id="animToggle"
-              checked={this.state.anim}
-              onChange={e => this.toggleAnim(e.target.checked)}
-            />
-            <input
-              disabled={this.state.pose}
-              type="range"
-              min={0}
-              max={2}
-              step={0.01}
-              value={this.state.animSpeed}
-              onChange={e => this.updateSetting('animSpeed', Number(e.target.value))}
-            />
-            <label title="Toggle Explode" htmlFor="explodeToggle">
-              <img alt="Toggle Explode" src={explode} />
-            </label>
-            <input
-              className="hidden"
-              disabled={this.state.pose}
-              type="checkbox"
-              id="explodeToggle"
-              checked={this.state.explode}
-              onChange={e => this.updateSettingFinish('explode', e.target.checked)}
-            />
-          </div>
-          <div>
-            <label htmlFor="shadeToggle">Shade</label>
-            <input
-              type="checkbox"
-              id="shadeToggle"
-              checked={this.state.shade}
-              onChange={e => this.updateSettingFinish('shade', e.target.checked)}
-            />
-            <label htmlFor="lightFocus">Light Focus</label>
-            <input
-              type="range"
-              id="lightFocus"
-              min={0}
-              max={10}
-              step={0.1}
-              value={Math.sqrt(this.state.lightFocus)}
-              onChange={e => this.updateSetting('lightFocus', Number(e.target.value) ** 2)}
-            />
-          </div>
-          <div>
-            <label htmlFor="lightAngle">Light Angle</label>
-            <input
-              type="range"
-              id="lightAngle"
-              min={0}
-              max={2 * Math.PI}
-              step={0.1}
-              value={this.state.lightAngle}
-              onChange={e => this.updateSetting('lightAngle', Number(e.target.value))}
-            />
-            <label htmlFor="fov">FOV ({this.state.fov})</label>
-            <input
-              disabled={!this.state.usePerspectiveCam}
-              type="range"
-              id="fov"
-              min={30}
-              max={120}
-              step={1}
-              value={this.state.fov}
-              onChange={e => this.updateSetting('fov', Number(e.target.value))}
-            />
-            <label htmlFor="cameraType">Camera Type</label>
-            <button
-              id="cameraType"
-              onClick={() =>
-                this.updateSettingFinish('usePerspectiveCam', !this.state.usePerspectiveCam)
-              }
-            >
-              {this.state.usePerspectiveCam ? 'Perspective' : 'Orthographic'}
+            <label htmlFor="editorMode">Editor Mode</label>
+            <button id="editorMode" onClick={() => this.togglePose(!this.state.pose)}>
+              {this.state.pose ? 'Pose' : 'Animate'}
             </button>
           </div>
-        </span>
-        <span className="bottom right">
-          <div>
-            <label htmlFor="poseToggle">Pose</label>
-            <input
-              type="checkbox"
-              id="poseToggle"
-              checked={this.state.pose}
-              onChange={e => this.togglePose(e.target.checked)}
-            />
-            <label htmlFor="poseMode">Pose Mode</label>
-            <button id="poseMode" onClick={() => this.changePoseSetting('mode')}>
-              {this.state.poseSettings.mode}
-            </button>
-            <label htmlFor="poseType">Pose Type</label>
-            <button id="poseType" onClick={() => this.changePoseSetting('type')}>
-              {this.state.poseSettings.type}
-            </button>
-            <label htmlFor="poseSpace">Pose Space</label>
-            <button id="poseSpace" onClick={() => this.changePoseSetting('space')}>
-              {this.state.poseSettings.space}
-            </button>
-            <button onClick={this.props.deselect}>Deselect</button>
-            <button onClick={this.props.resetPose}>Reset Pose</button>
-            <select
-              value={this.state.selectedPose}
-              onChange={e => this.setState({ selectedPose: e.target.value })}
-            >
-              {this.props.savedPoses.map(poseName => (
-                <option key={poseName}>{poseName}</option>
-              ))}
-            </select>
-            <button
-              onClick={() =>
-                this.state.selectedPose && this.props.loadPose(this.state.selectedPose)
-              }
-            >
-              Load Pose
-            </button>
-            <button
-              onClick={() =>
-                this.state.selectedPose && this.props.deletePose(this.state.selectedPose)
-              }
-            >
-              Delete Pose
-            </button>
-            <button onClick={this.props.savePose}>Save New Pose</button>
-            <button
-              onClick={() =>
-                this.state.selectedPose && this.props.downloadPose(this.state.selectedPose)
-              }
-            >
-              Download Pose
-            </button>
-            <button onClick={() => this.uploadRef.current && this.uploadRef.current.click()}>
-              Upload Pose
-            </button>
-            <input
-              className="hidden"
-              ref={this.uploadRef}
-              type="file"
-              accept="application/json"
-              onChange={this.uploadPose}
-            />
-          </div>
+          {this.state.pose && (
+            <span>
+              <span>
+                <label htmlFor="poseMode">Pose Mode</label>
+                <button id="poseMode" onClick={() => this.changePoseSetting('mode')}>
+                  {this.state.poseSettings.mode}
+                </button>
+              </span>
+              <span>
+                <label htmlFor="poseType">Pose Type</label>
+                <button id="poseType" onClick={() => this.changePoseSetting('type')}>
+                  {this.state.poseSettings.type}
+                </button>
+              </span>
+              <span>
+                <label htmlFor="poseSpace">Pose Space</label>
+                <button id="poseSpace" onClick={() => this.changePoseSetting('space')}>
+                  {this.state.poseSettings.space}
+                </button>
+              </span>
+              <button onClick={this.props.deselect}>Deselect</button>
+              <button onClick={this.props.resetPose}>Reset Pose</button>
+              <select
+                value={this.state.selectedPose}
+                onChange={e => this.setState({ selectedPose: e.target.value })}
+              >
+                {this.props.savedPoses.map(poseName => (
+                  <option key={poseName}>{poseName}</option>
+                ))}
+              </select>
+              <button
+                onClick={() =>
+                  this.state.selectedPose && this.props.loadPose(this.state.selectedPose)
+                }
+              >
+                Load Pose
+              </button>
+              <button
+                onClick={() =>
+                  this.state.selectedPose && this.props.deletePose(this.state.selectedPose)
+                }
+              >
+                Delete Pose
+              </button>
+              <button onClick={this.props.savePose}>Save New Pose</button>
+              <button
+                onClick={() =>
+                  this.state.selectedPose && this.props.downloadPose(this.state.selectedPose)
+                }
+              >
+                Download Pose
+              </button>
+              <button onClick={() => this.uploadRef.current && this.uploadRef.current.click()}>
+                Upload Pose
+              </button>
+              <input
+                className="hidden"
+                ref={this.uploadRef}
+                type="file"
+                accept="application/json"
+                onChange={this.uploadPose}
+              />
+            </span>
+          )}
+          {!this.state.pose && (
+            <span>
+              <span>
+                <label htmlFor="explodeToggle">Explode</label>
+                <input
+                  type="checkbox"
+                  id="explodeToggle"
+                  checked={this.state.explode}
+                  onChange={e => this.updateSettingFinish('explode', e.target.checked)}
+                />
+              </span>
+              <span>
+                <label htmlFor="animToggle">Animate</label>
+                <input
+                  type="checkbox"
+                  id="animToggle"
+                  checked={this.state.anim}
+                  onChange={e => this.toggleAnim(e.target.checked)}
+                />
+                <input
+                  type="range"
+                  id="animSpeed"
+                  min={0}
+                  max={2}
+                  step={0.01}
+                  value={this.state.animSpeed}
+                  onChange={e => this.updateSetting('animSpeed', Number(e.target.value))}
+                />
+              </span>
+            </span>
+          )}
         </span>
         <div className="bottom left">
-          <button title="Reset Camera" onClick={this.props.resetCamera}>
-            <img alt="Reset Camera" src={reset_camera} />
-          </button>
           <button title="Save Render" onClick={this.props.saveRender}>
             <img alt="Save Render" src={save_render} />
           </button>
