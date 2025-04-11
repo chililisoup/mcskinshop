@@ -231,7 +231,8 @@ hr {
 .paperdoll-settings > span {
   flex-wrap: nowrap;
   pointer-events: all;
-  overflow-x: scroll;
+  overflow-x: auto;
+  overflow-y: hidden;
   height: 34px;
 }
 
