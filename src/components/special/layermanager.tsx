@@ -5,72 +5,59 @@ import ColorPicker from '../basic/colorpicker';
 import DraggableWindow from '../basic/draggablewindow';
 
 type AProps = {
-  layers: ImgMod.Layer;
-  updateLayers: (layers: ImgMod.Layer) => void;
+  layers: ImgMod.AbstractLayer[];
+  updateLayers: () => void;
   slim: boolean;
 };
 
 type AState = {
   advanced: boolean;
-  layers: ImgMod.Layer;
   selectedLayer?: string;
 };
 
 class LayerManager extends Component<AProps, AState> {
-  layers;
-
   constructor(props: AProps) {
     super(props);
 
     this.state = {
       advanced: false,
-      layers: props.layers,
       selectedLayer: undefined
     };
-
-    // Should be receiving the sublayers of the layers, it doesn't need the actual full layers object
-    // Also why tf is layers a state and also not a state make it just a state bitch
-    this.layers = props.layers;
   }
 
-  updateLayers = () => {
-    this.setState({ layers: this.layers });
-    this.props.updateLayers(this.layers);
-  };
-
   updateLayer = (index: number, newLayer: ImgMod.AbstractLayer) => {
-    const oldLayer = this.layers.sublayers[index];
-    this.layers.sublayers[index] = newLayer;
+    const oldLayer = this.props.layers[index];
+    this.props.layers[index] = newLayer;
 
     if (oldLayer !== newLayer) oldLayer.cleanup();
 
-    this.updateLayers();
+    this.props.updateLayers();
   };
 
   moveLayer = (index: number, change: number) => {
-    if (index + change < 0) change = this.layers.sublayers.length - 1;
-    if (index + change >= this.layers.sublayers.length)
-      change = 0 - (this.layers.sublayers.length - 1);
-    const layer = this.layers.sublayers[index];
-    this.layers.sublayers.splice(index, 1);
-    this.layers.sublayers.splice(index + change, 0, layer);
-    this.updateLayers();
+    if (index + change < 0) change = this.props.layers.length - 1;
+    if (index + change >= this.props.layers.length)
+      change = 0 - (this.props.layers.length - 1);
+    const layer = this.props.layers[index];
+    this.props.layers.splice(index, 1);
+    this.props.layers.splice(index + change, 0, layer);
+    this.props.updateLayers();
   };
 
   duplicateLayer = (index: number) => {
-    const copy = this.layers.sublayers[index].copy();
+    const copy = this.props.layers[index].copy();
     copy.id = Math.random().toString(16).slice(2);
-    this.layers.sublayers.splice(index + 1, 0, copy);
-    this.updateLayers();
+    this.props.layers.splice(index + 1, 0, copy);
+    this.props.updateLayers();
   };
 
   removeLayer = (index: number) => {
-    this.layers.sublayers.splice(index, 1);
-    this.updateLayers();
+    this.props.layers.splice(index, 1);
+    this.props.updateLayers();
   };
 
   flattenLayer: (index: number) => void = async index => {
-    const baseLayer = this.layers.sublayers[index];
+    const baseLayer = this.props.layers[index];
 
     const flatLayer = new ImgMod.Img();
     flatLayer.name = baseLayer.name;
@@ -83,48 +70,78 @@ class LayerManager extends Component<AProps, AState> {
   };
 
   mergeLayerDown = (index: number) => {
-    if (index === 0 || this.layers.sublayers.length < 2) return;
+    if (index === 0 || this.props.layers.length < 2) return;
 
-    const topLayer = this.layers.sublayers[index];
-    const bottomLayer = this.layers.sublayers[index - 1];
-    const mergedLayer = new ImgMod.Layer();
-
-    mergedLayer.name = topLayer.name + ' + ' + bottomLayer.name;
-    mergedLayer.id = Math.random().toString(16).slice(2);
-
-    let colors: string[] = [];
-    let advanced: boolean[] = [];
+    const topLayer = this.props.layers[index];
+    const bottomLayer = this.props.layers[index - 1];
 
     if (bottomLayer instanceof ImgMod.Layer) {
-      mergedLayer.sublayers = bottomLayer.sublayers;
-      colors = colors.concat(bottomLayer.colors);
-      advanced = bottomLayer.advanced ?? advanced;
-    } else {
-      mergedLayer.sublayers.push(bottomLayer);
-      colors.push('null');
-      advanced.push(true);
+      bottomLayer.name += ' + ' + topLayer.name;
+      bottomLayer.id = Math.random().toString(16).slice(2);
+      bottomLayer.assertColorArray();
+
+      if (topLayer instanceof ImgMod.Layer) {
+        topLayer.assertColorArray();
+
+        bottomLayer.sublayers.push(...topLayer.sublayers);
+        (bottomLayer.colors as string[]).push(...topLayer.colors);
+
+        if (bottomLayer.advanced || topLayer.advanced) {
+          bottomLayer.assertAdvancedArray();
+          topLayer.assertAdvancedArray();
+
+          bottomLayer.advanced!.push(...topLayer.advanced!);
+        }
+      } else {
+        bottomLayer.sublayers.push(topLayer);
+        (bottomLayer.colors as string[]).push('null');
+
+        if (bottomLayer.advanced) bottomLayer.advanced.push(true);
+      }
+
+      this.props.layers.splice(index, 1);
+      this.props.updateLayers();
+      return;
     }
 
     if (topLayer instanceof ImgMod.Layer) {
-      mergedLayer.sublayers = mergedLayer.sublayers.concat(topLayer.sublayers);
-      colors = colors.concat(topLayer.colors);
-      advanced = advanced.concat(topLayer.advanced ?? false);
-    } else {
-      mergedLayer.sublayers.push(topLayer);
-      colors.push('null');
-      advanced.push(true);
+      topLayer.name = bottomLayer.name + ' + ' + topLayer.name;
+      topLayer.id = Math.random().toString(16).slice(2);
+      topLayer.assertColorArray();
+
+      topLayer.sublayers.unshift(bottomLayer);
+      (topLayer.colors as string[]).unshift('null');
+
+      if (topLayer.advanced) topLayer.advanced.unshift(true);
+
+      this.props.layers.splice(index - 1, 1);
+      this.props.updateLayers();
+      return;
     }
 
-    mergedLayer.colors = colors;
-    mergedLayer.advanced = advanced;
+    const mergedLayer = new ImgMod.Layer([bottomLayer, topLayer], 'null');
+    mergedLayer.name = bottomLayer.name + ' + ' + topLayer.name;
+    mergedLayer.id = Math.random().toString(16).slice(2);
 
-    this.layers.sublayers.splice(index, 1);
-    this.layers.sublayers[index - 1] = mergedLayer;
-    this.updateLayers();
+    this.props.layers.splice(index - 1, 2, mergedLayer);
+    this.props.updateLayers();
   };
 
   selectForEdit = (index: number) => {
-    this.setState({ selectedLayer: this.layers.sublayers[index].id });
+    this.setState({ selectedLayer: this.props.layers[index].id });
+  };
+
+  ungroup = (index: number) => {
+    const layer = this.props.layers[index];
+    if (!(layer instanceof ImgMod.Layer)) return;
+
+    layer.sublayers.forEach((sublayer, i) => {
+      sublayer.name ??= `${layer.name}.${i}`;
+      sublayer.id ??= Math.random().toString(16).slice(2);
+    });
+
+    this.props.layers.splice(index, 1, ...layer.sublayers);
+    this.props.updateLayers();
   };
 
   addLayer: () => void = async () => {
@@ -134,14 +151,14 @@ class LayerManager extends Component<AProps, AState> {
 
     await layer.render();
 
-    this.layers.sublayers.push(layer);
-    this.updateLayers();
+    this.props.layers.push(layer);
+    this.props.updateLayers();
   };
 
   render() {
     let elem: ReactNode = <div />;
-    if (this.state.layers.sublayers.length) {
-      elem = this.state.layers.sublayers.map((asset, i) => (
+    if (this.props.layers.length) {
+      elem = this.props.layers.map((asset, i) => (
         <Layer
           key={asset.id}
           asset={asset}
@@ -153,6 +170,7 @@ class LayerManager extends Component<AProps, AState> {
           flattenLayer={this.flattenLayer}
           mergeLayerDown={this.mergeLayerDown}
           selectForEdit={this.selectForEdit}
+          ungroup={this.ungroup}
           advanced={this.state.advanced}
         />
       ));
@@ -160,9 +178,9 @@ class LayerManager extends Component<AProps, AState> {
 
     let selectedLayer = null;
     let selectedLayerIndex = null;
-    for (let i = 0; i < this.layers.sublayers.length; i++) {
-      if (this.layers.sublayers[i].id === this.state.selectedLayer) {
-        selectedLayer = this.layers.sublayers[i];
+    for (let i = 0; i < this.props.layers.length; i++) {
+      if (this.props.layers[i].id === this.state.selectedLayer) {
+        selectedLayer = this.props.layers[i];
         selectedLayerIndex = i;
         break;
       }
@@ -187,14 +205,13 @@ class LayerManager extends Component<AProps, AState> {
             title={selectedLayer.name ?? ''}
             pos={{ x: 350, y: 0 }}
             close={() => this.setState({ selectedLayer: undefined })}
-            children={
-              <LayerEditor
-                layer={selectedLayer}
-                updateLayer={layer => this.updateLayer(selectedLayerIndex, layer)}
-                slim={this.props.slim}
-              />
-            }
-          />
+          >
+            <LayerEditor
+              layer={selectedLayer}
+              updateLayer={layer => this.updateLayer(selectedLayerIndex, layer)}
+              slim={this.props.slim}
+            />
+          </DraggableWindow>
         )}
       </div>
     );
@@ -211,6 +228,7 @@ type BProps = {
   flattenLayer: (index: number) => void;
   mergeLayerDown: (index: number) => void;
   selectForEdit: (index: number) => void;
+  ungroup: (index: number) => void;
   advanced: boolean;
 };
 
@@ -225,8 +243,6 @@ type BState = {
 };
 
 class Layer extends Component<BProps, BState> {
-  asset;
-
   constructor(props: BProps) {
     super(props);
 
@@ -239,26 +255,24 @@ class Layer extends Component<BProps, BState> {
       invert: 0,
       sepia: 0
     };
-
-    this.asset = props.asset;
   }
 
   changeColor: (colorIndex: number, color: string) => void = async (colorIndex, color) => {
-    if (!(this.asset instanceof ImgMod.Layer)) return;
-    if (!(this.asset.colors instanceof Array)) return;
+    if (!(this.props.asset instanceof ImgMod.Layer)) return;
+    if (!(this.props.asset.colors instanceof Array)) return;
 
-    this.asset.colors[colorIndex] = color;
-    await this.asset.color();
+    this.props.asset.colors[colorIndex] = color;
+    await this.props.asset.color();
     this.updateLayer();
   };
 
   toggleActive = () => {
-    this.asset.active = !this.asset.active;
+    this.props.asset.active = !this.props.asset.active;
     this.updateLayer();
   };
 
   changeBlendMode = (blend: GlobalCompositeOperation) => {
-    this.asset.propagateBlendMode(blend);
+    this.props.asset.propagateBlendMode(blend);
     this.updateLayer();
   };
 
@@ -288,22 +302,26 @@ class Layer extends Component<BProps, BState> {
       this.state.sepia +
       '%)';
 
-    this.asset.propagateFilter(filterString);
+    this.props.asset.propagateFilter(filterString);
     this.updateLayer();
   };
 
-  updateLayer = () => this.props.updateLayer(this.props.index, this.asset);
+  renameLayer = (name: string) => {
+    this.props.asset.name = name;
+    this.updateLayer();
+  };
+
+  updateLayer = () => this.props.updateLayer(this.props.index, this.props.asset);
 
   render() {
     const colors: ReactNode[] = [];
-    if (this.asset instanceof ImgMod.Layer) {
-      const layer = this.asset;
+    if (this.props.asset instanceof ImgMod.Layer) {
+      const layer = this.props.asset;
 
       if (layer.colors instanceof Array) {
         layer.colors.forEach((color, i) => {
           if (
-            color !== 'null' &&
-            color !== 'erase' &&
+            !ImgMod.checkLayerType(color) &&
             (!layer.advanced || !layer.advanced[i] || this.props.advanced)
           ) {
             colors.push(
@@ -321,38 +339,71 @@ class Layer extends Component<BProps, BState> {
     return (
       <div className="manager-layer container">
         <span className="layerTitle">
-          <input type="checkbox" checked={this.asset.active} onChange={() => this.toggleActive()} />
-          <p>{this.asset.name}</p>
-          {this.asset instanceof ImgMod.Img && !this.asset.dynamic && (
+          <input
+            type="checkbox"
+            title="Toggle Layer Visibility"
+            checked={this.props.asset.active}
+            onChange={() => this.toggleActive()}
+          />
+          <input
+            type="text"
+            value={this.props.asset.name ?? ''}
+            onChange={e => this.renameLayer(e.target.value)}
+          />
+          {this.props.asset instanceof ImgMod.Img && !this.props.asset.dynamic && (
             <button onClick={() => this.props.selectForEdit(this.props.index)}>Edit</button>
           )}
-          {this.asset instanceof ImgMod.Img && this.asset.dynamic && (
+          {this.props.asset instanceof ImgMod.Img && this.props.asset.dynamic && (
             <button disabled>Edit in external editor</button>
+          )}
+          {this.props.asset instanceof ImgMod.Layer && (
+            <button onClick={() => this.props.ungroup(this.props.index)}>Ungroup</button>
           )}
         </span>
         <span>
-          <LayerPreview asset={this.asset} />
+          <LayerPreview asset={this.props.asset} />
           <div className="manager-layer-buttons">
-            <button onClick={() => this.props.moveLayer(this.props.index, 1)}>&#9650;</button>
-            <button onClick={() => this.props.moveLayer(this.props.index, -1)}>&#9660;</button>
+            <button onClick={() => this.props.moveLayer(this.props.index, 1)} title="Move Layer Up">
+              &#9650;
+            </button>
+            <button
+              onClick={() => this.props.moveLayer(this.props.index, -1)}
+              title="Move Layer Down"
+            >
+              &#9660;
+            </button>
           </div>
           <div className="manager-layer-buttons">
-            <button onClick={() => this.props.duplicateLayer(this.props.index)}>&#128471;</button>
-            <button onClick={() => this.props.removeLayer(this.props.index)}>&#10006;</button>
+            <button
+              onClick={() => this.props.duplicateLayer(this.props.index)}
+              title="Duplicate Layer"
+            >
+              &#128471;
+            </button>
+            <button onClick={() => this.props.removeLayer(this.props.index)} title="Delete Layer">
+              &#10006;
+            </button>
           </div>
           <div className="manager-layer-buttons">
-            <button onClick={() => this.props.flattenLayer(this.props.index)}>&#8676;</button>
-            <button onClick={() => this.props.mergeLayerDown(this.props.index)}>&#10515;</button>
+            <button onClick={() => this.props.flattenLayer(this.props.index)} title="Flatten Layer">
+              &#8676;
+            </button>
+            <button
+              onClick={() => this.props.mergeLayerDown(this.props.index)}
+              title="Merge Layer Down"
+            >
+              &#10515;
+            </button>
           </div>
           <div className="manager-layer-colors">{colors}</div>
         </span>
         {this.props.advanced && (
           <div className="settingsList">
             <span>
-              <label htmlFor={'blendSelector' + this.asset.id}>Blend Mode:</label>
+              <label htmlFor={'blendSelector' + this.props.asset.id}>Blend Mode:</label>
               <select
-                id={'blendSelector' + this.asset.id}
-                value={this.asset.blend}
+                id={'blendSelector' + this.props.asset.id}
+                value={this.props.asset.blend}
                 onChange={e => this.changeBlendMode(e.target.value as GlobalCompositeOperation)}
               >
                 <option value="source-over">Source Over</option>
@@ -384,12 +435,12 @@ class Layer extends Component<BProps, BState> {
               </select>
             </span>
             <span>
-              <label htmlFor={'opacitySlider' + this.asset.id}>
+              <label htmlFor={'opacitySlider' + this.props.asset.id}>
                 Opacity: {this.state.opacity}%
               </label>
               <input
                 type="range"
-                id={'opacitySlider' + this.asset.id}
+                id={'opacitySlider' + this.props.asset.id}
                 min={0}
                 max={100}
                 value={this.state.opacity}
@@ -397,10 +448,10 @@ class Layer extends Component<BProps, BState> {
               />
             </span>
             <span>
-              <label htmlFor={'hueSlider' + this.asset.id}>Hue: {this.state.hue}°</label>
+              <label htmlFor={'hueSlider' + this.props.asset.id}>Hue: {this.state.hue}°</label>
               <input
                 type="range"
-                id={'hueSlider' + this.asset.id}
+                id={'hueSlider' + this.props.asset.id}
                 min={-180}
                 max={180}
                 value={this.state.hue}
@@ -408,12 +459,12 @@ class Layer extends Component<BProps, BState> {
               />
             </span>
             <span>
-              <label htmlFor={'saturationSlider' + this.asset.id}>
+              <label htmlFor={'saturationSlider' + this.props.asset.id}>
                 Saturation: {this.state.saturation}%
               </label>
               <input
                 type="range"
-                id={'saturationSlider' + this.asset.id}
+                id={'saturationSlider' + this.props.asset.id}
                 min={0}
                 max={200}
                 value={this.state.saturation}
@@ -421,12 +472,12 @@ class Layer extends Component<BProps, BState> {
               />
             </span>
             <span>
-              <label htmlFor={'brightnessSlider' + this.asset.id}>
+              <label htmlFor={'brightnessSlider' + this.props.asset.id}>
                 Brightness: {this.state.brightness}%
               </label>
               <input
                 type="range"
-                id={'brightnessSlider' + this.asset.id}
+                id={'brightnessSlider' + this.props.asset.id}
                 min={0}
                 max={200}
                 value={this.state.brightness}
@@ -434,12 +485,12 @@ class Layer extends Component<BProps, BState> {
               />
             </span>
             <span>
-              <label htmlFor={'contrastSlider' + this.asset.id}>
+              <label htmlFor={'contrastSlider' + this.props.asset.id}>
                 Contrast: {this.state.contrast}%
               </label>
               <input
                 type="range"
-                id={'contrastSlider' + this.asset.id}
+                id={'contrastSlider' + this.props.asset.id}
                 min={0}
                 max={200}
                 value={this.state.contrast}
@@ -447,10 +498,12 @@ class Layer extends Component<BProps, BState> {
               />
             </span>
             <span>
-              <label htmlFor={'invertSlider' + this.asset.id}>Invert: {this.state.invert}%</label>
+              <label htmlFor={'invertSlider' + this.props.asset.id}>
+                Invert: {this.state.invert}%
+              </label>
               <input
                 type="range"
-                id={'invertSlider' + this.asset.id}
+                id={'invertSlider' + this.props.asset.id}
                 min={0}
                 max={100}
                 value={this.state.invert}
@@ -458,10 +511,12 @@ class Layer extends Component<BProps, BState> {
               />
             </span>
             <span>
-              <label htmlFor={'sepiaSlider' + this.asset.id}>Sepia: {this.state.sepia}%</label>
+              <label htmlFor={'sepiaSlider' + this.props.asset.id}>
+                Sepia: {this.state.sepia}%
+              </label>
               <input
                 type="range"
-                id={'sepiaSlider' + this.asset.id}
+                id={'sepiaSlider' + this.props.asset.id}
                 min={0}
                 max={100}
                 value={this.state.sepia}

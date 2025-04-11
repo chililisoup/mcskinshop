@@ -159,123 +159,120 @@ class ColorPicker extends Component<AProps, AState> {
           onMouseDown={this.togglePicker}
         />
         {this.state.open && (
-          <PopUp
-            close={() => this.setState({ open: false })}
-            children={
-              <div
-                className={
-                  'color-picker ' + (this.state.bottom ? 'color-picker-bottom' : 'color-picker-top')
-                }
-                style={this.state.open ? { display: 'block' } : { display: 'none' }}
-              >
-                <div className="container">
+          <PopUp close={() => this.setState({ open: false })}>
+            <div
+              className={
+                'color-picker ' + (this.state.bottom ? 'color-picker-bottom' : 'color-picker-top')
+              }
+              style={this.state.open ? { display: 'block' } : { display: 'none' }}
+            >
+              <div className="container">
+                <input
+                  value={this.state.hsla[0]}
+                  min={0}
+                  max={360}
+                  step={1}
+                  type="range"
+                  onChange={e => this.updateHue(Number(e.target.value))}
+                  onMouseUp={e =>
+                    e.target instanceof HTMLInputElement && this.updateHue(Number(e.target.value))
+                  }
+                  style={{
+                    background: `linear-gradient(to right,
+                              hsl(0, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
+                              hsl(60, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
+                              hsl(120, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
+                              hsl(180, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
+                              hsl(240, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
+                              hsl(300, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
+                              hsl(360, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%)
+                          )`
+                  }}
+                />
+                <input
+                  value={this.state.hsla[1]}
+                  min={0}
+                  max={100}
+                  step={1}
+                  type="range"
+                  onChange={e => this.updateSaturation(Number(e.target.value))}
+                  onMouseUp={e =>
+                    e.target instanceof HTMLInputElement &&
+                    this.updateSaturation(Number(e.target.value))
+                  }
+                  style={{
+                    background: `linear-gradient(to right,
+                              hsl(
+                                  ${this.state.hsla[0]},
+                                  0%,
+                                  ${this.state.hsla[2]}%
+                              ),
+                              hsl(
+                                  ${this.state.hsla[0]},
+                                  100%,
+                                  ${this.state.hsla[2]}%
+                              )
+                          )`
+                  }}
+                />
+                <input
+                  value={this.state.hsla[2]}
+                  min={0}
+                  max={100}
+                  step={1}
+                  type="range"
+                  onChange={e => this.updateLightness(Number(e.target.value))}
+                  onMouseUp={e =>
+                    e.target instanceof HTMLInputElement &&
+                    this.updateLightness(Number(e.target.value))
+                  }
+                  style={{
+                    background: `linear-gradient(to right,
+                              #000000,
+                              hsl(
+                                  ${this.state.hsla[0]},
+                                  ${this.state.hsla[1]}%,
+                                  50%
+                              ),
+                              #ffffff
+                          )`
+                  }}
+                />
+                {this.props.alpha && (
                   <input
-                    value={this.state.hsla[0]}
+                    value={this.state.hsla[3]}
                     min={0}
-                    max={360}
-                    step={1}
+                    max={1}
+                    step={0.01}
                     type="range"
-                    onChange={e => this.updateHue(Number(e.target.value))}
-                    onMouseUp={e =>
-                      e.target instanceof HTMLInputElement && this.updateHue(Number(e.target.value))
-                    }
-                    style={{
-                      background: `linear-gradient(to right,
-                                    hsl(0, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
-                                    hsl(60, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
-                                    hsl(120, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
-                                    hsl(180, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
-                                    hsl(240, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
-                                    hsl(300, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
-                                    hsl(360, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%)
-                                )`
-                    }}
-                  />
-                  <input
-                    value={this.state.hsla[1]}
-                    min={0}
-                    max={100}
-                    step={1}
-                    type="range"
-                    onChange={e => this.updateSaturation(Number(e.target.value))}
+                    onChange={e => this.updateAlpha(Number(e.target.value))}
                     onMouseUp={e =>
                       e.target instanceof HTMLInputElement &&
-                      this.updateSaturation(Number(e.target.value))
+                      this.updateAlpha(Number(e.target.value))
                     }
                     style={{
-                      background: `linear-gradient(to right,
-                                    hsl(
-                                        ${this.state.hsla[0]},
-                                        0%,
-                                        ${this.state.hsla[2]}%
-                                    ),
-                                    hsl(
-                                        ${this.state.hsla[0]},
-                                        100%,
-                                        ${this.state.hsla[2]}%
-                                    )
-                                )`
+                      backgroundImage: `linear-gradient(to right,
+                              rgba(0,0,0,0),
+                              hsl(
+                                  ${this.state.hsla[0]},
+                                  ${this.state.hsla[1]}%,
+                                  ${this.state.hsla[2]}%
+                              )
+                          ),
+                          url(${checker})`
                     }}
                   />
+                )}
+                <span>
                   <input
-                    value={this.state.hsla[2]}
-                    min={0}
-                    max={100}
-                    step={1}
-                    type="range"
-                    onChange={e => this.updateLightness(Number(e.target.value))}
-                    onMouseUp={e =>
-                      e.target instanceof HTMLInputElement &&
-                      this.updateLightness(Number(e.target.value))
-                    }
-                    style={{
-                      background: `linear-gradient(to right,
-                                    #000000,
-                                    hsl(
-                                        ${this.state.hsla[0]},
-                                        ${this.state.hsla[1]}%,
-                                        50%
-                                    ),
-                                    #ffffff
-                                )`
-                    }}
+                    placeholder="#ffffff"
+                    value={this.state.hex}
+                    onChange={e => this.setHex(e.target.value)}
                   />
-                  {this.props.alpha && (
-                    <input
-                      value={this.state.hsla[3]}
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      type="range"
-                      onChange={e => this.updateAlpha(Number(e.target.value))}
-                      onMouseUp={e =>
-                        e.target instanceof HTMLInputElement &&
-                        this.updateAlpha(Number(e.target.value))
-                      }
-                      style={{
-                        backgroundImage: `linear-gradient(to right,
-                                    rgba(0,0,0,0),
-                                    hsl(
-                                        ${this.state.hsla[0]},
-                                        ${this.state.hsla[1]}%,
-                                        ${this.state.hsla[2]}%
-                                    )
-                                ),
-                                url(${checker})`
-                      }}
-                    />
-                  )}
-                  <span>
-                    <input
-                      placeholder="#ffffff"
-                      value={this.state.hex}
-                      onChange={e => this.setHex(e.target.value)}
-                    />
-                  </span>
-                </div>
+                </span>
               </div>
-            }
-          />
+            </div>
+          </PopUp>
         )}
       </div>
     );

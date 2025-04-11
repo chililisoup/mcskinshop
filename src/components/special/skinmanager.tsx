@@ -127,8 +127,7 @@ class SkinManager extends Component<AProps, AState> {
     } else this.setState({ skin: undefined });
   };
 
-  updateLayers = (newLayers: ImgMod.Layer) => {
-    this.layers = newLayers;
+  updateLayers = () => {
     this.updateSkin();
   };
 
@@ -189,7 +188,7 @@ class SkinManager extends Component<AProps, AState> {
         <div className="SkinManager">
           {this.state.layerManager && (
             <LayerManager
-              layers={this.layers}
+              layers={this.layers.sublayers}
               updateLayers={this.updateLayers}
               slim={this.state.slim}
             />

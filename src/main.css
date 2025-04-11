@@ -304,7 +304,6 @@ hr {
 .layereditor-canvas {
   height: 512px;
   width: 512px;
-  background-size: 512px, 16px;
   image-rendering: pixelated;
 }
 
@@ -361,13 +360,12 @@ span.layerTitle {
   flex-wrap: nowrap;
 }
 
-span.layerTitle p {
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
 span.layerTitle input {
   margin-right: 6px;
+}
+
+span.layerTitle input[type=text] {
+  flex-grow: 1;
 }
 
 .layer-adder {

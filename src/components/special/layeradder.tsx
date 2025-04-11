@@ -23,23 +23,29 @@ class LayerAdder extends Component<AProps, AState> {
     this.loadAssets();
   }
 
-  addLayer: (id: number) => void = async id => {
+  addLayer: (id: number) => void = async (id: number) => {
     const layer = new ImgMod.Layer();
     layer.name = fakedatabase[id].name;
-    layer.colors = fakedatabase[id].colors;
-    layer.advanced = fakedatabase[id].advanced;
+    // Using spread operators since imported json objects
+    // are mutable global constants for some reason
+    layer.colors = [...fakedatabase[id].colors];
+    layer.advanced = [...fakedatabase[id].advanced];
     layer.id = Math.random().toString(16).slice(2);
 
     await Promise.all(
       fakedatabase[id].layers.map((src, i) => {
         const image = new ImgMod.Img();
         layer.sublayers.push(image);
-        if (fakedatabase[id].colors[i] === 'null') image.type = 'null';
-        if (fakedatabase[id].colors[i] === 'erase') image.type = 'erase';
-        if (fakedatabase[id].colors[i] === 'flatten') image.type = 'flatten';
+
+        const layerType = ImgMod.checkLayerType(fakedatabase[id].colors[i]);
+        if (layerType) image.type = layerType;
+
         return image.render(import.meta.env.ASSET_PREFIX + fakedatabase[id].loc + src);
       })
     );
+
+    console.log(fakedatabase[id]);
+    console.log(layer);
 
     this.props.addLayer(layer);
   };

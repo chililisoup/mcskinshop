@@ -1,4 +1,4 @@
-const hatFlattenerOffsets = [
+const HAT_FLATTENER_OFFSETS = [
   { width: 16, height: 8, from: [40, 0], to: [8, 0] },
   { width: 32, height: 8, from: [32, 8], to: [0, 8] },
   { width: 8, height: 4, from: [4, 32], to: [4, 16] },
@@ -9,18 +9,22 @@ const hatFlattenerOffsets = [
   { width: 16, height: 12, from: [0, 52], to: [16, 52] },
   { width: 8, height: 4, from: [52, 48], to: [36, 48] },
   { width: 16, height: 12, from: [48, 52], to: [32, 52] }
-];
+] as const;
 
-export const emptyImageSource =
+export const EMPTY_IMAGE_SOURCE =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIW2NgAAIAAAUAAR4f7BQAAAAASUVORK5CYII=';
 
-export type LayerType = 'normal' | 'erase' | 'flatten' | 'null';
+export const LAYER_TYPES = ['normal', 'erase', 'flatten', 'blowup', 'null'] as const;
+export type LayerType = (typeof LAYER_TYPES)[number];
+export const checkLayerType = (maybeType: string): LayerType | undefined => {
+  if (LAYER_TYPES.find(type => type === maybeType)) return maybeType as LayerType;
+};
 
 export abstract class AbstractLayer {
   blend: GlobalCompositeOperation;
   filter: string;
   active = true;
-  src = emptyImageSource;
+  src = EMPTY_IMAGE_SOURCE;
   image?: ImageBitmap;
   name?: string;
   id?: string;
@@ -43,7 +47,7 @@ export abstract class AbstractLayer {
 
 export class Img extends AbstractLayer {
   type;
-  rawSrc = emptyImageSource;
+  rawSrc = EMPTY_IMAGE_SOURCE;
   size = [64, 64];
   dynamic = false;
   fileHandle?: FileSystemFileHandle;
@@ -117,6 +121,7 @@ export class Img extends AbstractLayer {
     copy.src = this.src;
     copy.rawSrc = this.rawSrc;
     copy.image = this.image;
+    copy.name = this.name;
 
     return copy;
   };
@@ -124,8 +129,9 @@ export class Img extends AbstractLayer {
   color = async (color: string) => {
     if (!this.image) return Promise.reject(new Error('No image to color'));
 
-    if (color === 'erase' || color === 'null' || color === 'flatten') {
-      this.type = color;
+    const layerType = checkLayerType(color);
+    if (layerType) {
+      this.type = layerType;
       return;
     }
 
@@ -173,7 +179,7 @@ export class Img extends AbstractLayer {
     return !ctx.getImageData(46, 63, 1, 1).data[3];
   };
 
-  flattenWithRespect = (ctx: CanvasRenderingContext2D) => {
+  flattenWithRespect = (ctx: CanvasRenderingContext2D, reverse?: boolean) => {
     const canvas = document.createElement('canvas');
     canvas.width = this.size[0];
     canvas.height = this.size[1];
@@ -181,42 +187,47 @@ export class Img extends AbstractLayer {
 
     context.drawImage(ctx.canvas, 0, 0);
     context.globalCompositeOperation = 'destination-in';
-    if (this.image) context.drawImage(this.image, 0, 0);
+    if (this.image) context.drawImage(this.image, 0, 0); // apply mask
 
-    hatFlattenerOffsets.forEach(offset =>
+    if (reverse) ctx.globalCompositeOperation = 'destination-over';
+    const from = reverse ? 'to' : 'from';
+    const to = reverse ? 'from' : 'to';
+
+    HAT_FLATTENER_OFFSETS.forEach(offset =>
       ctx.drawImage(
-        canvas,
-        offset.from[0],
-        offset.from[1],
+        canvas, // draw pixels from masked canvas
+        offset[from][0],
+        offset[from][1],
         offset.width,
         offset.height,
-        offset.to[0],
-        offset.to[1],
+        offset[to][0],
+        offset[to][1],
         offset.width,
         offset.height
       )
     );
   };
 
-  onDynamicChange = async (records: FileSystemChangeRecord[], observer: FileSystemObserver) => {
-    let fileHandle: FileSystemFileHandle;
+  onDynamicChange: (records: FileSystemChangeRecord[], observer: FileSystemObserver) => void =
+    async (records, observer) => {
+      let fileHandle: FileSystemFileHandle;
 
-    for (const record of records) {
-      if (record.type !== 'modified') break;
-      fileHandle = record.root;
+      for (const record of records) {
+        if (record.type !== 'modified') break;
+        fileHandle = record.root;
 
-      const file = await fileHandle.getFile();
+        const file = await fileHandle.getFile();
 
-      await this.render(URL.createObjectURL(file));
-      if (this.internalUpdateCallback) this.internalUpdateCallback();
+        await this.render(URL.createObjectURL(file));
+        if (this.internalUpdateCallback) this.internalUpdateCallback();
 
-      return;
-    }
+        return;
+      }
 
-    this.dynamic = false;
-    this.fileHandle = undefined;
-    observer.disconnect();
-  };
+      this.dynamic = false;
+      this.fileHandle = undefined;
+      observer.disconnect();
+    };
 
   observeDynamic: (fileHandle: FileSystemFileHandle) => void = async fileHandle => {
     this.dynamic = true;
@@ -249,10 +260,19 @@ export class Layer extends AbstractLayer {
     this.colors = colors ?? '#FFFFFF';
   }
 
+  assertAdvancedArray = () => {
+    this.advanced ??= new Array(this.sublayers.length).fill(false);
+  };
+
+  assertColorArray = () => {
+    if (typeof this.colors === 'string')
+      this.colors = new Array(this.sublayers.length).fill(this.colors);
+  };
+
   color: (colors?: string | string[]) => Promise<unknown> = colors => {
     this.colors = colors ?? this.colors;
-    if (this.colors instanceof String)
-      this.colors = new Array(this.sublayers.length).fill(this.colors);
+    this.assertColorArray();
+    
     if (this.colors.length !== this.sublayers.length)
       return Promise.reject(new Error('Color count does not match sublayer count'));
 
@@ -297,6 +317,7 @@ export class Layer extends AbstractLayer {
 
       ctx.filter =
         'opacity(100%) hue-rotate(0) saturate(100%) brightness(100%) contrast(100%) invert(0) sepia(0)';
+      ctx.globalCompositeOperation = 'source-over';
       if (sublayer instanceof Layer) {
         void sublayer.render(ctx);
         return;
@@ -304,16 +325,20 @@ export class Layer extends AbstractLayer {
       if (!(sublayer instanceof Img)) return;
       if (!sublayer.image) return;
 
-      if (sublayer.type === 'flatten') {
-        sublayer.flattenWithRespect(ctx);
+      if (sublayer.type === 'flatten' || sublayer.type === 'blowup') {
+        // copy pixels to new location
+        sublayer.flattenWithRespect(ctx, sublayer.type === 'blowup');
+
+        // erase pixels from old location
         ctx.globalCompositeOperation = 'destination-out';
         ctx.drawImage(sublayer.image, 0, 0);
         return;
       }
 
-      ctx.globalCompositeOperation = sublayer.blend;
       ctx.filter = sublayer.filter;
       if (sublayer.type === 'erase') ctx.globalCompositeOperation = 'destination-out';
+      else ctx.globalCompositeOperation = sublayer.blend;
+
       ctx.drawImage(sublayer.image, 0, 0);
     });
 
@@ -326,8 +351,8 @@ export class Layer extends AbstractLayer {
 
   copy = () => {
     const copy = new Layer([], this.colors, this.blend, this.filter);
-    if (this.advanced) copy.advanced = this.advanced;
-    if (this.name) copy.name = this.name;
+    copy.advanced = this.advanced;
+    copy.name = this.name;
 
     this.sublayers.forEach(layer => copy.sublayers.push(layer.copy()));
 

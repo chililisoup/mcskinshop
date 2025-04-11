@@ -908,9 +908,7 @@ class PaperDoll extends Component<AProps, AState> {
     let children: THREE.Object3D[] = [];
 
     if (part.children.length > 0) {
-      part.children.forEach(child => {
-        children = children.concat(this.filterOutline(child));
-      });
+      part.children.forEach(child => children.push(...this.filterOutline(child)));
     } else if (
       part.userData.renderType !== 'cutout' &&
       !part.userData.poseable &&
@@ -1609,88 +1607,77 @@ class PaperDollSettings extends Component<BProps, BState> {
                   onChange={e => this.updateSettingFinish('slim', e.target.checked)}
                 />
               </span>
-              <Dropdown
-                title="Camera"
-                children={
-                  <div>
-                    <span>
-                      <label htmlFor="cameraType">Camera Type</label>
-                      <button
-                        id="cameraType"
-                        onClick={() =>
-                          this.updateSettingFinish(
-                            'usePerspectiveCam',
-                            !this.state.usePerspectiveCam
-                          )
-                        }
-                      >
-                        {this.state.usePerspectiveCam ? 'Perspective' : 'Orthographic'}
-                      </button>
-                    </span>
-                    <span>
-                      <label htmlFor="fov">FOV ({this.state.fov})</label>
-                      <input
-                        disabled={!this.state.usePerspectiveCam}
-                        type="range"
-                        id="fov"
-                        min={30}
-                        max={120}
-                        step={1}
-                        value={this.state.fov}
-                        onChange={e => this.updateSetting('fov', Number(e.target.value))}
-                      />
-                    </span>
-                    <button onClick={this.props.resetCamera}>Reset Camera</button>
-                  </div>
-                }
-              />
-              <Dropdown
-                title="Lighting"
-                children={
-                  <div>
-                    <span>
-                      <label htmlFor="shadeToggle">Shade</label>
-                      <input
-                        type="checkbox"
-                        id="shadeToggle"
-                        checked={this.state.shade}
-                        onChange={e => this.updateSettingFinish('shade', e.target.checked)}
-                      />
-                    </span>
-                    <span>
-                      <label htmlFor="lightFocus">Light Focus</label>
-                      <input
-                        disabled={!this.state.shade}
-                        type="range"
-                        id="lightFocus"
-                        min={0}
-                        max={10}
-                        step={0.1}
-                        value={Math.sqrt(this.state.lightFocus)}
-                        onChange={e =>
-                          this.updateSetting('lightFocus', Number(e.target.value) ** 2)
-                        }
-                      />
-                    </span>
-                    <span>
-                      <label htmlFor="lightAngle">Light Angle</label>
-                      <input
-                        disabled={!this.state.shade}
-                        type="range"
-                        id="lightAngle"
-                        min={0}
-                        max={2 * Math.PI}
-                        step={0.1}
-                        value={this.state.lightAngle}
-                        onChange={e => this.updateSetting('lightAngle', Number(e.target.value))}
-                      />
-                    </span>
-                    <button disabled={!this.state.shade} onClick={this.resetLighting}>
-                      Reset Lighting
+              <Dropdown title="Camera">
+                <div>
+                  <span>
+                    <label htmlFor="cameraType">Camera Type</label>
+                    <button
+                      id="cameraType"
+                      onClick={() =>
+                        this.updateSettingFinish('usePerspectiveCam', !this.state.usePerspectiveCam)
+                      }
+                    >
+                      {this.state.usePerspectiveCam ? 'Perspective' : 'Orthographic'}
                     </button>
-                  </div>
-                }
-              />
+                  </span>
+                  <span>
+                    <label htmlFor="fov">FOV ({this.state.fov})</label>
+                    <input
+                      disabled={!this.state.usePerspectiveCam}
+                      type="range"
+                      id="fov"
+                      min={30}
+                      max={120}
+                      step={1}
+                      value={this.state.fov}
+                      onChange={e => this.updateSetting('fov', Number(e.target.value))}
+                    />
+                  </span>
+                  <button onClick={this.props.resetCamera}>Reset Camera</button>
+                </div>
+              </Dropdown>
+              <Dropdown title="Lighting">
+                <div>
+                  <span>
+                    <label htmlFor="shadeToggle">Shade</label>
+                    <input
+                      type="checkbox"
+                      id="shadeToggle"
+                      checked={this.state.shade}
+                      onChange={e => this.updateSettingFinish('shade', e.target.checked)}
+                    />
+                  </span>
+                  <span>
+                    <label htmlFor="lightFocus">Light Focus</label>
+                    <input
+                      disabled={!this.state.shade}
+                      type="range"
+                      id="lightFocus"
+                      min={0}
+                      max={10}
+                      step={0.1}
+                      value={Math.sqrt(this.state.lightFocus)}
+                      onChange={e => this.updateSetting('lightFocus', Number(e.target.value) ** 2)}
+                    />
+                  </span>
+                  <span>
+                    <label htmlFor="lightAngle">Light Angle</label>
+                    <input
+                      disabled={!this.state.shade}
+                      type="range"
+                      id="lightAngle"
+                      min={0}
+                      max={2 * Math.PI}
+                      step={0.1}
+                      value={this.state.lightAngle}
+                      onChange={e => this.updateSetting('lightAngle', Number(e.target.value))}
+                    />
+                  </span>
+                  <button disabled={!this.state.shade} onClick={this.resetLighting}>
+                    Reset Lighting
+                  </button>
+                </div>
+              </Dropdown>
             </div>
           )}
         </div>

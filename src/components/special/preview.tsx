@@ -24,28 +24,23 @@ class Preview extends Component<AProps, AState> {
 
   render() {
     return (
-      <DraggableWindow
-        title="Preview"
-        pos={{ x: 100000, y: 100000 }}
-        close={this.props.close}
-        children={
-          <div className="Preview">
-            <span>
-              <button onClick={() => this.updateSize(Math.max(this.state.size - 1, 1))}>-</button>
-              <button onClick={() => this.updateSize(Math.min(this.state.size + 1, 16))}>+</button>
-            </span>
-            <img
-              src={this.props.skin ?? ImgMod.emptyImageSource}
-              alt="Flattened Skin"
-              style={{
-                width: this.state.size * 64 + 'px',
-                height: this.state.size * 64 + 'px',
-                backgroundSize: this.state.size * 16 + 'px'
-              }}
-            />
-          </div>
-        }
-      />
+      <DraggableWindow title="Preview" pos={{ x: 100000, y: 100000 }} close={this.props.close}>
+        <div className="Preview">
+          <span>
+            <button onClick={() => this.updateSize(Math.max(this.state.size - 1, 1))}>-</button>
+            <button onClick={() => this.updateSize(Math.min(this.state.size + 1, 16))}>+</button>
+          </span>
+          <img
+            src={this.props.skin ?? ImgMod.EMPTY_IMAGE_SOURCE}
+            alt="Flattened Skin"
+            style={{
+              width: this.state.size * 64 + 'px',
+              height: this.state.size * 64 + 'px',
+              backgroundSize: this.state.size * 16 + 'px'
+            }}
+          />
+        </div>
+      </DraggableWindow>
     );
   }
 }

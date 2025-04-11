@@ -13,6 +13,8 @@ type AProps = {
 
 type AState = {
   guide: boolean;
+  grid: boolean;
+  gridSize: number;
 };
 
 class LayerEditor extends Component<AProps, AState> {
@@ -27,7 +29,9 @@ class LayerEditor extends Component<AProps, AState> {
     super(props);
 
     this.state = {
-      guide: false
+      guide: false,
+      grid: true,
+      gridSize: 8
     };
   }
 
@@ -122,18 +126,31 @@ class LayerEditor extends Component<AProps, AState> {
     this.setState({ [setting]: value } as Pick<AState, KKey>);
   };
 
+  resizeGrid = (mult: number) => {
+    this.setState({ gridSize: Math.max(1, Math.min(32, this.state.gridSize * mult)) });
+  };
+
   render() {
     return (
       <div>
         <span>
           <ColorPicker default={this.color} update={this.setColor} alpha={true} />
-          <label htmlFor="guide">Guide</label>
+          <label htmlFor="layereditor-guide">Guide</label>
           <input
             type="checkbox"
-            id="guide"
+            id="layereditor-guide"
             checked={this.state.guide}
             onChange={e => this.updateState('guide', e.target.checked)}
           />
+          <label htmlFor="layereditor-grid">Grid</label>
+          <input
+            type="checkbox"
+            id="layereditor-grid"
+            checked={this.state.grid}
+            onChange={e => this.updateState('grid', e.target.checked)}
+          />
+          <button onClick={() => this.resizeGrid(0.5)}>-</button>
+          <button onClick={() => this.resizeGrid(2.0)}>+</button>
         </span>
         <canvas
           className="layereditor-canvas"
@@ -147,10 +164,9 @@ class LayerEditor extends Component<AProps, AState> {
           height={64}
           style={{
             backgroundImage:
-              (this.state.guide ? 'url(' + (this.props.slim ? slimref : fullref) + ')' : 'none') +
-              ', url(' +
-              checkerboard +
-              ')'
+              (this.state.guide ? `url(${this.props.slim ? slimref : fullref})` : 'none') +
+              `, url(${checkerboard})`,
+            backgroundSize: `512px, ${this.state.grid ? this.state.gridSize * 16 : 1024}px`
           }}
         />
       </div>

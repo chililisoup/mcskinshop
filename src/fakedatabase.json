@@ -280,6 +280,19 @@
             true
         ]
     },
+	{
+        "name": "Full Hat Blowup",
+        "loc": "/assets/uni/full/blowup_hat/",
+        "layers": [
+            "blowup_hat.png"
+        ],
+        "colors": [
+            "blowup"
+        ],
+        "advanced": [
+            true
+        ]
+    },
     {
         "name": "Head Hat Remover",
         "loc": "/assets/uni/head/head_hat_remover/",

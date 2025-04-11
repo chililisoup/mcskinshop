@@ -159,20 +159,17 @@ type BProps = {
 class FeatureEntry extends Component<BProps> {
   render() {
     return (
-      <Dropdown
-        title={this.props.title}
-        children={
-          <span>
-            <button onClick={this.props.uploadCustom}>Upload custom...</button>
-            <GridSelect
-              emptyOption
-              targetWidth={this.props.targetGridEntryWidth ?? 100}
-              options={this.props.options}
-              select={this.props.changeFeature}
-            />
-          </span>
-        }
-      />
+      <Dropdown title={this.props.title}>
+        <span>
+          <button onClick={this.props.uploadCustom}>Upload custom...</button>
+          <GridSelect
+            emptyOption
+            targetWidth={this.props.targetGridEntryWidth ?? 100}
+            options={this.props.options}
+            select={this.props.changeFeature}
+          />
+        </span>
+      </Dropdown>
     );
   }
 }

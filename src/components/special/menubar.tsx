@@ -127,31 +127,29 @@ class MenuBar extends Component<AProps, AState> {
           File
         </button>
         {this.state.file && (
-          <PopUp
-            close={() => this.setState({ file: false })}
-            children={
-              <div>
-                <button onClick={() => this.uploadRef.current && this.uploadRef.current.click()}>
-                  Load from File...
+          <PopUp close={() => this.setState({ file: false })}>
+            {' '}
+            <div>
+              <button onClick={() => this.uploadRef.current && this.uploadRef.current.click()}>
+                Load from File...
+              </button>
+              <input
+                className="hidden"
+                ref={this.uploadRef}
+                type="file"
+                accept="image/png"
+                onChange={this.addLayerFromInput}
+              />
+              {Util.fileSystemAccess && (
+                <button onClick={this.addDynamicLayerFromInput}>
+                  Dynamically Load from File...
                 </button>
-                <input
-                  className="hidden"
-                  ref={this.uploadRef}
-                  type="file"
-                  accept="image/png"
-                  onChange={this.addLayerFromInput}
-                />
-                {Util.fileSystemAccess && (
-                  <button onClick={this.addDynamicLayerFromInput}>
-                    Dynamically Load from File...
-                  </button>
-                )}
-                <button onClick={this.addLayerFromUsername}>Load from Username...</button>
-                <hr />
-                <button onClick={this.downloadSkin}>Save As...</button>
-              </div>
-            }
-          />
+              )}
+              <button onClick={this.addLayerFromUsername}>Load from Username...</button>
+              <hr />
+              <button onClick={this.downloadSkin}>Save As...</button>
+            </div>
+          </PopUp>
         )}
         <button
           style={this.state.edit ? { background: 'rgb(66, 54, 99)' } : {}}
@@ -160,19 +158,17 @@ class MenuBar extends Component<AProps, AState> {
           Edit
         </button>
         {this.state.edit && (
-          <PopUp
-            close={() => this.setState({ edit: false })}
-            children={
-              <div style={{ marginLeft: '46px' }}>
-                <button disabled={!undoHint} onClick={this.props.requestUndo}>
-                  {undoHint ? undoHint : 'Undo'}
-                </button>
-                <button disabled={!redoHint} onClick={this.props.requestRedo}>
-                  {redoHint ? redoHint : 'Redo'}
-                </button>
-              </div>
-            }
-          />
+          <PopUp close={() => this.setState({ edit: false })}>
+            {' '}
+            <div style={{ marginLeft: '46px' }}>
+              <button disabled={!undoHint} onClick={this.props.requestUndo}>
+                {undoHint ? undoHint : 'Undo'}
+              </button>
+              <button disabled={!redoHint} onClick={this.props.requestRedo}>
+                {redoHint ? redoHint : 'Redo'}
+              </button>
+            </div>
+          </PopUp>
         )}
         <button
           style={this.state.view ? { background: 'rgb(66, 54, 99)' } : {}}
@@ -181,10 +177,9 @@ class MenuBar extends Component<AProps, AState> {
           View
         </button>
         {this.state.view && (
-          <PopUp
-            close={() => this.setState({ view: false })}
-            children={<div style={{ marginLeft: '94px' }}>{viewTabChildren}</div>}
-          />
+          <PopUp close={() => this.setState({ view: false })}>
+            <div style={{ marginLeft: '94px' }}>{viewTabChildren}</div>
+          </PopUp>
         )}
         <button
           style={this.state.help ? { background: 'rgb(66, 54, 99)' } : {}}
@@ -193,14 +188,12 @@ class MenuBar extends Component<AProps, AState> {
           Help
         </button>
         {this.state.help && (
-          <PopUp
-            close={() => this.setState({ help: false })}
-            children={
-              <div style={{ marginLeft: '148px' }}>
-                <button>Stop it. Get some help.</button>
-              </div>
-            }
-          />
+          <PopUp close={() => this.setState({ help: false })}>
+            {' '}
+            <div style={{ marginLeft: '148px' }}>
+              <button>Stop it. Get some help.</button>
+            </div>
+          </PopUp>
         )}
       </div>
     );
