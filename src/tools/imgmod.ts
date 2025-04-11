@@ -220,7 +220,7 @@ export class Img extends AbstractLayer {
 
   observeDynamic: (fileHandle: FileSystemFileHandle) => void = async fileHandle => {
     this.dynamic = true;
-    this.observer = new window.FileSystemObserver(() => this.onDynamicChange);
+    this.observer = new window.FileSystemObserver(this.onDynamicChange);
     await this.observer.observe(fileHandle);
   };
 
