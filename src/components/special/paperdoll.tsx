@@ -16,6 +16,8 @@ import { Features } from './modelfeatures';
 import { UndoCallback } from './skinmanager';
 import Dropdown from '../basic/dropdown';
 
+const ANIMATIONS = ['Walk', 'Crouch Walk'] as const;
+
 type ModelPart = {
   poseable?: boolean;
   position: number[];
@@ -46,6 +48,7 @@ type AProps = {
 type AState = {
   anim: boolean;
   animSpeed: number;
+  animation: (typeof ANIMATIONS)[number];
   explode: boolean;
   shade: boolean;
   lightAngle: number;
@@ -59,11 +62,6 @@ type AState = {
   fov: number;
   usePerspectiveCam: boolean;
   savedPoses: string[];
-};
-
-// This whole shared settings thing is cursed, wack, and most definitely wildly incorrect
-type SharedSettings = AState & {
-  slim: boolean;
 };
 
 const defaultLighting = {
@@ -123,6 +121,7 @@ class PaperDoll extends Component<AProps, AState> {
     this.state = {
       anim: true,
       animSpeed: 0.5,
+      animation: 'Walk',
       explode: false,
       shade: true,
       lightAngle: defaultLighting.lightAngle,
@@ -885,7 +884,16 @@ class PaperDoll extends Component<AProps, AState> {
       if (this.time > Math.PI * 20) this.time -= Math.PI * 20;
     }
 
+    this.pivots.head.position.copy(this.pivots.head.userData.defaultPosition as THREE.Vector3Like);
+    this.pivots.leftArm.position.copy(this.pivots.leftArm.userData.defaultPosition as THREE.Vector3Like);
+    this.pivots.rightArm.position.copy(this.pivots.rightArm.userData.defaultPosition as THREE.Vector3Like);
+    this.pivots.leftLeg.position.copy(this.pivots.leftLeg.userData.defaultPosition as THREE.Vector3Like);
+    this.pivots.rightLeg.position.copy(this.pivots.rightLeg.userData.defaultPosition as THREE.Vector3Like);
+
+    this.updateExplode();
+
     const rotation = Math.sin(this.time) * this.state.animSpeed;
+
     this.pivots.leftLeg.rotation.x = rotation;
     this.pivots.rightLeg.rotation.x = -rotation;
     this.pivots.leftArm.rotation.x = -rotation;
@@ -896,6 +904,42 @@ class PaperDoll extends Component<AProps, AState> {
 
     this.pivots.cape.rotation.x =
       Math.sin(this.idleTime * 0.1) * 0.05 + 0.75 * this.state.animSpeed + 0.1;
+
+    switch (this.state.animation) {
+      case 'Walk':
+        this.pivots.torso.rotation.x = 0;
+        
+        break;
+      case 'Crouch Walk':
+        this.pivots.head.position.y -= 1.0;
+
+        this.pivots.torso.rotation.x = 0.5;
+
+        this.pivots.leftArm.rotation.x -= 0.1;
+        this.pivots.rightArm.rotation.x -= 0.1;
+
+
+        this.pivots.leftArm.position.y += 0.2;
+        this.pivots.rightArm.position.y += 0.2;
+
+        this.pivots.leftArm.position.z += 1.0;
+        this.pivots.rightArm.position.z += 1.0;
+
+
+        this.pivots.leftLeg.rotation.x -= 0.5;
+        this.pivots.rightLeg.rotation.x -= 0.5;
+
+
+        this.pivots.leftLeg.position.y += 2;
+        this.pivots.rightLeg.position.y += 2;
+
+        this.pivots.leftLeg.position.z += 0.8;
+        this.pivots.rightLeg.position.z += 0.8;
+
+        break;
+    }
+
+
   };
 
   findPosableAncestor: (part: THREE.Object3D) => THREE.Object3D | false = part => {
@@ -1328,14 +1372,8 @@ class PaperDoll extends Component<AProps, AState> {
     link.click();
   };
 
-  updateSetting = <KKey extends keyof AState, SKey extends keyof SharedSettings>(
-    setting: KKey | SKey,
-    value: AState[KKey] | SharedSettings[SKey]
-  ) => {
+  updateSetting = <KKey extends keyof AState>(setting: KKey, value: AState[KKey]) => {
     switch (setting) {
-      case 'slim':
-        this.props.updateSlim(!!value);
-        break;
       case 'anim':
         this.setState({
           anim: !!value
@@ -1385,9 +1423,9 @@ class PaperDoll extends Component<AProps, AState> {
       <div className="paperdoll container">
         <PaperDollSettings
           settings={{
-            slim: this.props.slim,
             anim: this.state.anim,
             animSpeed: this.state.animSpeed,
+            animation: this.state.animation,
             explode: this.state.explode,
             shade: this.state.shade,
             lightAngle: this.state.lightAngle,
@@ -1397,7 +1435,9 @@ class PaperDoll extends Component<AProps, AState> {
             fov: this.state.fov,
             usePerspectiveCam: this.state.usePerspectiveCam
           }}
+          slim={this.props.slim}
           updateSetting={this.updateSetting}
+          updateSlim={this.props.updateSlim}
           saveRender={this.saveRender}
           resetCamera={this.resetCamera}
           resetLighting={() => this.setState(defaultLighting)}
@@ -1424,9 +1464,9 @@ class PaperDoll extends Component<AProps, AState> {
 
 type BProps = {
   settings: {
-    slim: boolean;
     anim: boolean;
     animSpeed: number;
+    animation: AState['animation'];
     explode: boolean;
     shade: boolean;
     lightAngle: number;
@@ -1437,10 +1477,9 @@ type BProps = {
     usePerspectiveCam: boolean;
   };
 
-  updateSetting: <KKey extends keyof SharedSettings>(
-    setting: KKey,
-    value: SharedSettings[KKey]
-  ) => void;
+  slim: boolean;
+  updateSetting: <KKey extends keyof AState>(setting: KKey, value: AState[KKey]) => void;
+  updateSlim: (slim: boolean) => void;
   saveRender: () => void;
   resetCamera: () => void;
   resetLighting: () => void;
@@ -1455,7 +1494,7 @@ type BProps = {
   uploadPose: (poseName: string, poseJsonString: string) => void;
 };
 
-type BState = BProps['settings'] & {
+type BState = {
   selectedPose?: string;
   panel: boolean;
 };
@@ -1467,26 +1506,12 @@ class PaperDollSettings extends Component<BProps, BState> {
     super(props);
 
     this.state = {
-      slim: props.settings.slim,
-      anim: props.settings.anim,
-      animSpeed: props.settings.animSpeed,
-      explode: props.settings.explode,
-      shade: props.settings.shade,
-      lightAngle: props.settings.lightAngle,
-      lightFocus: props.settings.lightFocus,
-      pose: props.settings.pose,
-      poseSettings: props.settings.poseSettings,
-      fov: props.settings.fov,
-      usePerspectiveCam: props.settings.usePerspectiveCam,
       selectedPose: this.props.savedPoses[0],
       panel: true
     };
   }
 
-  componentDidUpdate = (prevProps: BProps) => {
-    if (this.props.settings.slim !== prevProps.settings.slim)
-      this.setState({ slim: this.props.settings.slim });
-
+  componentDidUpdate = () => {
     if (this.state.selectedPose === undefined) return;
 
     if (this.props.savedPoses.length) {
@@ -1496,30 +1521,25 @@ class PaperDollSettings extends Component<BProps, BState> {
     } else this.setState({ selectedPose: undefined });
   };
 
-  updateSetting = <KKey extends keyof BState>(setting: KKey, value: BState[KKey]) => {
-    this.setState({ [setting]: value } as Pick<BState, KKey>);
-    this.props.updateSetting(
-      setting as keyof SharedSettings,
-      value as SharedSettings[keyof SharedSettings]
-    );
+  updateSetting = <KKey extends keyof AState>(setting: KKey, value: AState[KKey]) => {
+    this.props.updateSetting(setting, value);
   };
 
-  settingEdit = <KKey extends keyof BState>(
+  settingEdit = <KKey extends keyof AState>(
     setting: KKey,
-    from: BState[KKey],
-    to: BState[KKey]
+    from: AState[KKey],
+    to: AState[KKey]
   ) => {
-    this.setState({ [setting]: from } as Pick<BState, KKey>);
-    this.props.updateSetting(
-      setting as keyof SharedSettings,
-      from as SharedSettings[keyof SharedSettings]
-    );
+    this.props.updateSetting(setting, from);
 
     return () => this.settingEdit(setting, to, from);
   };
 
-  updateSettingFinish = <KKey extends keyof BState>(setting: KKey, value: BState[KKey]) => {
-    const from = this.state[setting];
+  updateSettingFinish = (
+    setting: keyof BProps['settings'],
+    value: AState[keyof BProps['settings']]
+  ) => {
+    const from = this.props.settings[setting];
 
     this.updateSetting(setting, value);
 
@@ -1527,30 +1547,22 @@ class PaperDollSettings extends Component<BProps, BState> {
   };
 
   resetLighting = () => {
-    this.setState(defaultLighting);
     this.props.resetLighting();
   };
 
   toggleAnim = (anim: boolean) => {
-    this.setState({
-      anim: anim
-    });
     this.props.updateSetting('anim', anim);
   };
 
   togglePose = (pose: boolean) => {
-    this.setState({
-      pose: pose,
-      explode: false
-    });
     this.props.updateSetting('pose', pose);
   };
 
   changePoseSetting = <KKey extends keyof AState['poseSettings']>(setting: KKey) => {
     const poseSettings: AState['poseSettings'] = {
-      mode: this.state.poseSettings.mode,
-      type: this.state.poseSettings.type,
-      space: this.state.poseSettings.space
+      mode: this.props.settings.poseSettings.mode,
+      type: this.props.settings.poseSettings.type,
+      space: this.props.settings.poseSettings.space
     };
 
     switch (setting) {
@@ -1573,7 +1585,6 @@ class PaperDollSettings extends Component<BProps, BState> {
         return;
     }
 
-    this.setState({ poseSettings: poseSettings });
     this.props.updateSetting('poseSettings', poseSettings);
   };
 
@@ -1603,8 +1614,8 @@ class PaperDollSettings extends Component<BProps, BState> {
                 <input
                   type="checkbox"
                   id="slimToggle"
-                  checked={this.state.slim}
-                  onChange={e => this.updateSettingFinish('slim', e.target.checked)}
+                  checked={this.props.slim}
+                  onChange={e => this.props.updateSlim(e.target.checked)}
                 />
               </span>
               <Dropdown title="Camera">
@@ -1614,22 +1625,25 @@ class PaperDollSettings extends Component<BProps, BState> {
                     <button
                       id="cameraType"
                       onClick={() =>
-                        this.updateSettingFinish('usePerspectiveCam', !this.state.usePerspectiveCam)
+                        this.updateSettingFinish(
+                          'usePerspectiveCam',
+                          !this.props.settings.usePerspectiveCam
+                        )
                       }
                     >
-                      {this.state.usePerspectiveCam ? 'Perspective' : 'Orthographic'}
+                      {this.props.settings.usePerspectiveCam ? 'Perspective' : 'Orthographic'}
                     </button>
                   </span>
                   <span>
-                    <label htmlFor="fov">FOV ({this.state.fov})</label>
+                    <label htmlFor="fov">FOV ({this.props.settings.fov})</label>
                     <input
-                      disabled={!this.state.usePerspectiveCam}
+                      disabled={!this.props.settings.usePerspectiveCam}
                       type="range"
                       id="fov"
                       min={30}
                       max={120}
                       step={1}
-                      value={this.state.fov}
+                      value={this.props.settings.fov}
                       onChange={e => this.updateSetting('fov', Number(e.target.value))}
                     />
                   </span>
@@ -1643,37 +1657,37 @@ class PaperDollSettings extends Component<BProps, BState> {
                     <input
                       type="checkbox"
                       id="shadeToggle"
-                      checked={this.state.shade}
+                      checked={this.props.settings.shade}
                       onChange={e => this.updateSettingFinish('shade', e.target.checked)}
                     />
                   </span>
                   <span>
                     <label htmlFor="lightFocus">Light Focus</label>
                     <input
-                      disabled={!this.state.shade}
+                      disabled={!this.props.settings.shade}
                       type="range"
                       id="lightFocus"
                       min={0}
                       max={10}
                       step={0.1}
-                      value={Math.sqrt(this.state.lightFocus)}
+                      value={Math.sqrt(this.props.settings.lightFocus)}
                       onChange={e => this.updateSetting('lightFocus', Number(e.target.value) ** 2)}
                     />
                   </span>
                   <span>
                     <label htmlFor="lightAngle">Light Angle</label>
                     <input
-                      disabled={!this.state.shade}
+                      disabled={!this.props.settings.shade}
                       type="range"
                       id="lightAngle"
                       min={0}
                       max={2 * Math.PI}
                       step={0.1}
-                      value={this.state.lightAngle}
+                      value={this.props.settings.lightAngle}
                       onChange={e => this.updateSetting('lightAngle', Number(e.target.value))}
                     />
                   </span>
-                  <button disabled={!this.state.shade} onClick={this.resetLighting}>
+                  <button disabled={!this.props.settings.shade} onClick={this.resetLighting}>
                     Reset Lighting
                   </button>
                 </div>
@@ -1684,28 +1698,28 @@ class PaperDollSettings extends Component<BProps, BState> {
         <span className="top left">
           <div>
             <label htmlFor="editorMode">Editor Mode</label>
-            <button id="editorMode" onClick={() => this.togglePose(!this.state.pose)}>
-              {this.state.pose ? 'Pose' : 'Animate'}
+            <button id="editorMode" onClick={() => this.togglePose(!this.props.settings.pose)}>
+              {this.props.settings.pose ? 'Pose' : 'Animate'}
             </button>
           </div>
-          {this.state.pose && (
+          {this.props.settings.pose && (
             <span>
               <span>
                 <label htmlFor="poseMode">Pose Mode</label>
                 <button id="poseMode" onClick={() => this.changePoseSetting('mode')}>
-                  {this.state.poseSettings.mode}
+                  {this.props.settings.poseSettings.mode}
                 </button>
               </span>
               <span>
                 <label htmlFor="poseType">Pose Type</label>
                 <button id="poseType" onClick={() => this.changePoseSetting('type')}>
-                  {this.state.poseSettings.type}
+                  {this.props.settings.poseSettings.type}
                 </button>
               </span>
               <span>
                 <label htmlFor="poseSpace">Pose Space</label>
                 <button id="poseSpace" onClick={() => this.changePoseSetting('space')}>
-                  {this.state.poseSettings.space}
+                  {this.props.settings.poseSettings.space}
                 </button>
               </span>
               <button onClick={this.props.deselect}>Deselect</button>
@@ -1752,14 +1766,14 @@ class PaperDollSettings extends Component<BProps, BState> {
               />
             </span>
           )}
-          {!this.state.pose && (
+          {!this.props.settings.pose && (
             <span>
               <span>
                 <label htmlFor="explodeToggle">Explode</label>
                 <input
                   type="checkbox"
                   id="explodeToggle"
-                  checked={this.state.explode}
+                  checked={this.props.settings.explode}
                   onChange={e => this.updateSettingFinish('explode', e.target.checked)}
                 />
               </span>
@@ -1768,7 +1782,7 @@ class PaperDollSettings extends Component<BProps, BState> {
                 <input
                   type="checkbox"
                   id="animToggle"
-                  checked={this.state.anim}
+                  checked={this.props.settings.anim}
                   onChange={e => this.toggleAnim(e.target.checked)}
                 />
                 <input
@@ -1777,9 +1791,19 @@ class PaperDollSettings extends Component<BProps, BState> {
                   min={0}
                   max={2}
                   step={0.01}
-                  value={this.state.animSpeed}
+                  value={this.props.settings.animSpeed}
                   onChange={e => this.updateSetting('animSpeed', Number(e.target.value))}
                 />
+                <select
+                  value={this.props.settings.animation}
+                  onChange={e =>
+                    this.updateSettingFinish('animation', e.target.value as AState['animation'])
+                  }
+                >
+                  {ANIMATIONS.map(animation => (
+                    <option key={animation}>{animation}</option>
+                  ))}
+                </select>
               </span>
             </span>
           )}
