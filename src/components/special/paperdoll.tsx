@@ -887,15 +887,10 @@ class PaperDoll extends Component<AProps, AState> {
   };
 
   capturePose = () => {
-    this.savePose();
-
     this.setState({
       pose: true,
       explode: false
     });
-
-    this.loadPose();
-    this.clearSavedPose();
   };
 
   animate = (delta: number) => {
