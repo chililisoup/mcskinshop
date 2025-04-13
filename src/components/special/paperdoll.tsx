@@ -778,6 +778,34 @@ class PaperDoll extends Component<AProps, AState> {
     >;
   };
 
+  getPoseJson = () => {
+    const poseJson: Record<string, PoseEntry> = {};
+
+    for (const [name, pivot] of Object.entries(this.pivots)) {
+      const entry: PoseEntry = {};
+      if (!pivot.position.equals(pivot.userData.defaultPosition as THREE.Vector3Like))
+        entry.position = pivot.position.toArray();
+      if (!pivot.rotation.equals(new THREE.Euler())) entry.rotation = pivot.rotation.toArray();
+
+      if (Object.keys(entry).length > 0) poseJson[name] = entry;
+    }
+
+    return poseJson;
+  };
+
+  loadPoseJson = (poseJson: Record<string, PoseEntry> = {}) => {
+    this.resetPose();
+
+    for (const [name, transform] of Object.entries(poseJson)) {
+      const pivot = this.pivots[name];
+      if (!pivot) continue;
+
+      if (transform.position) pivot.position.fromArray(transform.position);
+      if (transform.rotation)
+        pivot.setRotationFromEuler(new THREE.Euler().fromArray(transform.rotation));
+    }
+  };
+
   savePoseJson = () => {
     const poseName = window.prompt('Save pose as...');
     if (poseName === null) return;
@@ -790,17 +818,7 @@ class PaperDoll extends Component<AProps, AState> {
       if (!overwrite) return;
     }
 
-    const poseJson: Record<string, PoseEntry> = {};
-
-    for (const [name, pivot] of Object.entries(this.pivots)) {
-      const entry: PoseEntry = {};
-      if (!pivot.position.equals(pivot.userData.defaultPosition as THREE.Vector3Like))
-        entry.position = pivot.position.toArray();
-      if (!pivot.rotation.equals(new THREE.Euler())) entry.rotation = pivot.rotation.toArray();
-
-      if (Object.keys(entry).length > 0) poseJson[name] = entry;
-    }
-
+    const poseJson = this.getPoseJson();
     if (Object.keys(poseJson).length === 0) {
       window.alert('Unable to save! Empty pose');
       return;
@@ -815,7 +833,7 @@ class PaperDoll extends Component<AProps, AState> {
     }
   };
 
-  loadPoseJson = (poseName: string) => {
+  loadPoseName = (poseName: string) => {
     const poseJson = this.getSavedPose(poseName);
     if (!poseJson) {
       window.alert(`Unable to load! Pose '${poseName}' not found`);
@@ -827,19 +845,10 @@ class PaperDoll extends Component<AProps, AState> {
       return;
     }
 
-    this.resetPose();
-
-    for (const [name, transform] of Object.entries(poseJson) as [string, PoseEntry][]) {
-      const pivot = this.pivots[name];
-      if (!pivot) continue;
-
-      if (transform.position) pivot.position.fromArray(transform.position);
-      if (transform.rotation)
-        pivot.setRotationFromEuler(new THREE.Euler().fromArray(transform.rotation));
-    }
+    this.loadPoseJson(poseJson);
   };
 
-  deletePoseJson = (poseName: string) => {
+  deletePoseName = (poseName: string) => {
     localStorage.removeItem('pose-' + poseName);
 
     const savedPoses = this.getSavedPoses();
@@ -877,6 +886,18 @@ class PaperDoll extends Component<AProps, AState> {
     this.setState({ savedPoses: savedPoses });
   };
 
+  capturePose = () => {
+    this.savePose();
+
+    this.setState({
+      pose: true,
+      explode: false
+    });
+
+    this.loadPose();
+    this.clearSavedPose();
+  };
+
   animate = (delta: number) => {
     if (this.state.anim) {
       this.time += delta * 8 * this.state.animSpeed;
@@ -885,10 +906,18 @@ class PaperDoll extends Component<AProps, AState> {
     }
 
     this.pivots.head.position.copy(this.pivots.head.userData.defaultPosition as THREE.Vector3Like);
-    this.pivots.leftArm.position.copy(this.pivots.leftArm.userData.defaultPosition as THREE.Vector3Like);
-    this.pivots.rightArm.position.copy(this.pivots.rightArm.userData.defaultPosition as THREE.Vector3Like);
-    this.pivots.leftLeg.position.copy(this.pivots.leftLeg.userData.defaultPosition as THREE.Vector3Like);
-    this.pivots.rightLeg.position.copy(this.pivots.rightLeg.userData.defaultPosition as THREE.Vector3Like);
+    this.pivots.leftArm.position.copy(
+      this.pivots.leftArm.userData.defaultPosition as THREE.Vector3Like
+    );
+    this.pivots.rightArm.position.copy(
+      this.pivots.rightArm.userData.defaultPosition as THREE.Vector3Like
+    );
+    this.pivots.leftLeg.position.copy(
+      this.pivots.leftLeg.userData.defaultPosition as THREE.Vector3Like
+    );
+    this.pivots.rightLeg.position.copy(
+      this.pivots.rightLeg.userData.defaultPosition as THREE.Vector3Like
+    );
 
     this.updateExplode();
 
@@ -908,7 +937,7 @@ class PaperDoll extends Component<AProps, AState> {
     switch (this.state.animation) {
       case 'Walk':
         this.pivots.torso.rotation.x = 0;
-        
+
         break;
       case 'Crouch Walk':
         this.pivots.head.position.y -= 1.0;
@@ -918,17 +947,14 @@ class PaperDoll extends Component<AProps, AState> {
         this.pivots.leftArm.rotation.x -= 0.1;
         this.pivots.rightArm.rotation.x -= 0.1;
 
-
         this.pivots.leftArm.position.y += 0.2;
         this.pivots.rightArm.position.y += 0.2;
 
         this.pivots.leftArm.position.z += 1.0;
         this.pivots.rightArm.position.z += 1.0;
 
-
         this.pivots.leftLeg.rotation.x -= 0.5;
         this.pivots.rightLeg.rotation.x -= 0.5;
-
 
         this.pivots.leftLeg.position.y += 2;
         this.pivots.rightLeg.position.y += 2;
@@ -938,8 +964,6 @@ class PaperDoll extends Component<AProps, AState> {
 
         break;
     }
-
-
   };
 
   findPosableAncestor: (part: THREE.Object3D) => THREE.Object3D | false = part => {
@@ -1449,10 +1473,11 @@ class PaperDoll extends Component<AProps, AState> {
           }}
           savedPoses={this.state.savedPoses}
           savePose={this.savePoseJson}
-          loadPose={this.loadPoseJson}
-          deletePose={this.deletePoseJson}
+          loadPose={this.loadPoseName}
+          deletePose={this.deletePoseName}
           downloadPose={this.downloadPoseJson}
           uploadPose={this.uploadPoseJson}
+          capturePose={this.capturePose}
         />
         <div className="paperdoll-canvas-container">
           <canvas className="paperdoll-canvas" ref={this.canvasRef} />
@@ -1492,6 +1517,7 @@ type BProps = {
   deletePose: (poseName: string) => void;
   downloadPose: (poseName: string) => void;
   uploadPose: (poseName: string, poseJsonString: string) => void;
+  capturePose: () => void;
 };
 
 type BState = {
@@ -1805,6 +1831,7 @@ class PaperDollSettings extends Component<BProps, BState> {
                   ))}
                 </select>
               </span>
+              <button onClick={this.props.capturePose}>Capture Pose</button>
             </span>
           )}
         </span>
