@@ -75,6 +75,7 @@ class PaperDoll extends Component<AProps, AState> {
   clock = new THREE.Clock();
   time = 0;
   idleTime = 0;
+  activeKeys: Record<string, true> = {};
   mousePos = new THREE.Vector2(1, 1);
   oldMousePos?: THREE.Vector2;
   canDeselect = false;
@@ -92,6 +93,8 @@ class PaperDoll extends Component<AProps, AState> {
   handle?: THREE.Mesh;
   hoveredHandle?: THREE.Mesh;
   oldHandlePos?: THREE.Vector3;
+  selectedStartMatrix?: THREE.Matrix4;
+  selectedStartWorldPos?: THREE.Vector3;
   hoveredObject?: THREE.Object3D;
   selectedObject?: THREE.Object3D;
   posePivot?: THREE.Vector2Like;
@@ -164,6 +167,8 @@ class PaperDoll extends Component<AProps, AState> {
     this.canvasRef.current.addEventListener('mousedown', this.onMouseDown);
     this.canvasRef.current.addEventListener('mouseup', this.onMouseUp);
     this.canvasRef.current.addEventListener('contextmenu', this.onContextMenu);
+    document.addEventListener('keydown', this.onKeyDown);
+    document.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('resize', this.handleWindowResize);
   }
 
@@ -174,6 +179,8 @@ class PaperDoll extends Component<AProps, AState> {
     this.canvasRef.current.removeEventListener('mousedown', this.onMouseDown);
     this.canvasRef.current.removeEventListener('mouseup', this.onMouseUp);
     this.canvasRef.current.removeEventListener('contextmenu', this.onContextMenu);
+    document.removeEventListener('keydown', this.onKeyDown);
+    document.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('resize', this.handleWindowResize);
     window.cancelAnimationFrame(this.requestID);
     if (this.controls) this.controls.dispose();
@@ -492,7 +499,7 @@ class PaperDoll extends Component<AProps, AState> {
 
     const positionAxisHandles = new THREE.Object3D();
     positionAxisHandles.name = 'positionAxisHandles';
-    positionAxisHandles.add(this.createPositionAxisHandle(0xff0000, 'x', [1, 0, 0], [0, 0, 1]));
+    positionAxisHandles.add(this.createPositionAxisHandle(0xff0000, 'x', [1, 0, 0], [0, 0, -1]));
     positionAxisHandles.add(this.createPositionAxisHandle(0x00ff00, 'y', [0, 1, 0], [0, 0, 0]));
     positionAxisHandles.add(this.createPositionAxisHandle(0x0000ff, 'z', [0, 0, 1], [1, 0, 0]));
     positionHandles.add(positionAxisHandles);
@@ -500,8 +507,8 @@ class PaperDoll extends Component<AProps, AState> {
     const positionPlaneHandles = new THREE.Object3D();
     positionPlaneHandles.name = 'positionPlaneHandles';
     positionPlaneHandles.add(this.createPositionPlaneHandle(0xff0000, 'x', [1, 0, 0], [0, 1, 0]));
-    positionPlaneHandles.add(this.createPositionPlaneHandle(0x00ff00, 'y', [0, 1, 0], [1, 0, 0]));
-    positionPlaneHandles.add(this.createPositionPlaneHandle(0x0000ff, 'z', [0, 0, 1], [0, 0, 0]));
+    positionPlaneHandles.add(this.createPositionPlaneHandle(0x00ff00, 'y', [0, 1, 0], [1, 0, -1]));
+    positionPlaneHandles.add(this.createPositionPlaneHandle(0x0000ff, 'z', [0, 0, 1], [0, 0, -1]));
     positionHandles.add(positionPlaneHandles);
 
     this.handles.add(positionHandles);
@@ -1064,8 +1071,10 @@ class PaperDoll extends Component<AProps, AState> {
   };
 
   poseRotation = () => {
+    if (!this.oldMousePos || !this.selectedObject?.parent) return;
+
     if (this.state.poseSettings.mode === 'Controlled') {
-      if (!this.handle || !this.selectedObject) return;
+      if (!this.handle) return;
 
       const localRotation = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
       const worldPivotPos = this.selectedObject.getWorldPosition(new THREE.Vector3());
@@ -1086,8 +1095,9 @@ class PaperDoll extends Component<AProps, AState> {
       const intersect = plane.intersectLine(line, new THREE.Vector3());
       if (!intersect) return;
 
-      if (!this.oldHandlePos) {
+      if (!this.oldHandlePos || !this.selectedStartMatrix) {
         this.oldHandlePos = intersect;
+        this.selectedStartMatrix = this.selectedObject.matrix.clone();
         return;
       }
 
@@ -1106,19 +1116,24 @@ class PaperDoll extends Component<AProps, AState> {
         norm.z
       );
 
-      const angle = Math.atan2(matrix.determinant(), vec1.dot(vec2));
+      let angle = Math.atan2(matrix.determinant(), vec1.dot(vec2));
 
-      if (this.state.poseSettings.space === 'Global') {
-        this.selectedObject.rotateOnAxis(norm.applyQuaternion(localRotation.invert()), angle);
-      } else this.selectedObject.rotateOnAxis(this.handle.userData.normal as THREE.Vector3, angle);
+      if (this.activeKeys.Control) {
+        const step = Math.PI / 16;
+        angle = Math.round(angle / step) * step;
+      }
 
-      this.oldHandlePos = intersect;
-    } else if (
-      this.activeCam &&
-      this.oldMousePos &&
-      this.posePivot &&
-      this.selectedObject?.parent
-    ) {
+      const rotation = new THREE.Quaternion().setFromAxisAngle(
+        this.state.poseSettings.space === 'Global'
+          ? norm.applyQuaternion(localRotation.invert())
+          : (this.handle.userData.normal as THREE.Vector3),
+        angle
+      );
+
+      this.selectedObject.setRotationFromQuaternion(
+        new THREE.Quaternion().setFromRotationMatrix(this.selectedStartMatrix).multiply(rotation)
+      );
+    } else if (this.activeCam && this.posePivot) {
       // Simple mode
       const axis = this.activeCam.getWorldDirection(new THREE.Vector3());
 
@@ -1137,7 +1152,7 @@ class PaperDoll extends Component<AProps, AState> {
   };
 
   posePosition = () => {
-    if (!this.selectedObject || !this.oldMousePos || !this.selectedObject?.parent) return;
+    if (!this.oldMousePos || !this.selectedObject?.parent) return;
 
     const clipZ = this.getClipZ(this.selectedObject);
     const camMult = Math.sign(clipZ);
@@ -1145,10 +1160,12 @@ class PaperDoll extends Component<AProps, AState> {
     if (this.state.poseSettings.mode === 'Controlled') {
       if (!this.handle) return;
 
-      const worldPivotPos = this.selectedObject.getWorldPosition(new THREE.Vector3());
+      this.selectedStartMatrix ??= this.selectedObject.matrix.clone();
+      this.selectedStartWorldPos ??= this.selectedObject.getWorldPosition(new THREE.Vector3());
+
+      const worldQuat = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
       const norm = (this.handle.userData.normal as THREE.Vector3).clone();
-      if (this.state.poseSettings.space === 'Local')
-        norm.applyQuaternion(this.selectedObject.getWorldQuaternion(new THREE.Quaternion()));
+      if (this.state.poseSettings.space === 'Local') norm.applyQuaternion(worldQuat);
 
       let movement;
 
@@ -1157,14 +1174,14 @@ class PaperDoll extends Component<AProps, AState> {
         const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9 * camMult)
           .sub(start)
           .normalize();
-        start.sub(worldPivotPos);
+        start.sub(this.selectedStartWorldPos);
 
         const line = new THREE.Line3(start, start.clone().addScaledVector(lineDirection, 500));
 
         const plane = new THREE.Plane();
         plane.setFromCoplanarPoints(
           new THREE.Vector3(),
-          this.clipToWorldSpace(this.mousePos, clipZ).sub(worldPivotPos),
+          this.clipToWorldSpace(this.mousePos, clipZ).sub(this.selectedStartWorldPos),
           norm
         );
 
@@ -1180,12 +1197,17 @@ class PaperDoll extends Component<AProps, AState> {
         }
 
         movement = intersect.sub(this.oldHandlePos);
+
+        if (this.activeKeys.Control) {
+          const length = movement.length();
+          movement.normalize().multiplyScalar(Math.round(length));
+        }
       } else {
         const start = this.clipToWorldSpace(this.mousePos, 0.5 * camMult);
         const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9 * camMult)
           .sub(start)
           .normalize();
-        start.sub(worldPivotPos);
+        start.sub(this.selectedStartWorldPos);
 
         const line = new THREE.Line3(start, start.clone().addScaledVector(lineDirection, 500));
 
@@ -1200,11 +1222,21 @@ class PaperDoll extends Component<AProps, AState> {
         }
 
         movement = intersect.sub(this.oldHandlePos);
-      }
 
+        if (this.activeKeys.Control) {
+          if (this.state.poseSettings.space === 'Local') {
+            movement.applyQuaternion(worldQuat.clone().invert());
+            movement.round();
+            movement.applyQuaternion(worldQuat);
+          } else movement.round();
+        }
+      }
       movement.add(this.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
       this.selectedObject.parent.worldToLocal(movement);
-      this.selectedObject.position.add(movement);
+
+      this.selectedObject.position.copy(
+        new THREE.Vector3().setFromMatrixPosition(this.selectedStartMatrix).add(movement)
+      );
     } else {
       // Simple mode
       const movement = this.clipToWorldSpace(this.mousePos, clipZ);
@@ -1408,6 +1440,8 @@ class PaperDoll extends Component<AProps, AState> {
     if (this.controls) this.controls.enabled = true;
     this.oldMousePos = undefined;
     this.oldHandlePos = undefined;
+    this.selectedStartMatrix = undefined;
+    this.selectedStartWorldPos = undefined;
     this.posePivot = undefined;
     this.queuedPoseEdit = undefined;
     this.handle = undefined;
@@ -1439,6 +1473,14 @@ class PaperDoll extends Component<AProps, AState> {
     }
 
     e.preventDefault();
+  };
+
+  onKeyDown = (e: KeyboardEvent) => {
+    this.activeKeys[e.key] = true;
+  };
+
+  onKeyUp = (e: KeyboardEvent) => {
+    delete this.activeKeys[e.key];
   };
 
   deselect = () => {
