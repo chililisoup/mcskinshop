@@ -7,6 +7,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import steve from '@assets/steve.png';
 import alex from '@assets/alex.png';
 import matcap from '@assets/matcap.png';
@@ -76,6 +77,7 @@ class PaperDoll extends Component<AProps, AState> {
   idleTime = 0;
   mousePos = new THREE.Vector2(1, 1);
   oldMousePos?: THREE.Vector2;
+  canDeselect = false;
   doll = new THREE.Object3D();
   materials: {
     shaded: (THREE.MeshLambertMaterial | THREE.MeshMatcapMaterial)[];
@@ -370,12 +372,12 @@ class PaperDoll extends Component<AProps, AState> {
     rotation: number[]
   ) => {
     const handle = new THREE.Mesh(
-      new THREE.TorusGeometry(5, 0.3, 8, 32),
+      new THREE.TorusGeometry(5, 0.2, 8, 32),
       new THREE.MeshBasicMaterial({
         color: color,
         depthTest: false,
         transparent: true,
-        opacity: 0.33
+        opacity: 0.5
       })
     );
 
@@ -389,22 +391,35 @@ class PaperDoll extends Component<AProps, AState> {
     handle.renderOrder = 999;
     handle.userData.noOutline = true;
 
+    const handlePadding = new THREE.Mesh(
+      new THREE.TorusGeometry(5, 1, 8, 16),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+
+    handlePadding.name = 'handlePadding';
+    handle.add(handlePadding);
+
     return handle;
   };
 
-  createPositionHandle = (
+  createPositionAxisHandle = (
     color: THREE.ColorRepresentation,
     name: string,
     normal: number[],
     rotation: number[]
   ) => {
+    const handleCylinder = new THREE.CylinderGeometry(0.2, 0.2, 5, 32);
+    handleCylinder.translate(0, 2.5, 0);
+    const handleArrow = new THREE.CylinderGeometry(0, 0.6, 2, 32);
+    handleArrow.translate(0, 6, 0);
+
     const handle = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.3, 0.3, 10, 32),
+      BufferGeometryUtils.mergeGeometries([handleCylinder, handleArrow]),
       new THREE.MeshBasicMaterial({
         color: color,
         depthTest: false,
         transparent: true,
-        opacity: 0.33
+        opacity: 0.5
       })
     );
 
@@ -415,6 +430,47 @@ class PaperDoll extends Component<AProps, AState> {
         new THREE.Vector3().fromArray(rotation).multiplyScalar(Math.PI / 2)
       )
     );
+    handle.renderOrder = 999;
+    handle.userData.noOutline = true;
+
+    const handlePadding = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.2, 0.2, 7, 8),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+
+    handlePadding.name = 'handlePadding';
+    handlePadding.position.set(0, 4, 0);
+    handle.add(handlePadding);
+
+    return handle;
+  };
+
+  createPositionPlaneHandle = (
+    color: THREE.ColorRepresentation,
+    name: string,
+    normal: number[],
+    rotation: number[]
+  ) => {
+    const handle = new THREE.Mesh(
+      new THREE.PlaneGeometry(2, 2),
+      new THREE.MeshBasicMaterial({
+        color: color,
+        depthTest: false,
+        transparent: true,
+        opacity: 0.5,
+        side: THREE.DoubleSide
+      })
+    );
+
+    const euler = new THREE.Euler().setFromVector3(
+      new THREE.Vector3().fromArray(rotation).multiplyScalar(Math.PI / 2)
+    );
+
+    handle.name = name;
+    handle.userData.normal = new THREE.Vector3().fromArray(normal);
+    handle.setRotationFromEuler(euler);
+    handle.position.set(-2, 2, 0);
+    handle.position.applyEuler(euler);
     handle.renderOrder = 999;
     handle.userData.noOutline = true;
 
@@ -422,6 +478,8 @@ class PaperDoll extends Component<AProps, AState> {
   };
 
   createHandles = () => {
+    this.handles.clear();
+
     const rotationHandles = new THREE.Object3D();
     rotationHandles.name = 'rotationHandles';
     rotationHandles.add(this.createRotationHandle(0xff0000, 'x', [1, 0, 0], [0, 1, 0]));
@@ -431,9 +489,21 @@ class PaperDoll extends Component<AProps, AState> {
 
     const positionHandles = new THREE.Object3D();
     positionHandles.name = 'positionHandles';
-    positionHandles.add(this.createPositionHandle(0xff0000, 'x', [1, 0, 0], [0, 0, 1]));
-    positionHandles.add(this.createPositionHandle(0x00ff00, 'y', [0, 1, 0], [0, 0, 0]));
-    positionHandles.add(this.createPositionHandle(0x0000ff, 'z', [0, 0, 1], [1, 0, 0]));
+
+    const positionAxisHandles = new THREE.Object3D();
+    positionAxisHandles.name = 'positionAxisHandles';
+    positionAxisHandles.add(this.createPositionAxisHandle(0xff0000, 'x', [1, 0, 0], [0, 0, 1]));
+    positionAxisHandles.add(this.createPositionAxisHandle(0x00ff00, 'y', [0, 1, 0], [0, 0, 0]));
+    positionAxisHandles.add(this.createPositionAxisHandle(0x0000ff, 'z', [0, 0, 1], [1, 0, 0]));
+    positionHandles.add(positionAxisHandles);
+
+    const positionPlaneHandles = new THREE.Object3D();
+    positionPlaneHandles.name = 'positionPlaneHandles';
+    positionPlaneHandles.add(this.createPositionPlaneHandle(0xff0000, 'x', [1, 0, 0], [0, 1, 0]));
+    positionPlaneHandles.add(this.createPositionPlaneHandle(0x00ff00, 'y', [0, 1, 0], [1, 0, 0]));
+    positionPlaneHandles.add(this.createPositionPlaneHandle(0x0000ff, 'z', [0, 0, 1], [0, 0, 0]));
+    positionHandles.add(positionPlaneHandles);
+
     this.handles.add(positionHandles);
   };
 
@@ -1002,17 +1072,19 @@ class PaperDoll extends Component<AProps, AState> {
       const norm = (this.handle.userData.normal as THREE.Vector3).clone();
       if (this.state.poseSettings.space === 'Local') norm.applyQuaternion(localRotation);
 
-      const start = this.clipToWorldSpace(this.mousePos, 0.5);
-      const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9).sub(start).normalize();
+      const camMult = this.activeCam instanceof THREE.OrthographicCamera ? -1 : 1;
+      const start = this.clipToWorldSpace(this.mousePos, 0.5 * camMult);
+      const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9 * camMult)
+        .sub(start)
+        .normalize();
       start.sub(worldPivotPos);
 
       const line = new THREE.Line3(start, start.clone().addScaledVector(lineDirection, 500));
 
       const plane = new THREE.Plane(norm);
 
-      const intersect = new THREE.Vector3();
-      const result = plane.intersectLine(line, intersect);
-      if (!result) return;
+      const intersect = plane.intersectLine(line, new THREE.Vector3());
+      if (!intersect) return;
 
       if (!this.oldHandlePos) {
         this.oldHandlePos = intersect;
@@ -1068,6 +1140,7 @@ class PaperDoll extends Component<AProps, AState> {
     if (!this.selectedObject || !this.oldMousePos || !this.selectedObject?.parent) return;
 
     const clipZ = this.getClipZ(this.selectedObject);
+    const camMult = Math.sign(clipZ);
 
     if (this.state.poseSettings.mode === 'Controlled') {
       if (!this.handle) return;
@@ -1077,23 +1150,60 @@ class PaperDoll extends Component<AProps, AState> {
       if (this.state.poseSettings.space === 'Local')
         norm.applyQuaternion(this.selectedObject.getWorldQuaternion(new THREE.Quaternion()));
 
-      const line = new THREE.Line3(worldPivotPos, worldPivotPos.clone().add(norm));
+      let movement;
 
-      const linePos = line.closestPointToPoint(
-        this.clipToWorldSpace(this.mousePos, clipZ),
-        false,
-        new THREE.Vector3()
-      );
-      const oldLinePos = line.closestPointToPoint(
-        this.clipToWorldSpace(this.oldMousePos, clipZ),
-        false,
-        new THREE.Vector3()
-      );
+      if (this.handle.parent?.name === 'positionAxisHandles') {
+        const start = this.clipToWorldSpace(this.mousePos, 0.5 * camMult);
+        const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9 * camMult)
+          .sub(start)
+          .normalize();
+        start.sub(worldPivotPos);
 
-      const movement = linePos.sub(oldLinePos);
+        const line = new THREE.Line3(start, start.clone().addScaledVector(lineDirection, 500));
+
+        const plane = new THREE.Plane();
+        plane.setFromCoplanarPoints(
+          new THREE.Vector3(),
+          this.clipToWorldSpace(this.mousePos, clipZ).sub(worldPivotPos),
+          norm
+        );
+
+        const intersect = plane.intersectLine(line, new THREE.Vector3());
+        if (!intersect) return;
+
+        const axis = new THREE.Line3(new THREE.Vector3(), norm);
+        axis.closestPointToPoint(intersect, false, intersect);
+
+        if (!this.oldHandlePos) {
+          this.oldHandlePos = intersect;
+          return;
+        }
+
+        movement = intersect.sub(this.oldHandlePos);
+      } else {
+        const start = this.clipToWorldSpace(this.mousePos, 0.5 * camMult);
+        const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9 * camMult)
+          .sub(start)
+          .normalize();
+        start.sub(worldPivotPos);
+
+        const line = new THREE.Line3(start, start.clone().addScaledVector(lineDirection, 500));
+
+        const plane = new THREE.Plane(norm);
+
+        const intersect = plane.intersectLine(line, new THREE.Vector3());
+        if (!intersect) return;
+
+        if (!this.oldHandlePos) {
+          this.oldHandlePos = intersect;
+          return;
+        }
+
+        movement = intersect.sub(this.oldHandlePos);
+      }
+
       movement.add(this.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
       this.selectedObject.parent.worldToLocal(movement);
-
       this.selectedObject.position.add(movement);
     } else {
       // Simple mode
@@ -1122,6 +1232,9 @@ class PaperDoll extends Component<AProps, AState> {
         const positionHandles = this.handles.getObjectByName('positionHandles');
         if (positionHandles) positionHandles.visible = !isRotationMode;
 
+        const activeHandles = isRotationMode ? rotationHandles : positionHandles;
+        if (!activeHandles) return;
+
         if (this.state.poseSettings.space === 'Global') {
           this.handles.position.copy(this.selectedObject.getWorldPosition(new THREE.Vector3()));
           this.scene.add(this.handles);
@@ -1131,17 +1244,23 @@ class PaperDoll extends Component<AProps, AState> {
         }
 
         if (!this.handle) {
-          const handleIntersects = this.raycaster.intersectObject(this.handles, true);
+          const handleIntersects = this.raycaster.intersectObject(activeHandles, true);
           const hoveredHandle =
-            handleIntersects.length > 0 ? handleIntersects[0].object : undefined;
+            handleIntersects.length > 0
+              ? handleIntersects[0].object.name === 'handlePadding'
+                ? handleIntersects[0].object.parent
+                : handleIntersects[0].object
+              : undefined;
           this.hoveredHandle = hoveredHandle instanceof THREE.Mesh ? hoveredHandle : undefined;
 
-          this.handles.children.forEach(handleGroup =>
-            handleGroup.children.forEach(child => {
-              if (child instanceof THREE.Mesh) (child.material as THREE.Material).opacity = 0.33;
-              child.renderOrder = 999;
-            })
-          );
+          if (positionHandles && rotationHandles) {
+            positionHandles.children.concat([rotationHandles]).forEach(handleGroup =>
+              handleGroup.children.forEach(child => {
+                if (child instanceof THREE.Mesh) (child.material as THREE.Material).opacity = 0.5;
+                child.renderOrder = 999;
+              })
+            );
+          }
 
           if (this.hoveredHandle) {
             if ('opacity' in this.hoveredHandle.material) this.hoveredHandle.material.opacity = 1;
@@ -1229,6 +1348,8 @@ class PaperDoll extends Component<AProps, AState> {
   };
 
   onMouseMove = (e: MouseEvent) => {
+    if (this.canDeselect) this.canDeselect = false;
+
     if (
       !this.state.pose ||
       !this.canvasRef.current?.parentNode ||
@@ -1256,7 +1377,10 @@ class PaperDoll extends Component<AProps, AState> {
       if (this.hoveredObject) {
         this.selectedObject = this.hoveredObject;
         return;
-      } else if (!this.hoveredHandle) return;
+      } else if (!this.hoveredHandle) {
+        this.canDeselect = true;
+        return;
+      }
       this.handle = this.hoveredHandle;
     } else {
       if (!this.hoveredObject || !this.activeCam) return;
@@ -1274,6 +1398,9 @@ class PaperDoll extends Component<AProps, AState> {
   };
 
   onMouseUp = () => {
+    if (this.canDeselect) this.deselect();
+    this.canDeselect = false;
+
     if (this.state.poseSettings.mode === 'Simple') {
       this.selectedObject = undefined;
     }
