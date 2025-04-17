@@ -1610,7 +1610,7 @@ class PaperDoll extends Component<AProps, AState> {
 
   render() {
     return (
-      <div className="stack container">
+      <div className="paperdoll stack container">
         <PaperDollSettings
           settings={{
             anim: this.state.anim,

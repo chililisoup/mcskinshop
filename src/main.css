@@ -241,6 +241,10 @@ hr {
   flex: 1;
 }
 
+.paperdoll {
+  overflow: hidden;
+}
+
 .paperdoll-settings {
   position: absolute;
   max-width: calc(100% - 10px);
