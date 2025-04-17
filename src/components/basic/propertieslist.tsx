@@ -25,7 +25,7 @@ type BoolProperty = BaseProperty & {
 type SelectProperty = BaseProperty & {
   type: 'select';
   value: string;
-  options: [value: string, name?: string][];
+  options: [value: string, name?: string][] | Record<string, string>;
 };
 
 type ButtonProperty = BaseProperty & {
@@ -92,13 +92,21 @@ class PropertiesList extends Component<AProps> {
               this.props.stringCallback && this.props.stringCallback(property.id, e.target.value)
             }
           >
-            {property.options.map(option => {
-              return (
-                <option value={option[0]} key={`${id}-${option[0]}`}>
-                  {option[1] ?? option[0]}
-                </option>
-              );
-            })}
+            {Array.isArray(property.options)
+              ? property.options.map(option => {
+                  return (
+                    <option value={option[0]} key={`${id}-${option[0]}`}>
+                      {option[1] ?? option[0]}
+                    </option>
+                  );
+                })
+              : Object.keys(property.options).map(option => {
+                  return (
+                    <option value={option} key={`${id}-${option}`}>
+                      {(property.options as Record<string, string>)[option] ?? option}
+                    </option>
+                  );
+                })}
           </select>
         );
       case 'button':

@@ -11,7 +11,8 @@ type AProps = {
   requestUndo: () => void;
   requestRedo: () => void;
   editHints: [undoHint: string, redoHint: string];
-  viewTab: [name: string, visible: boolean, toggle: () => void][];
+  editTab?: [name: string, onClick: () => void][];
+  viewTab?: [name: string, visible: boolean, toggle: () => void][];
 };
 
 type AState = {
@@ -104,6 +105,10 @@ class MenuBar extends Component<AProps, AState> {
   };
 
   render() {
+    const editTabChildren =
+      this.props.editTab &&
+      [<hr />].concat(this.props.editTab.map(tab => <button onClick={tab[1]}>{tab[0]}</button>));
+
     const viewTabChildren = this.props.viewTab ? (
       this.props.viewTab.map(tab => (
         <span key={tab[0]}>
@@ -121,7 +126,7 @@ class MenuBar extends Component<AProps, AState> {
     return (
       <div className="MenuBar">
         <button
-          style={this.state.file ? { background: 'rgb(66, 54, 99)' } : {}}
+          style={this.state.file ? { background: 'var(--dark-shadow)' } : {}}
           onMouseDown={() => this.setState({ file: !this.state.file })}
         >
           File
@@ -152,7 +157,7 @@ class MenuBar extends Component<AProps, AState> {
           </PopUp>
         )}
         <button
-          style={this.state.edit ? { background: 'rgb(66, 54, 99)' } : {}}
+          style={this.state.edit ? { background: 'var(--dark-shadow)' } : {}}
           onMouseDown={() => this.setState({ edit: !this.state.edit })}
         >
           Edit
@@ -167,11 +172,12 @@ class MenuBar extends Component<AProps, AState> {
               <button disabled={!redoHint} onClick={this.props.requestRedo}>
                 {redoHint ? redoHint : 'Redo'}
               </button>
+              {editTabChildren}
             </div>
           </PopUp>
         )}
         <button
-          style={this.state.view ? { background: 'rgb(66, 54, 99)' } : {}}
+          style={this.state.view ? { background: 'var(--dark-shadow)' } : {}}
           onMouseDown={() => this.setState({ view: !this.state.view })}
         >
           View
@@ -182,7 +188,7 @@ class MenuBar extends Component<AProps, AState> {
           </PopUp>
         )}
         <button
-          style={this.state.help ? { background: 'rgb(66, 54, 99)' } : {}}
+          style={this.state.help ? { background: 'var(--dark-shadow)' } : {}}
           onMouseDown={() => this.setState({ help: !this.state.help })}
         >
           Help

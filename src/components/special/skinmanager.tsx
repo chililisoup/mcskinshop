@@ -8,6 +8,8 @@ import AssetCreator from './assetcreator';
 import MenuBar from './menubar';
 import Preview from './preview';
 import ModelFeatures, { Features } from './modelfeatures';
+import Preferences from './preferences';
+import * as PrefMan from '../../tools/prefman';
 
 export type UndoCallback = () => RedoCallback;
 export type RedoCallback = () => UndoCallback;
@@ -28,6 +30,8 @@ type AState = {
   assetCreator: boolean;
   layerAdder: boolean;
   modelFeaturesWindow: boolean;
+  preferences: boolean;
+  prefMan: PrefMan.Manager;
 };
 
 class SkinManager extends Component<AProps, AState> {
@@ -54,7 +58,9 @@ class SkinManager extends Component<AProps, AState> {
       preview: true,
       assetCreator: false,
       layerAdder: false,
-      modelFeaturesWindow: false
+      modelFeaturesWindow: false,
+      preferences: false,
+      prefMan: new PrefMan.Manager()
     };
   }
 
@@ -156,6 +162,7 @@ class SkinManager extends Component<AProps, AState> {
           requestRedo={this.requestRedo}
           editHints={this.state.editHints}
           updateSkin={this.updateSkin}
+          editTab={[['Preferences...', () => this.updateState('preferences', true)]]}
           viewTab={[
             [
               'Layer Manager',
@@ -210,6 +217,13 @@ class SkinManager extends Component<AProps, AState> {
           {this.state.modelFeaturesWindow && (
             <ModelFeatures
               updateFeatures={features => this.updateState('modelFeatures', features)}
+            />
+          )}
+          {this.state.preferences && (
+            <Preferences
+              manager={this.state.prefMan}
+              updatePrefs={manager => this.setState({ prefMan: manager })}
+              close={() => this.updateState('preferences', false)}
             />
           )}
         </div>
