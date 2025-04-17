@@ -26,6 +26,11 @@ class Preferences extends Component<AProps> {
                 this.props.manager.setPrefs({ theme: value as PrefMan.Prefs['theme'] });
               this.props.updatePrefs(this.props.manager);
             }}
+            numberCallback={(id, value) => {
+              if (id === 'curvature')
+                this.props.manager.setPrefs({ curvature: value });
+              this.props.updatePrefs(this.props.manager);
+            }}
             properties={[
               {
                 name: 'Theme',
@@ -33,6 +38,13 @@ class Preferences extends Component<AProps> {
                 type: 'select',
                 value: this.props.manager.get().theme,
                 options: PrefMan.SELECT_PREFS.theme
+              },
+              {
+                name: 'Curvature',
+                id: 'curvature',
+                type: 'range',
+                value: this.props.manager.get().curvature,
+                max: 16
               }
             ]}
           />

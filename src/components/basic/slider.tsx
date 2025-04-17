@@ -42,7 +42,7 @@ class Slider extends Component<AProps> {
     const min = this.props.min ?? 0;
     const max = this.props.max ?? 100;
     const stop = Util.clamp((this.props.value - min) / (max - min), 0, 1) * 100;
-    const shadow = Math.min(stop + 8, 100);
+    const shadow = Math.min(stop + 6, 100);
 
     return (
       <div className="stack">
@@ -61,8 +61,8 @@ class Slider extends Component<AProps> {
           style={{
             background: `linear-gradient(to right,
               var(--${this.props.disabled ? 'no-accent' : 'accent'}) ${stop}%,
-              var(--dark-shadow) ${stop}%,
-              var(--medium-shadow) ${shadow}%)`
+              color-mix(in srgb, var(--input) 100%, var(--dark-shadow) 100%) ${stop}%,
+              var(--input) ${shadow}%)`
           }}
         />
         <div className="slider-label center">

@@ -4,11 +4,18 @@
   --main-bg: rgb(32, 38, 51);
   --container: rgb(67, 70, 100);
   --menu-bar: rgb(103, 88, 146);
+  --menu-bar-text: var(--highlight);
+  --input: var(--medium-shadow);
+
+  --curvature: 4px;
 
   --accent: rgb(79, 195, 255);
   --no-accent: rgba(255, 255, 255, 0.33);
   --highlight: white;
   --outline: black;
+  --box-shadow: none;
+  --drop-shadow: none;
+  --icon-invert: 0;
 
   --light-shadow: rgba(0, 0, 0, 0.3);
   --medium-shadow: rgba(0, 0, 0, 0.4);
@@ -17,7 +24,7 @@
   --main-font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   --alt-font: monospace;
 
-  --text-outline:
+  --thick-outline:
     2px 0 0 var(--outline), -2px 0 0 var(--outline), 0 2px 0 var(--outline),
     0 -2px 0 var(--outline), 2px 2px 0 var(--outline), -2px 2px 0 var(--outline),
     -2px -2px 0 var(--outline), 2px -2px 0 var(--outline);
@@ -49,10 +56,10 @@ input,
 select,
 label:has(> img) {
   font-weight: bolder;
-  background-color: var(--medium-shadow);
-  box-shadow: none;
+  background-color: var(--input);
+  box-shadow: var(--box-shadow);
   color: var(--highlight);
-  border-radius: 0;
+  border-radius: calc(var(--curvature) * 0.5);
   margin: 3px;
   font-family: var(--main-font);
 }
@@ -80,6 +87,7 @@ label > img {
   padding: 0;
   background: none;
   image-rendering: auto;
+  filter: drop-shadow(var(--drop-shadow)) invert(var(--icon-invert));
 }
 
 button:has(> img),
@@ -124,6 +132,7 @@ label:has(+ input:checked) > img {
   background: var(--menu-bar);
   padding: 0;
   outline: 2px solid var(--outline);
+  box-shadow: var(--box-shadow);
 }
 
 .hidden {
@@ -138,6 +147,8 @@ label:has(+ input:checked) > img {
   margin: 0;
   padding: 0 12px;
   outline: none;
+  box-shadow: none;
+  color: var(--menu-bar-text);
 }
 
 .MenuBar span {
@@ -175,6 +186,8 @@ label:has(+ input:checked) > img {
   display: flex;
   flex-direction: column;
   outline: 2px solid var(--outline);
+  border-bottom-left-radius: calc(var(--curvature) * 0.5);
+  border-bottom-right-radius: calc(var(--curvature) * 0.5);
 }
 
 .MenuBar button {
@@ -198,6 +211,7 @@ label:has(+ input:checked) > img {
 
 .Preview img {
   margin-bottom: -4px;
+  border-radius: calc(var(--curvature) * 0.5);
 }
 
 img {
@@ -223,7 +237,9 @@ hr {
   display: flex;
   flex-direction: column;
   background-color: var(--container);
+  box-shadow: var(--box-shadow);
   outline: 2px solid var(--outline);
+  border-radius: var(--curvature);
   padding: 5px;
 }
 
@@ -281,13 +297,14 @@ hr {
 .paperdoll-settings > span {
   flex-wrap: nowrap;
   pointer-events: all;
-  overflow-x: auto;
-  overflow-y: hidden;
-  height: 34px;
+  overflow: auto hidden;
+  height: 48px;
 }
 
 .paperdoll-settings > span > div:first-child {
   background-color: var(--container);
+  border-bottom-right-radius: var(--curvature);
+  box-shadow: var(--box-shadow);
   padding: 4px 8px;
   margin-right: 8px;
 }
@@ -301,6 +318,7 @@ hr {
 }
 
 .paperdoll-settings > span > * {
+  max-height: 28px;
   padding: 4px 0;
 }
 
@@ -310,7 +328,7 @@ hr {
 }
 
 .panel {
-  margin: 36px 0 0;
+  margin: 52px 0 0;
 }
 
 .panel > button {
@@ -322,20 +340,19 @@ hr {
   float: right;
   margin: 0;
   background-color: var(--medium-shadow);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .panel-content {
   padding: 8px;
   background-color: var(--medium-shadow);
+  box-shadow: var(--box-shadow);
   width: 300px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.n-panel > span {
-  display: inline;
-  margin: 0;
+  border-bottom-left-radius: var(--curvature);
 }
 
 .paperdoll-canvas-container {
@@ -344,6 +361,8 @@ hr {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  border-radius: var(--curvature);
+  box-shadow: inset var(--box-shadow);
 }
 
 .paperdoll-canvas {
@@ -369,6 +388,7 @@ hr {
   width: 325px;
   overflow-y: auto;
   background: var(--light-shadow);
+  box-shadow: inset var(--box-shadow);
   padding: 0;
 }
 
@@ -616,13 +636,17 @@ h3 {
   text-align: center;
   font-size: smaller;
   font-weight: bold;
-  text-shadow: 0 0 4px var(--outline);
+  text-shadow: 0 0 4px var(--input);
   user-select: none;
   pointer-events: none;
 }
 
 .slider-label > p {
   width: 100%;
+}
+
+.dropdown {
+  border-radius: calc(var(--curvature) * 0.5);
 }
 
 .dropdown > div > hr:first-of-type {
@@ -635,6 +659,7 @@ h3 {
   cursor: pointer;
   justify-content: space-around;
   flex-wrap: nowrap;
+  border-radius: calc(var(--curvature) * 0.25);
 }
 
 .dropdown-bar:hover {
