@@ -173,10 +173,7 @@ class ColorPicker extends Component<AProps, AState> {
                   max={360}
                   step={1}
                   type="range"
-                  onChange={e => this.updateHue(Number(e.target.value))}
-                  onMouseUp={e =>
-                    e.target instanceof HTMLInputElement && this.updateHue(Number(e.target.value))
-                  }
+                  onInput={e => this.updateHue(Number((e.target as HTMLInputElement).value))}
                   style={{
                     background: `linear-gradient(to right,
                               hsl(0, ${this.state.hsla[1]}%, ${this.state.hsla[2]}%),
@@ -195,11 +192,7 @@ class ColorPicker extends Component<AProps, AState> {
                   max={100}
                   step={1}
                   type="range"
-                  onChange={e => this.updateSaturation(Number(e.target.value))}
-                  onMouseUp={e =>
-                    e.target instanceof HTMLInputElement &&
-                    this.updateSaturation(Number(e.target.value))
-                  }
+                  onInput={e => this.updateSaturation(Number((e.target as HTMLInputElement).value))}
                   style={{
                     background: `linear-gradient(to right,
                               hsl(
@@ -221,11 +214,7 @@ class ColorPicker extends Component<AProps, AState> {
                   max={100}
                   step={1}
                   type="range"
-                  onChange={e => this.updateLightness(Number(e.target.value))}
-                  onMouseUp={e =>
-                    e.target instanceof HTMLInputElement &&
-                    this.updateLightness(Number(e.target.value))
-                  }
+                  onInput={e => this.updateLightness(Number((e.target as HTMLInputElement).value))}
                   style={{
                     background: `linear-gradient(to right,
                               #000000,
@@ -245,11 +234,7 @@ class ColorPicker extends Component<AProps, AState> {
                     max={1}
                     step={0.01}
                     type="range"
-                    onChange={e => this.updateAlpha(Number(e.target.value))}
-                    onMouseUp={e =>
-                      e.target instanceof HTMLInputElement &&
-                      this.updateAlpha(Number(e.target.value))
-                    }
+                    onInput={e => this.updateAlpha(Number((e.target as HTMLInputElement).value))}
                     style={{
                       backgroundImage: `linear-gradient(to right,
                               rgba(0,0,0,0),

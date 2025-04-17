@@ -42,7 +42,7 @@ class MenuBar extends Component<AProps, AState> {
 
     const image = new ImgMod.Img();
     image.name = e.target.files[0].name.replace(/\.[^/.]+$/, '');
-    image.id = Math.random().toString(16).slice(2);
+    image.id = Util.randomKey();
 
     await image.render(URL.createObjectURL(e.target.files[0]));
 
@@ -69,7 +69,7 @@ class MenuBar extends Component<AProps, AState> {
     const file = await fileHandle.getFile();
     const image = new ImgMod.Img();
     image.name = file.name;
-    image.id = Math.random().toString(16).slice(2);
+    image.id = Util.randomKey();
 
     image.internalUpdateCallback = () => this.props.updateSkin();
     image.observeDynamic(fileHandle);
@@ -90,7 +90,7 @@ class MenuBar extends Component<AProps, AState> {
 
     const image = new ImgMod.Img();
     image.name = username;
-    image.id = Math.random().toString(16).slice(2);
+    image.id = Util.randomKey();
 
     await image.render('https://minotar.net/skin/' + username);
 
@@ -106,7 +106,7 @@ class MenuBar extends Component<AProps, AState> {
   render() {
     const viewTabChildren = this.props.viewTab ? (
       this.props.viewTab.map(tab => (
-        <span>
+        <span key={tab[0]}>
           <p>{tab[1] ? '✓' : ''}</p>
           <button onClick={tab[2]}>{tab[0]}</button>
         </span>

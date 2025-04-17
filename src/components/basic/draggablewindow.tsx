@@ -1,11 +1,17 @@
 import React, { Component, ReactNode, RefObject } from 'react';
+import * as Util from '../../tools/util';
 
 type AProps = {
   title: string;
 
-  pos: {
+  startPos?: {
     x: number;
     y: number;
+  };
+
+  anchor?: {
+    vw: number;
+    vh: number;
   };
 
   close?: () => void;
@@ -18,6 +24,11 @@ type AState = {
     x: number;
     y: number;
   };
+
+  anchor: {
+    vw: number;
+    vh: number;
+  };
 };
 
 class DraggableWindow extends Component<AProps, AState> {
@@ -29,7 +40,8 @@ class DraggableWindow extends Component<AProps, AState> {
     super(props);
 
     this.state = {
-      pos: props.pos || { x: 6, y: 30 }
+      pos: props.startPos ?? { x: 0, y: 0 },
+      anchor: props.anchor ?? { vw: 0, vh: 0 }
     };
   }
 
@@ -51,10 +63,13 @@ class DraggableWindow extends Component<AProps, AState> {
 
   onMouseDown = (e: MouseEvent) => {
     if (e.button !== 0) return;
+
+    const offset = this.anchorOffset();
     this.handleOffset = {
-      x: e.screenX - this.state.pos.x,
-      y: e.screenY - this.state.pos.y
+      x: e.screenX + offset.x - this.state.pos.x,
+      y: e.screenY + offset.y - this.state.pos.y
     };
+
     document.addEventListener('mousemove', this.drag);
   };
 
@@ -67,18 +82,36 @@ class DraggableWindow extends Component<AProps, AState> {
     this.setState({ pos: this.fixPosition(this.state.pos) });
   };
 
-  fixPosition = (pos: AState['pos']) => {
-    if (!this.windowRef.current) return this.state.pos;
-
-    const width = this.windowRef.current.clientWidth;
-    const height = this.windowRef.current.clientHeight;
+  relativeViewport = () => {
+    const ref = this.windowRef.current ?? { clientWidth: 0, clientHeight: 0 };
+    const width = ref.clientWidth;
+    const height = ref.clientHeight;
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
     return {
-      x: Math.max(Math.min(pos.x, vw - width - 6), 6),
-      y: Math.max(Math.min(pos.y, vh - height - 6), 38)
+      width: vw - width,
+      height: vh - height
+    };
+  };
+
+  anchorOffset = () => {
+    const viewport = this.relativeViewport();
+
+    return {
+      x: this.state.anchor.vw * viewport.width,
+      y: this.state.anchor.vh * viewport.height
+    };
+  };
+
+  fixPosition = (pos: AState['pos']) => {
+    const offset = this.anchorOffset();
+    const viewport = this.relativeViewport();
+
+    return {
+      x: Util.clamp(pos.x + offset.x, 6, viewport.width - 6),
+      y: Util.clamp(pos.y + offset.y, 38, viewport.height - 6)
     };
   };
 

@@ -1,5 +1,6 @@
 import React, { ChangeEvent, Component, ReactNode } from 'react';
 import * as ImgMod from '../../tools/imgmod';
+import * as Util from '../../tools/util';
 import ColorPicker from '../basic/colorpicker';
 
 type AProps = {
@@ -20,7 +21,7 @@ class AssetCreator extends Component<AProps, AState> {
 
     const layers = new ImgMod.Layer([], []);
     layers.advanced = [];
-    layers.id = Math.random().toString(16).slice(2);
+    layers.id = Util.randomKey();
 
     this.state = {
       name: '',
@@ -40,7 +41,7 @@ class AssetCreator extends Component<AProps, AState> {
   addLayer = () => {
     const layers = this.state.layers;
     const layer = new ImgMod.Img();
-    layer.id = Math.random().toString(16).slice(2);
+    layer.id = Util.randomKey();
     layers.sublayers.push(layer);
     if (layers.colors instanceof Array) layers.colors.push('#000000');
     if (layers.advanced instanceof Array) layers.advanced.push(false);
@@ -192,7 +193,7 @@ class AssetLayer extends Component<BProps, BState> {
     if (!e.target.files) return;
     const asset = this.state.asset;
     asset.name = e.target.files[0].name.slice(0, -4).replaceAll(' ', '_').toLowerCase();
-    asset.id = Math.random().toString(16).slice(2);
+    asset.id = Util.randomKey();
 
     await asset.render(URL.createObjectURL(e.target.files[0]));
 

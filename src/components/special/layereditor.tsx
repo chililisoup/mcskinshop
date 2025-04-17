@@ -4,6 +4,7 @@ import checkerboard from '@assets/checkerboard.png';
 import fullref from '@assets/fullref.png';
 import slimref from '@assets/slimref.png';
 import * as ImgMod from '../../tools/imgmod';
+import * as Util from '../../tools/util';
 
 type AProps = {
   layer: ImgMod.Img;
@@ -127,7 +128,7 @@ class LayerEditor extends Component<AProps, AState> {
   };
 
   resizeGrid = (mult: number) => {
-    this.setState({ gridSize: Math.max(1, Math.min(32, this.state.gridSize * mult)) });
+    this.setState({ gridSize: Util.clamp(this.state.gridSize * mult, 1, 32) });
   };
 
   render() {

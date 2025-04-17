@@ -1,6 +1,31 @@
 /* oml this is quite the mess */
 
-html, body, .appRoot {
+:root {
+  --main-bg: rgb(32, 38, 51);
+  --container: rgb(67, 70, 100);
+  --menu-bar: rgb(103, 88, 146);
+
+  --accent: rgb(79, 195, 255);
+  --no-accent: rgba(255, 255, 255, 0.33);
+  --highlight: white;
+  --outline: black;
+
+  --light-shadow: rgba(0, 0, 0, 0.3);
+  --medium-shadow: rgba(0, 0, 0, 0.4);
+  --dark-shadow: rgba(0, 0, 0, 0.6);
+
+  --main-font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --alt-font: monospace;
+
+  --text-outline:
+    2px 0 0 var(--outline), -2px 0 0 var(--outline), 0 2px 0 var(--outline),
+    0 -2px 0 var(--outline), 2px 2px 0 var(--outline), -2px 2px 0 var(--outline),
+    -2px -2px 0 var(--outline), 2px -2px 0 var(--outline);
+}
+
+html,
+body,
+.appRoot {
   height: 100vh;
   margin: 0;
   padding: 0;
@@ -11,46 +36,54 @@ html, body, .appRoot {
 }
 
 body {
-  background: rgb(32, 38, 51);
+  background: var(--main-bg);
   background-repeat: no-repeat;
   background-attachment: fixed;
   margin: 0;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  color: white;
+  font-family: var(--main-font);
+  color: var(--highlight);
 }
 
-button, input, select, label:has(> img) {
+button,
+input,
+select,
+label:has(> img) {
   font-weight: bolder;
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: var(--medium-shadow);
   box-shadow: none;
-  color: white;
+  color: var(--highlight);
   border-radius: 0;
   margin: 3px;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: var(--main-font);
 }
 
 input {
-  font-family: monospace;
+  font-family: var(--alt-font);
 }
 
-button:hover:enabled, input:hover:enabled, label:has(> img):has(+ input:enabled):hover {
-  outline: 2px solid white;
+button:hover:enabled,
+input:hover:enabled,
+select:hover:enabled,
+label:has(> img):has(+ input:enabled):hover {
+  outline: 2px solid var(--highlight);
   cursor: pointer;
 }
 
 input::placeholder {
-  color: black;
+  color: var(--outline);
   opacity: 0.7;
 }
 
-button > img, label > img {
+button > img,
+label > img {
   margin: 0;
   padding: 0;
   background: none;
   image-rendering: auto;
 }
 
-button:has(> img), label:has(> img) {
+button:has(> img),
+label:has(> img) {
   display: inline-flex;
   padding: 0;
 }
@@ -60,9 +93,10 @@ label:has(+ input:disabled) > img {
 }
 
 label:has(+ input:checked) > img {
-  /* https://codepen.io/sosuke/pen/Pjoqqp for #4fc3ff */
+  /* https://codepen.io/sosuke/pen/Pjoqqp for #4fc3ff (--accent) */
   /* Not a permanent solution */
-  filter: brightness(0) saturate(100%) invert(74%) sepia(10%) saturate(7451%) hue-rotate(172deg) brightness(101%) contrast(101%);
+  filter: brightness(0) saturate(100%) invert(74%) sepia(10%) saturate(7451%) hue-rotate(172deg)
+    brightness(101%) contrast(101%);
 }
 
 .appRoot {
@@ -87,16 +121,18 @@ label:has(+ input:checked) > img {
 .MenuBar {
   width: 100%;
   height: 30px;
-  background: rgb(103, 88, 146);
+  background: var(--menu-bar);
   padding: 0;
-  outline: 2px solid black;
+  outline: 2px solid var(--outline);
 }
 
 .hidden {
   display: none;
 }
 
-.MenuBar button, .MenuBar span, .MenuBar span p {
+.MenuBar button,
+.MenuBar span,
+.MenuBar span p {
   background: none;
   height: 30px;
   margin: 0;
@@ -123,7 +159,7 @@ label:has(+ input:checked) > img {
 }
 
 .MenuBar button:hover:enabled {
-  background: rgb(66, 54, 99);
+  background: var(--light-shadow);
   outline: none;
 }
 
@@ -135,10 +171,10 @@ label:has(+ input:checked) > img {
 .MenuBar > div > div {
   position: absolute;
   z-index: 100;
-  background: rgb(103, 88, 146);
+  background: var(--menu-bar);
   display: flex;
   flex-direction: column;
-  outline: 2px solid black;
+  outline: 2px solid var(--outline);
 }
 
 .MenuBar button {
@@ -164,7 +200,7 @@ img {
   width: 48px;
   height: 48px;
   image-rendering: pixelated;
-  background-image: url("assets/checkerboard.png");
+  background-image: url('assets/checkerboard.png');
   background-size: 12px;
 }
 
@@ -174,7 +210,7 @@ span {
 }
 
 hr {
-  outline: 1px solid black;
+  outline: 1px solid var(--outline);
   width: calc(100% - 16px);
   margin: 0 auto;
 }
@@ -182,12 +218,13 @@ hr {
 .container {
   display: flex;
   flex-direction: column;
-  background-color: rgb(67, 70, 100);
-  outline: 2px solid black;
+  background-color: var(--container);
+  outline: 2px solid var(--outline);
   padding: 5px;
 }
 
-.container p, .container label {
+.container p,
+.container label {
   margin: 3px;
   overflow: hidden;
 }
@@ -196,12 +233,11 @@ hr {
   width: 100%;
 }
 
-.paperdoll {
+.stack {
   position: relative;
   width: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   flex: 1;
 }
 
@@ -214,16 +250,22 @@ hr {
   display: flex;
 }
 
-.paperdoll-settings input, .paperdoll-settings button, .paperdoll-settings label, .paperdoll-settings select, .paperdoll-settings option {
+.paperdoll-settings input,
+.paperdoll-settings button,
+.paperdoll-settings label,
+.paperdoll-settings select,
+.paperdoll-settings option {
   pointer-events: all;
 }
 
-.paperdoll-settings button > img, .paperdoll-settings label > img {
+.paperdoll-settings button > img,
+.paperdoll-settings label > img {
   width: 32px;
   height: 32px;
 }
 
-.paperdoll-settings button:has(> img), .paperdoll-settings label:has(> img) {
+.paperdoll-settings button:has(> img),
+.paperdoll-settings label:has(> img) {
   display: inline-flex;
   padding: 4px;
 }
@@ -237,7 +279,7 @@ hr {
 }
 
 .paperdoll-settings > span > div:first-child {
-  background-color: rgb(67, 70, 100);
+  background-color: var(--container);
   padding: 4px 8px;
   margin-right: 8px;
 }
@@ -271,13 +313,13 @@ hr {
   aspect-ratio: 1/1;
   float: right;
   margin: 0;
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: var(--medium-shadow);
 }
 
 .panel-content {
   padding: 8px;
-  background-color: rgba(0, 0, 0, 0.4);
-  min-width: 256px;
+  background-color: var(--medium-shadow);
+  width: 300px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -297,7 +339,7 @@ hr {
 }
 
 .paperdoll-canvas {
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: var(--medium-shadow);
   image-rendering: pixelated;
 }
 
@@ -318,7 +360,7 @@ hr {
   flex-direction: column-reverse;
   width: 325px;
   overflow-y: auto;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--light-shadow);
   padding: 0;
 }
 
@@ -338,7 +380,8 @@ hr {
   flex-direction: column;
 }
 
-.manager-layer-buttons > button, .manager-layer-colors > input {
+.manager-layer-buttons > button,
+.manager-layer-colors > input {
   width: 20px;
   height: 20px;
   margin: 2px;
@@ -364,8 +407,13 @@ span.layerTitle input {
   margin-right: 6px;
 }
 
-span.layerTitle input[type=text] {
+span.layerTitle input[type='text'] {
+  min-width: 0;
   flex-grow: 1;
+}
+
+span.layerTitle button {
+  white-space: nowrap;
 }
 
 .layer-adder {
@@ -380,13 +428,48 @@ span.layerTitle input[type=text] {
   width: 325px;
 }
 
-.settingsList span {
-  justify-content: space-between;
+.properties-list {
+  table-layout: fixed;
+  border-spacing: 0 4px;
+  width: calc(100% - 32px);
+  margin: auto;
+}
+
+.properties-list tr {
+  height: 100%;
+}
+
+.properties-list tr * {
+  margin: 0;
+}
+
+.properties-list tr > * {
+  padding: 0;
+}
+
+.properties-list th {
+  padding: 0;
+  padding-right: 12px;
+  width: 40%;
+  text-align: end;
+  font-weight: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.properties-list td {
+  height: 100%;
+}
+
+.properties-list td > * {
+  width: 100%;
+  height: 100%;
 }
 
 .asset-layer-manager {
   flex-direction: column-reverse;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--light-shadow);
 }
 
 h3 {
@@ -395,7 +478,7 @@ h3 {
 }
 
 .highlighted {
-  outline: 2px solid white;
+  outline: 2px solid var(--highlight);
 }
 
 .model-features {
@@ -413,7 +496,7 @@ h3 {
 .color-label {
   width: 18px;
   height: 18px;
-  outline: 2px solid black;
+  outline: 2px solid var(--outline);
   image-rendering: pixelated;
 }
 
@@ -442,10 +525,10 @@ h3 {
 }
 
 .color-picker > div::after {
-  content: "";
+  content: '';
   position: absolute;
   border-style: solid;
-  border-color: black transparent;
+  border-color: var(--outline) transparent;
   display: block;
   width: 0;
   left: 90px;
@@ -466,7 +549,7 @@ h3 {
   height: 12px;
   margin: 10px 0 10px;
   appearance: none;
-  outline: 2px solid black;
+  outline: 2px solid var(--outline);
   image-rendering: pixelated;
 }
 
@@ -483,19 +566,51 @@ h3 {
   margin: 0;
 }
 
-.color-picker > div > input::-webkit-slider-thumb, .color-picker > div > input::-moz-range-thumb {
+.color-picker > div > input::-webkit-slider-thumb,
+.color-picker > div > input::-moz-range-thumb,
+.slider::-webkit-slider-thumb,
+.slider::-moz-range-thumb {
   appearance: none;
-  width: 6px;
-  height: 14px;
+  width: 0;
+  height: 0;
   outline: none;
-  border: 2px solid black;
+  border: none;
   border-radius: 0;
   background: none;
   cursor: pointer;
 }
 
-.color-picker > div > input:hover::-webkit-slider-thumb, .color-picker > div > input:hover::-moz-range-thumb {
-  border: 2px solid white;
+.color-picker > div > input::-webkit-slider-thumb,
+.color-picker > div > input::-moz-range-thumb {
+  width: 6px;
+  height: 14px;
+  border: 2px solid var(--outline);
+}
+
+.color-picker > div > input:hover::-webkit-slider-thumb,
+.color-picker > div > input:hover::-moz-range-thumb {
+  border: 2px solid var(--highlight);
+}
+
+.slider {
+  appearance: none;
+  image-rendering: pixelated;
+  width: 100%;
+  height: 100%;
+  /* this is needed on chrome and im dumb or somethin */
+  min-height: 22px;
+}
+
+.slider-label {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  font-size: smaller;
+  font-weight: bold;
+  text-shadow: 0 0 4px var(--outline);
+  user-select: none;
+  pointer-events: none;
 }
 
 .dropdown > div > hr:first-of-type {
@@ -511,7 +626,7 @@ h3 {
 }
 
 .dropdown-bar:hover {
-  outline: 2px solid white;
+  outline: 2px solid var(--highlight);
 }
 
 .dropdown-bar > * {
@@ -569,11 +684,11 @@ h3 {
   height: auto;
   cursor: pointer;
   background: none;
-  background-color: rgba(0, 0, 0, 0.3);
+  background-color: var(--light-shadow);
 }
 
 .grid-select > *:hover {
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: var(--dark-shadow);
 }
 
 .grid-select > div {
@@ -594,7 +709,7 @@ h3 {
 
 *:disabled {
   cursor: default;
-  color: black;
+  color: var(--outline);
   font-weight: normal;
 }
 
@@ -630,5 +745,16 @@ label:has(+ input:disabled) {
 
 .vertical {
   display: flex;
+  justify-content: center;
+}
+
+.horizontal {
+  display: flex;
+  align-items: center;
+}
+
+.center {
+  display: flex;
+  align-items: center;
   justify-content: center;
 }

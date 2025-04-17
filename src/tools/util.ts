@@ -27,3 +27,14 @@ export const download = async (filename: string, content: string) => {
 
   link.click();
 };
+
+export const randomKey = () => Math.random().toString(16).slice(2);
+
+export const clamp = (value: number, min: number, max: number) =>
+  Math.max(Math.min(value, max), min);
+
+const d2r = Math.PI / 180;
+export const degToRad = (deg: number) => deg * d2r;
+
+const r2d = 180 / Math.PI;
+export const radToDeg = (rad: number) => rad * r2d;

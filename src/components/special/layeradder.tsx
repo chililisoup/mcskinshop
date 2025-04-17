@@ -1,5 +1,6 @@
 import React, { Component, ReactNode } from 'react';
 import * as ImgMod from '../../tools/imgmod';
+import * as Util from '../../tools/util';
 import fakedatabase from '../../fakedatabase.json';
 
 type AProps = {
@@ -30,7 +31,7 @@ class LayerAdder extends Component<AProps, AState> {
     // are mutable global constants for some reason
     layer.colors = [...fakedatabase[id].colors];
     layer.advanced = [...fakedatabase[id].advanced];
-    layer.id = Math.random().toString(16).slice(2);
+    layer.id = Util.randomKey();
 
     await Promise.all(
       fakedatabase[id].layers.map((src, i) => {
@@ -43,9 +44,6 @@ class LayerAdder extends Component<AProps, AState> {
         return image.render(import.meta.env.ASSET_PREFIX + fakedatabase[id].loc + src);
       })
     );
-
-    console.log(fakedatabase[id]);
-    console.log(layer);
 
     this.props.addLayer(layer);
   };

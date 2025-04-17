@@ -16,6 +16,8 @@ import save_render from '@assets/save_render.png';
 import { Features } from './modelfeatures';
 import { UndoCallback } from './skinmanager';
 import Dropdown from '../basic/dropdown';
+import PropertiesList from '../basic/propertieslist';
+import Slider from '../basic/slider';
 
 const ANIMATIONS = ['Walk', 'Crouch Walk'] as const;
 
@@ -1608,7 +1610,7 @@ class PaperDoll extends Component<AProps, AState> {
 
   render() {
     return (
-      <div className="paperdoll container">
+      <div className="stack container">
         <PaperDollSettings
           settings={{
             anim: this.state.anim,
@@ -1809,78 +1811,90 @@ class PaperDollSettings extends Component<BProps, BState> {
                 />
               </span>
               <Dropdown title="Camera">
-                <div>
-                  <span>
-                    <label htmlFor="cameraType">Camera Type</label>
-                    <button
-                      id="cameraType"
-                      onClick={() =>
-                        this.updateSettingFinish(
-                          'usePerspectiveCam',
-                          !this.props.settings.usePerspectiveCam
-                        )
-                      }
-                    >
-                      {this.props.settings.usePerspectiveCam ? 'Perspective' : 'Orthographic'}
-                    </button>
-                  </span>
-                  <span>
-                    <label htmlFor="fov">FOV ({this.props.settings.fov})</label>
-                    <input
-                      disabled={!this.props.settings.usePerspectiveCam}
-                      type="range"
-                      id="fov"
-                      min={30}
-                      max={120}
-                      step={1}
-                      value={this.props.settings.fov}
-                      onChange={e => this.updateSetting('fov', Number(e.target.value))}
-                    />
-                  </span>
-                  <button onClick={this.props.resetCamera}>Reset Camera</button>
-                </div>
+                <PropertiesList
+                  buttonCallback={id => {
+                    if (id === 'cameraType')
+                      this.updateSettingFinish(
+                        'usePerspectiveCam',
+                        !this.props.settings.usePerspectiveCam
+                      );
+                    else if (id === 'resetCamera') this.props.resetCamera();
+                  }}
+                  numberCallback={(id, value) => {
+                    if (id === 'fov') this.updateSetting('fov', value);
+                  }}
+                  properties={[
+                    {
+                      name: 'Camera Type',
+                      id: 'cameraType',
+                      type: 'button',
+                      label: this.props.settings.usePerspectiveCam ? 'Perspective' : 'Orthographic'
+                    },
+                    {
+                      name: 'FOV',
+                      id: 'fov',
+                      type: 'range',
+                      value: this.props.settings.fov,
+                      min: 30,
+                      max: 120,
+                      subtype: 'degrees',
+                      disabled: !this.props.settings.usePerspectiveCam
+                    },
+                    {
+                      name: 'Reset Camera',
+                      id: 'resetCamera',
+                      type: 'button'
+                    }
+                  ]}
+                />
               </Dropdown>
               <Dropdown title="Lighting">
-                <div>
-                  <span>
-                    <label htmlFor="shadeToggle">Shade</label>
-                    <input
-                      type="checkbox"
-                      id="shadeToggle"
-                      checked={this.props.settings.shade}
-                      onChange={e => this.updateSettingFinish('shade', e.target.checked)}
-                    />
-                  </span>
-                  <span>
-                    <label htmlFor="lightFocus">Light Focus</label>
-                    <input
-                      disabled={!this.props.settings.shade}
-                      type="range"
-                      id="lightFocus"
-                      min={0}
-                      max={10}
-                      step={0.1}
-                      value={Math.sqrt(this.props.settings.lightFocus)}
-                      onChange={e => this.updateSetting('lightFocus', Number(e.target.value) ** 2)}
-                    />
-                  </span>
-                  <span>
-                    <label htmlFor="lightAngle">Light Angle</label>
-                    <input
-                      disabled={!this.props.settings.shade}
-                      type="range"
-                      id="lightAngle"
-                      min={0}
-                      max={2 * Math.PI}
-                      step={0.1}
-                      value={this.props.settings.lightAngle}
-                      onChange={e => this.updateSetting('lightAngle', Number(e.target.value))}
-                    />
-                  </span>
-                  <button disabled={!this.props.settings.shade} onClick={this.resetLighting}>
-                    Reset Lighting
-                  </button>
-                </div>
+                <PropertiesList
+                  booleanCallback={(id, value) => {
+                    if (id === 'shade') this.updateSettingFinish('shade', value);
+                  }}
+                  numberCallback={(id, value) => {
+                    if (id === 'lightFocus') this.updateSetting('lightFocus', (value / 10) ** 2);
+                    else if (id === 'lightAngle') this.updateSetting('lightAngle', value);
+                  }}
+                  buttonCallback={id => {
+                    if (id === 'resetLighting') this.resetLighting();
+                  }}
+                  properties={[
+                    {
+                      name: 'Shade',
+                      id: 'shade',
+                      type: 'checkbox',
+                      value: this.props.settings.shade
+                    },
+                    {
+                      name: 'Light Focus',
+                      id: 'lightFocus',
+                      type: 'range',
+                      value: Math.sqrt(this.props.settings.lightFocus) * 10,
+                      min: 0,
+                      max: 100,
+                      subtype: 'percent',
+                      disabled: !this.props.settings.shade
+                    },
+                    {
+                      name: 'Light Angle',
+                      id: 'lightAngle',
+                      type: 'range',
+                      value: this.props.settings.lightAngle,
+                      min: 0,
+                      max: 2 * Math.PI,
+                      step: 0.01,
+                      subtype: 'radiansAsDegrees',
+                      disabled: !this.props.settings.shade
+                    },
+                    {
+                      name: 'Reset Lighting',
+                      id: 'resetLighting',
+                      type: 'button'
+                    }
+                  ]}
+                />
               </Dropdown>
             </div>
           )}
@@ -1975,15 +1989,16 @@ class PaperDollSettings extends Component<BProps, BState> {
                   checked={this.props.settings.anim}
                   onChange={e => this.toggleAnim(e.target.checked)}
                 />
-                <input
-                  type="range"
+                <Slider
                   id="animSpeed"
                   min={0}
                   max={2}
                   step={0.01}
                   value={this.props.settings.animSpeed}
-                  onChange={e => this.updateSetting('animSpeed', Number(e.target.value))}
+                  callback={value => this.updateSetting('animSpeed', value)}
                 />
+              </span>
+              <span>
                 <select
                   value={this.props.settings.animation}
                   onChange={e =>
