@@ -613,6 +613,10 @@ h3 {
   pointer-events: none;
 }
 
+.slider-label > p {
+  width: 100%;
+}
+
 .dropdown > div > hr:first-of-type {
   margin-top: 10px;
   margin-bottom: 10px;
