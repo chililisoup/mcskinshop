@@ -142,6 +142,116 @@ class SkinManager extends Component<AProps, AState> {
     this.updateSkin();
   };
 
+  getSkinFromUsername = async (username: string) => {
+    const fallback = `https://minotar.net/skin/${username}`;
+
+    if (this.state.prefMan.get().useFallbackSkinSource) return fallback;
+
+    try {
+      const uuidResponse = await fetch(
+        Util.corsProxy(`https://api.mojang.com/users/profiles/minecraft/${username}`)
+      );
+      if (!uuidResponse.ok) throw new Error(`UUID response status: ${uuidResponse.status}`);
+
+      const uuidJson: unknown = await uuidResponse.json();
+      if (
+        !(
+          uuidJson &&
+          typeof uuidJson === 'object' &&
+          'id' in uuidJson &&
+          typeof uuidJson.id === 'string'
+        )
+      )
+        throw new Error('UUID not found.');
+
+      const skinResponse = await fetch(
+        Util.corsProxy(`https://sessionserver.mojang.com/session/minecraft/profile/${uuidJson.id}`)
+      );
+      if (!skinResponse.ok) throw new Error(`Skin response status: ${skinResponse.status}`);
+
+      const skinJson: unknown = await skinResponse.json();
+      if (
+        !(
+          skinJson &&
+          typeof skinJson === 'object' &&
+          'properties' in skinJson &&
+          skinJson.properties &&
+          typeof skinJson.properties === 'object' &&
+          0 in skinJson.properties &&
+          skinJson.properties[0] &&
+          typeof skinJson.properties[0] === 'object' &&
+          'value' in skinJson.properties[0] &&
+          typeof skinJson.properties[0].value === 'string'
+        )
+      )
+        throw new Error('Skin not found.');
+
+      const texturesJson: unknown = JSON.parse(Util.b64ToUtf8(skinJson.properties[0].value));
+      if (
+        !(
+          texturesJson &&
+          typeof texturesJson === 'object' &&
+          'textures' in texturesJson &&
+          texturesJson.textures &&
+          typeof texturesJson.textures === 'object' &&
+          'SKIN' in texturesJson.textures &&
+          texturesJson.textures.SKIN &&
+          typeof texturesJson.textures.SKIN === 'object' &&
+          'url' in texturesJson.textures.SKIN &&
+          typeof texturesJson.textures.SKIN.url === 'string'
+        )
+      )
+        throw new Error('Unable to read skin textures JSON');
+
+      return texturesJson.textures.SKIN.url;
+    } catch (error) {
+      console.error(error);
+      console.log('Using fallback API.');
+
+      return fallback;
+    }
+  };
+
+  uploadSkin: (name: string, url?: string) => void = async (name, url) => {
+    url ??= await this.getSkinFromUsername(name);
+
+    const image = new ImgMod.Img();
+    image.name = name;
+    image.id = Util.randomKey();
+
+    await image.render(url);
+
+    this.addLayer(image);
+    this.updateSlim(image.detectSlimModel());
+  };
+
+  uploadDynamicSkin: () => void = async () => {
+    const [fileHandle] = await window.showOpenFilePicker({
+      types: [
+        {
+          description: 'Minecraft skin image files',
+          accept: {
+            'image/png': ['.png']
+          }
+        }
+      ],
+      startIn: 'pictures'
+    });
+
+    const file = await fileHandle.getFile();
+    const image = new ImgMod.Img();
+    image.name = file.name;
+    image.id = Util.randomKey();
+
+    image.internalUpdateCallback = () => this.updateSkin();
+    image.observeDynamic(fileHandle);
+
+    await image.render(URL.createObjectURL(file));
+
+    this.addLayer(image);
+    this.updateSlim(image.detectSlimModel());
+  };
+
   downloadSkin: () => void = async () => {
     if (this.state.skin) await Util.download('My Skin.png', this.state.skin);
   };
@@ -155,13 +265,12 @@ class SkinManager extends Component<AProps, AState> {
       //Make it so layer manager just sends updated layers instead of layer update commands
       <div className="appRoot">
         <MenuBar
-          addLayer={this.addLayer}
+          uploadSkin={this.uploadSkin}
+          uploadDynamicSkin={this.uploadDynamicSkin}
           downloadSkin={this.downloadSkin}
-          updateSlim={this.updateSlim}
           requestUndo={this.requestUndo}
           requestRedo={this.requestRedo}
           editHints={this.state.editHints}
-          updateSkin={this.updateSkin}
           editTab={[['Preferences...', () => this.updateState('preferences', true)]]}
           viewTab={[
             [

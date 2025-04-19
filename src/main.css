@@ -200,7 +200,7 @@ label:has(+ input:checked) > img {
 }
 
 .preferences {
-  width: 325px;
+  width: 500px;
 }
 
 .Preview span {
@@ -507,6 +507,7 @@ span.layerTitle button {
 }
 
 .properties-list div.dropdown {
+  box-shadow: none;
   outline: none;
 }
 

@@ -1,12 +1,10 @@
 import React, { ChangeEvent, Component, RefObject } from 'react';
 import PopUp from '../basic/popup';
-import * as ImgMod from '../../tools/imgmod';
 import * as Util from '../../tools/util';
 
 type AProps = {
-  addLayer: (layer: ImgMod.AbstractLayer) => void;
-  updateSlim: (slim: boolean) => void;
-  updateSkin: () => void;
+  uploadSkin: (name: string, url?: string) => void;
+  uploadDynamicSkin: () => void;
   downloadSkin: () => void;
   requestUndo: () => void;
   requestRedo: () => void;
@@ -36,150 +34,41 @@ class MenuBar extends Component<AProps, AState> {
     };
   }
 
-  addLayerFromInput: (e: ChangeEvent<HTMLInputElement>) => void = async e => {
+  addLayerFromInput = (e: ChangeEvent<HTMLInputElement>) => {
     this.setState({ file: false });
 
     if (!e.target.files) return;
 
-    const image = new ImgMod.Img();
-    image.name = e.target.files[0].name.replace(/\.[^/.]+$/, '');
-    image.id = Util.randomKey();
-
-    await image.render(URL.createObjectURL(e.target.files[0]));
+    this.props.uploadSkin(
+      e.target.files[0].name.replace(/\.[^/.]+$/, ''),
+      URL.createObjectURL(e.target.files[0])
+    );
 
     e.target.value = '';
-    this.props.addLayer(image);
-    this.props.updateSlim(image.detectSlimModel());
   };
 
-  addDynamicLayerFromInput: () => void = async () => {
+  addDynamicLayerFromInput = () => {
     this.setState({ file: false });
 
-    const [fileHandle] = await window.showOpenFilePicker({
-      types: [
-        {
-          description: 'Minecraft skin image files',
-          accept: {
-            'image/png': ['.png']
-          }
-        }
-      ],
-      startIn: 'pictures'
-    });
-
-    const file = await fileHandle.getFile();
-    const image = new ImgMod.Img();
-    image.name = file.name;
-    image.id = Util.randomKey();
-
-    image.internalUpdateCallback = () => this.props.updateSkin();
-    image.observeDynamic(fileHandle);
-
-    await image.render(URL.createObjectURL(file));
-
-    this.props.addLayer(image);
-    this.props.updateSlim(image.detectSlimModel());
+    this.props.uploadDynamicSkin();
   };
 
-  getSkinFromUsername = async (username: string) => {
-    try {
-      const uuidResponse = await fetch(
-        Util.corsProxy(`https://api.mojang.com/users/profiles/minecraft/${username}`)
-      );
-      if (!uuidResponse.ok) throw new Error(`UUID response status: ${uuidResponse.status}`);
-
-      const uuidJson: unknown = await uuidResponse.json();
-      if (
-        !(
-          uuidJson &&
-          typeof uuidJson === 'object' &&
-          'id' in uuidJson &&
-          typeof uuidJson.id === 'string'
-        )
-      )
-        throw new Error('UUID not found.');
-
-      const skinResponse = await fetch(
-        Util.corsProxy(`https://sessionserver.mojang.com/session/minecraft/profile/${uuidJson.id}`)
-      );
-      if (!skinResponse.ok) throw new Error(`Skin response status: ${skinResponse.status}`);
-
-      const skinJson: unknown = await skinResponse.json();
-      if (
-        !(
-          skinJson &&
-          typeof skinJson === 'object' &&
-          'properties' in skinJson &&
-          skinJson.properties &&
-          typeof skinJson.properties === 'object' &&
-          0 in skinJson.properties &&
-          skinJson.properties[0] &&
-          typeof skinJson.properties[0] === 'object' &&
-          'value' in skinJson.properties[0] &&
-          typeof skinJson.properties[0].value === 'string'
-        )
-      )
-        throw new Error('Skin not found.');
-
-      const texturesJson: unknown = JSON.parse(Util.b64ToUtf8(skinJson.properties[0].value));
-      if (
-        !(
-          texturesJson &&
-          typeof texturesJson === 'object' &&
-          'textures' in texturesJson &&
-          texturesJson.textures &&
-          typeof texturesJson.textures === 'object' &&
-          'SKIN' in texturesJson.textures &&
-          texturesJson.textures.SKIN &&
-          typeof texturesJson.textures.SKIN === 'object' &&
-          'url' in texturesJson.textures.SKIN &&
-          typeof texturesJson.textures.SKIN.url === 'string'
-        )
-      )
-        throw new Error('Unable to read skin textures JSON');
-
-      return texturesJson.textures.SKIN.url;
-    } catch (error) {
-      console.error(error);
-      console.log('Using fallback API.');
-
-      return `https://minotar.net/skin/${username}`;
-    }
-  };
-
-  addLayerFromUsername: () => void = async () => {
+  addLayerFromUsername = () => {
     this.setState({ file: false });
 
     const input = prompt('Enter username:');
     if (!input) return;
 
-    const username = input.replace(/[^0-9A-Za-z_]/g, '');
-    const url = await this.getSkinFromUsername(username);
-
-    const image = new ImgMod.Img();
-    image.name = username;
-    image.id = Util.randomKey();
-
-    await image.render(url);
-
-    this.props.addLayer(image);
-    this.props.updateSlim(image.detectSlimModel());
+    this.props.uploadSkin(input.replace(/[^0-9A-Za-z_]/g, ''));
   };
 
-  addLayerFromUrl: () => void = async () => {
+  addLayerFromUrl = () => {
     this.setState({ file: false });
 
     const input = prompt('Enter skin image URL:');
     if (!input) return;
 
-    const image = new ImgMod.Img();
-    image.name = input.split('/').pop()?.split('.')[0];
-    image.id = Util.randomKey();
-
-    await image.render(Util.corsProxy(input));
-
-    this.props.addLayer(image);
-    this.props.updateSlim(image.detectSlimModel());
+    this.props.uploadSkin(input.split('/').pop()?.split('.')[0] ?? input, Util.corsProxy(input));
   };
 
   downloadSkin = () => {

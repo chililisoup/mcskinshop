@@ -46,7 +46,7 @@ type SectionProperty = BaseProperty & {
   properties: Property[];
 };
 
-type Property =
+export type Property =
   | RangeProperty
   | BoolProperty
   | SelectProperty
@@ -160,6 +160,7 @@ class PropertiesList extends Component<AProps> {
                 buttonCallback={this.props.buttonCallback}
                 properties={property.properties}
               />
+              <hr />
             </Dropdown>
           )
         );

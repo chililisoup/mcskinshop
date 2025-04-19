@@ -6,37 +6,40 @@ export const SELECT_PREFS = {
     darker: 'Darker',
     light: 'Light',
     taiga: 'Taiga',
+    cave: 'Cave',
     cherry: 'Cherry Blossom'
   } as const
 } as const;
 
-export const USER_THEME_COLOR_VARS = [
-  '--main-bg',
-  '--container',
-  '--container-alt',
-  '--container-alt-text',
-  '--panel',
-  '--empty-area',
-  '--menu-bar',
-  '--menu-bar-text',
-  '--input',
-  '--input-text',
-  '--highlight',
-  '--outline',
-  '--accent',
-  '--shadow'
-] as const;
+export const USER_THEME_COLOR_VARS = {
+  '--main-bg': 'Background',
+  '--container': 'Container',
+  '--container-alt': 'Container Alt.',
+  '--container-alt-text': 'Container Alt. Text',
+  '--panel': 'Panel',
+  '--empty-area': 'Empty Area',
+  '--menu-bar': 'Menu Bar',
+  '--menu-bar-text': 'Menu Bar Text',
+  '--input': 'Input',
+  '--input-text': 'Input Text',
+  '--highlight': 'Highlight',
+  '--outline': 'Outline',
+  '--accent': 'Accent',
+  '--shadow': 'Shadow'
+} as const;
 
 export type Prefs = {
   -readonly [key in keyof typeof SELECT_PREFS]: keyof (typeof SELECT_PREFS)[key];
-} & Record<(typeof USER_THEME_COLOR_VARS)[number], string> & {
+} & Record<keyof typeof USER_THEME_COLOR_VARS, string> & {
     curvature: number;
+    useFallbackSkinSource: boolean;
     '--icon-invert': boolean;
   };
 
 export const defaultPrefs: Prefs = {
   theme: 'default',
   curvature: 4,
+  useFallbackSkinSource: false,
   '--main-bg': '#202633',
   '--container': '#434664',
   '--container-alt': '#282a3c',
@@ -155,6 +158,20 @@ export class Manager {
         root.style.setProperty('--accent', '#31b6cc');
         root.style.setProperty('--box-shadow', '0 0 0 2px var(--dark-shadow)');
         root.style.setProperty('--drop-shadow', '0 0 2px var(--dark-shadow)');
+        break;
+      case 'cave':
+        root.style.setProperty('--main-bg', '#575757');
+        root.style.setProperty('--container', '#2a2b2c');
+        root.style.setProperty('--container-alt', '#919191');
+        root.style.setProperty('--container-alt-text', 'black');
+        root.style.setProperty('--panel', '#181a25');
+        root.style.setProperty('--empty-area', 'var(--panel)');
+        root.style.setProperty('--menu-bar', 'var(--accent)');
+        root.style.setProperty('--menu-bar-text', 'black');
+        root.style.setProperty('--input', '#00000059');
+        root.style.setProperty('--accent', '#0070d1');
+        root.style.setProperty('--box-shadow', '0 0 2px 2px black');
+        root.style.setProperty('--drop-shadow', '0 0 4px black');
         break;
       case 'cherry':
         root.style.setProperty('--main-bg', '#33202c');
