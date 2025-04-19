@@ -25,6 +25,7 @@ export const USER_THEME_COLOR_VARS = {
   '--highlight': 'Highlight',
   '--outline': 'Outline',
   '--accent': 'Accent',
+  '--no-accent': 'No Accent',
   '--shadow': 'Shadow'
 } as const;
 
@@ -53,6 +54,7 @@ export const defaultPrefs: Prefs = {
   '--highlight': '#ffffff',
   '--outline': '#000000',
   '--accent': '#4fc3ff',
+  '--no-accent': 'rgb(255, 255, 255, 0.25)',
   '--shadow': 'rgba(0, 0, 0, 0)',
   '--icon-invert': false
 } as const;
@@ -113,6 +115,7 @@ export class Manager {
         root.style.setProperty('--highlight', this.prefs['--highlight']);
         root.style.setProperty('--outline', this.prefs['--outline']);
         root.style.setProperty('--accent', this.prefs['--accent']);
+        root.style.setProperty('--no-accent', this.prefs['--no-accent']);
         root.style.setProperty('--box-shadow', `0 0 2px 2px ${this.prefs['--shadow']}`);
         root.style.setProperty('--drop-shadow', `0 0 4px ${this.prefs['--shadow']}`);
         root.style.setProperty('--icon-invert', this.prefs['--icon-invert'] ? '100%' : '0%');

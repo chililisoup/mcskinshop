@@ -15,6 +15,7 @@
   --curvature: 4px;
 
   --accent: rgb(79, 195, 255);
+  --no-accent: rgb(255, 255, 255, 0.25);
   --highlight: white;
   --outline: black;
   --box-shadow: none;
