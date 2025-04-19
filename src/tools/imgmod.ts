@@ -21,6 +21,8 @@ export const checkLayerType = (maybeType: string): LayerType | undefined => {
 };
 
 export const colorAsHex = (color: string) => {
+  if (color.startsWith('#')) return color;
+
   const canvas = document.createElement('canvas');
   canvas.width = 1;
   canvas.height = 1;

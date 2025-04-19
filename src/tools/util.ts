@@ -28,6 +28,17 @@ export const download = async (filename: string, content: string) => {
   link.click();
 };
 
+export const corsProxy = (url: string) => 'https://corsproxy.io/?url=' + url;
+
+// https://stackoverflow.com/a/30106551
+export const b64ToUtf8 = (b64: string) =>
+  decodeURIComponent(
+    atob(b64)
+      .split('')
+      .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+      .join('')
+  );
+
 export const randomKey = () => Math.random().toString(16).slice(2);
 
 export const clamp = (value: number, min: number, max: number) =>

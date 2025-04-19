@@ -46,7 +46,7 @@ class DraggableWindow extends Component<AProps, AState> {
       fresh: true
     };
 
-    this.resizeObserver = new ResizeObserver(this.handleWindowResize);
+    this.resizeObserver = new ResizeObserver(this.handleWindowRefResize);
   }
 
   componentDidMount() {
@@ -109,7 +109,7 @@ class DraggableWindow extends Component<AProps, AState> {
     document.removeEventListener('mousemove', this.drag);
   };
 
-  handleWindowResize = () => {
+  recalculateRelatives = () => {
     const ref = this.windowRef.current ?? { clientWidth: 0, clientHeight: 0 };
     this.relativeViewport = {
       width: window.innerWidth - ref.clientWidth,
@@ -120,7 +120,26 @@ class DraggableWindow extends Component<AProps, AState> {
       x: this.state.anchor.vw * this.relativeViewport.width,
       y: this.state.anchor.vh * this.relativeViewport.height
     };
+  };
 
+  handleWindowRefResize = () => {
+    const oldPos = {
+      x: this.state.pos.x + this.anchorOffset.x,
+      y: this.state.pos.y + this.anchorOffset.y
+    };
+
+    this.recalculateRelatives();
+
+    const newPos = {
+      x: oldPos.x - this.anchorOffset.x,
+      y: oldPos.y - this.anchorOffset.y
+    };
+
+    this.setState({ pos: this.fixPosition(newPos) });
+  };
+
+  handleWindowResize = () => {
+    this.recalculateRelatives();
     this.setState({ pos: this.fixPosition(this.state.pos) });
   };
 

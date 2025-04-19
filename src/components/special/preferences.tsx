@@ -40,6 +40,10 @@ class Preferences extends Component<AProps> {
               if (id === 'curvature') this.props.manager.setPrefs({ curvature: value });
               this.props.updatePrefs(this.props.manager);
             }}
+            booleanCallback={(id, value) => {
+              if (id === '--icon-invert') this.props.manager.setPrefs({ '--icon-invert': value });
+              this.props.updatePrefs(this.props.manager);
+            }}
             properties={[
               {
                 name: 'Curvature',
@@ -125,6 +129,13 @@ class Preferences extends Component<AProps> {
                     alpha: true
                   },
                   {
+                    name: 'Input Text',
+                    id: '--input-text',
+                    type: 'color',
+                    value: this.props.manager.get()['--input-text'],
+                    alpha: true
+                  },
+                  {
                     name: 'Highlight',
                     id: '--highlight',
                     type: 'color',
@@ -146,18 +157,17 @@ class Preferences extends Component<AProps> {
                     alpha: true
                   },
                   {
-                    name: 'No Accent',
-                    id: '--no-accent',
-                    type: 'color',
-                    value: this.props.manager.get()['--no-accent'],
-                    alpha: true
-                  },
-                  {
                     name: 'Shadow',
                     id: '--shadow',
                     type: 'color',
                     value: this.props.manager.get()['--shadow'],
                     alpha: true
+                  },
+                  {
+                    name: 'Icon Invert',
+                    id: '--icon-invert',
+                    type: 'checkbox',
+                    value: this.props.manager.get()['--icon-invert']
                   }
                 ]
               }

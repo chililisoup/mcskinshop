@@ -10,11 +10,11 @@
   --menu-bar: rgb(103, 88, 146);
   --menu-bar-text: var(--highlight);
   --input: var(--medium-shadow);
+  --input-text: var(--highlight);
 
   --curvature: 4px;
 
   --accent: rgb(79, 195, 255);
-  --no-accent: rgba(255, 255, 255, 0.33);
   --highlight: white;
   --outline: black;
   --box-shadow: none;
@@ -62,7 +62,7 @@ label:has(> img) {
   font-weight: bolder;
   background-color: var(--input);
   box-shadow: var(--box-shadow);
-  color: var(--highlight);
+  color: var(--input-text);
   border-radius: calc(var(--curvature) * 0.5);
   margin: 3px;
   font-family: var(--main-font);
@@ -350,6 +350,7 @@ hr {
   float: right;
   margin: 0;
   background-color: var(--panel);
+  color: var(--highlight);
   box-shadow: none;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
@@ -375,7 +376,7 @@ hr {
 
 .paperdoll-canvas {
   background-color: var(--container-alt);
-  border-radius: var(--curvature);
+  border-radius: calc(var(--curvature) * 0.67);
   box-shadow: inset var(--box-shadow);
   image-rendering: pixelated;
 }
@@ -651,6 +652,7 @@ h3 {
   font-size: smaller;
   font-weight: bold;
   text-shadow: 0 0 4px var(--input);
+  color: var(--input-text);
   user-select: none;
   pointer-events: none;
 }

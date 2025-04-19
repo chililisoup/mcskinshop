@@ -20,18 +20,19 @@ export const USER_THEME_COLOR_VARS = [
   '--menu-bar',
   '--menu-bar-text',
   '--input',
+  '--input-text',
   '--highlight',
   '--outline',
   '--accent',
-  '--no-accent',
   '--shadow'
 ] as const;
 
 export type Prefs = {
   -readonly [key in keyof typeof SELECT_PREFS]: keyof (typeof SELECT_PREFS)[key];
-} & Record<typeof USER_THEME_COLOR_VARS[number], string> & {
-  curvature: number;
-};
+} & Record<(typeof USER_THEME_COLOR_VARS)[number], string> & {
+    curvature: number;
+    '--icon-invert': boolean;
+  };
 
 export const defaultPrefs: Prefs = {
   theme: 'default',
@@ -45,11 +46,12 @@ export const defaultPrefs: Prefs = {
   '--menu-bar': '#675892',
   '--menu-bar-text': '#ffffff',
   '--input': 'rgba(0, 0, 0, 0.4)',
+  '--input-text': '#ffffff',
   '--highlight': '#ffffff',
   '--outline': '#000000',
   '--accent': '#4fc3ff',
-  '--no-accent': 'rgba(255, 255, 255, 0.33)',
-  '--shadow': 'rgba(0, 0, 0, 0)'
+  '--shadow': 'rgba(0, 0, 0, 0)',
+  '--icon-invert': false
 } as const;
 
 export class Manager {
@@ -104,12 +106,13 @@ export class Manager {
         root.style.setProperty('--menu-bar', this.prefs['--menu-bar']);
         root.style.setProperty('--menu-bar-text', this.prefs['--menu-bar-text']);
         root.style.setProperty('--input', this.prefs['--input']);
+        root.style.setProperty('--input-text', this.prefs['--input-text']);
         root.style.setProperty('--highlight', this.prefs['--highlight']);
         root.style.setProperty('--outline', this.prefs['--outline']);
         root.style.setProperty('--accent', this.prefs['--accent']);
-        root.style.setProperty('--no-accent', this.prefs['--no-accent']);
         root.style.setProperty('--box-shadow', `0 0 2px 2px ${this.prefs['--shadow']}`);
         root.style.setProperty('--drop-shadow', `0 0 4px ${this.prefs['--shadow']}`);
+        root.style.setProperty('--icon-invert', this.prefs['--icon-invert'] ? '100%' : '0%');
         break;
       case 'dark':
         root.style.setProperty('--container', 'var(--main-bg)');
