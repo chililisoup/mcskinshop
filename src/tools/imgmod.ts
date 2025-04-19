@@ -20,6 +20,24 @@ export const checkLayerType = (maybeType: string): LayerType | undefined => {
   if (LAYER_TYPES.find(type => type === maybeType)) return maybeType as LayerType;
 };
 
+export const colorAsHex = (color: string) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1;
+  canvas.height = 1;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, 1, 1);
+  const rgba = ctx.getImageData(0, 0, 1, 1).data;
+
+  return (
+    '#' +
+    rgba[0].toString(16).padStart(2, '0') +
+    rgba[1].toString(16).padStart(2, '0') +
+    rgba[2].toString(16).padStart(2, '0') +
+    (rgba[3] !== 255 ? rgba[3].toString(16).padStart(2, '0') : '')
+  );
+};
+
 export abstract class AbstractLayer {
   blend: GlobalCompositeOperation;
   filter: string;
@@ -272,7 +290,7 @@ export class Layer extends AbstractLayer {
   color: (colors?: string | string[]) => Promise<unknown> = colors => {
     this.colors = colors ?? this.colors;
     this.assertColorArray();
-    
+
     if (this.colors.length !== this.sublayers.length)
       return Promise.reject(new Error('Color count does not match sublayer count'));
 

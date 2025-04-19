@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import * as Util from '../../tools/util';
 import Slider, { SubType } from './slider';
+import ColorPicker from './colorpicker';
+import Dropdown from './dropdown';
 
 type BaseProperty = {
   name: string;
@@ -33,7 +35,24 @@ type ButtonProperty = BaseProperty & {
   label?: string;
 };
 
-type Property = RangeProperty | BoolProperty | SelectProperty | ButtonProperty;
+type ColorProperty = BaseProperty & {
+  type: 'color';
+  value: string;
+  alpha?: boolean;
+};
+
+type SectionProperty = BaseProperty & {
+  type: 'section';
+  properties: Property[];
+};
+
+type Property =
+  | RangeProperty
+  | BoolProperty
+  | SelectProperty
+  | ButtonProperty
+  | ColorProperty
+  | SectionProperty;
 
 type AProps = {
   numberCallback?: (id: string, value: number) => void;
@@ -119,12 +138,37 @@ class PropertiesList extends Component<AProps> {
             {property.label ?? property.name}
           </button>
         );
+      case 'color':
+        return (
+          <ColorPicker
+            id={id}
+            default={property.value}
+            alpha={property.alpha}
+            update={value =>
+              this.props.stringCallback && this.props.stringCallback(property.id, value)
+            }
+          />
+        );
+      case 'section':
+        return (
+          !property.disabled && (
+            <Dropdown title={property.name}>
+              <PropertiesList
+                numberCallback={this.props.numberCallback}
+                booleanCallback={this.props.booleanCallback}
+                stringCallback={this.props.stringCallback}
+                buttonCallback={this.props.buttonCallback}
+                properties={property.properties}
+              />
+            </Dropdown>
+          )
+        );
     }
   };
 
   addProperty = (property: Property) => {
     const id = `${property.id}-${property.type}-${this.key}`;
-    const labeled = property.type !== 'button' || property.label;
+    const labeled = property.type !== 'section' && (property.type !== 'button' || property.label);
 
     return (
       <tr key={property.id}>

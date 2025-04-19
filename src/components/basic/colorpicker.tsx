@@ -1,4 +1,5 @@
 import React, { Component, RefObject } from 'react';
+import * as ImgMod from '../../tools/imgmod';
 import PopUp from './popup';
 import checker from '@assets/checkerboard.png';
 
@@ -7,6 +8,7 @@ type Hsla = [number, number, number, number];
 type AProps = {
   alpha?: boolean;
   default?: string;
+  id?: string;
   update?: (color: string) => void;
 };
 
@@ -25,27 +27,27 @@ class ColorPicker extends Component<AProps, AState> {
     super(props);
 
     let hsla: Hsla = [0, 100, 50, 1];
-
-    if (props.default?.startsWith('#')) hsla = this.hexToHSL(props.default);
+    if (props.default) hsla = this.hexToHSLA(ImgMod.colorAsHex(props.default));
 
     this.state = {
       open: false,
       hsla: hsla,
       color: `hsla(${hsla[0]}, ${hsla[1]}%, ${hsla[2]}%, ${hsla[3]})`,
-      hex: this.hexFromHSL(hsla[0], hsla[1], hsla[2]),
+      hex: this.hexFromHSLA(hsla[0], hsla[1], hsla[2], hsla[3]),
       bottom: false
     };
   }
 
   // https://gist.github.com/xenozauros/f6e185c8de2a04cdfecf
-  hexToHSL: (hex: string) => Hsla = (hex: string) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  hexToHSLA: (hex: string) => Hsla = hex => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.slice(0, 7));
 
     if (!result) return [0, 0, 0, 0];
 
     const r = parseInt(result[1], 16) / 255;
     const g = parseInt(result[2], 16) / 255;
     const b = parseInt(result[3], 16) / 255;
+    const a = hex.length === 9 ? parseInt(hex.slice(7), 16) / 255 : 1;
 
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
@@ -74,21 +76,21 @@ class ColorPicker extends Component<AProps, AState> {
       h /= 6;
     }
 
-    return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100), 1];
+    return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100), a];
   };
 
   // https://stackoverflow.com/a/44134328
-  hexFromHSL = (h: number, s: number, l: number) => {
+  hexFromHSLA = (h: number, s: number, l: number, a: number) => {
     l /= 100;
-    const a = (s * Math.min(l, 1 - l)) / 100;
+    const amt = (s * Math.min(l, 1 - l)) / 100;
     const f = (n: number) => {
       const k = (n + h / 30) % 12;
-      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+      const color = l - amt * Math.max(Math.min(k - 3, 9 - k, 1), -1);
       return Math.round(255 * color)
         .toString(16)
         .padStart(2, '0'); // convert to Hex and prefix "0" if needed
     };
-    return `#${f(0)}${f(8)}${f(4)}`;
+    return `#${f(0)}${f(8)}${f(4)}${a < 1 ? Math.round(255 * a).toString(16) : ''}`;
   };
 
   setHsla = (hsla: Hsla, hex?: string) => {
@@ -96,7 +98,7 @@ class ColorPicker extends Component<AProps, AState> {
     this.setState({
       hsla: hsla,
       color: color,
-      hex: hex ?? this.hexFromHSL(hsla[0], hsla[1], hsla[2])
+      hex: hex ?? this.hexFromHSLA(hsla[0], hsla[1], hsla[2], hsla[3])
     });
     if (this.props.update) this.props.update(color);
   };
@@ -126,7 +128,7 @@ class ColorPicker extends Component<AProps, AState> {
   };
 
   setHex = (hex: string) => {
-    const newHsla = this.hexToHSL(hex);
+    const newHsla = this.hexToHSLA(hex);
     if (!newHsla) return this.setState({ hex: hex });
     this.setHsla(newHsla, hex);
   };
@@ -156,6 +158,7 @@ class ColorPicker extends Component<AProps, AState> {
                         ),
                         url(${checker})`
           }}
+          id={this.props.id}
           onMouseDown={this.togglePicker}
         />
         {this.state.open && (
