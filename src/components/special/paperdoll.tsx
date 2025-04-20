@@ -260,8 +260,6 @@ class PaperDoll extends Component<AProps, AState> {
     )
       this.updateLighting();
 
-    if (this.state.partToggles !== prevState.partToggles) this.updatePartToggles();
-
     if (this.state.grid !== prevState.grid) {
       this.grid.visible = this.state.grid;
     }
@@ -270,8 +268,11 @@ class PaperDoll extends Component<AProps, AState> {
 
     if (this.props.slim !== prevProps.slim) {
       this.updateSlim();
+      if (this.state.partToggles === prevState.partToggles) this.updatePartToggles();
       updateTextures = true;
     }
+
+    if (this.state.partToggles !== prevState.partToggles) this.updatePartToggles();
 
     if (this.props.modelFeatures.cape !== prevProps.modelFeatures.cape) {
       this.updateCape();
@@ -801,9 +802,15 @@ class PaperDoll extends Component<AProps, AState> {
     for (const pivot in this.state.partToggles) {
       if (!(pivot in this.pivots)) continue;
 
-      const base = this.pivots[pivot].getObjectByName('base');
+      const usedPivot =
+        pivot === 'rightArm' || pivot === 'leftArm'
+          ? this.pivots[pivot].getObjectByName(this.props.slim ? 'slim' : 'full')
+          : this.pivots[pivot];
+      if (!usedPivot) continue;
+
+      const base = usedPivot.getObjectByName('base');
       if (base) base.visible = this.state.partToggles[pivot as keyof AState['partToggles']].base;
-      const hat = this.pivots[pivot].getObjectByName('hat');
+      const hat = usedPivot.getObjectByName('hat');
       if (hat) hat.visible = this.state.partToggles[pivot as keyof AState['partToggles']].hat;
     }
   };
