@@ -370,6 +370,7 @@ hr {
 .panel {
   margin: 52px 0 0;
   filter: drop-shadow(var(--drop-shadow));
+  height: 100%;
 }
 
 .panel > button {
@@ -395,6 +396,9 @@ hr {
   flex-direction: column;
   gap: 12px;
   border-bottom-left-radius: var(--curvature);
+  max-height: calc(100% - 104px);
+  overflow-y: auto;
+  pointer-events: all;
 }
 
 .paperdoll-canvas-container {
