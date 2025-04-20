@@ -62,6 +62,32 @@ type AState = {
     type: 'Rotation' | 'Movement';
     space: 'Local' | 'Global';
   };
+  partToggles: {
+    head: {
+      base: boolean;
+      hat: boolean;
+    };
+    torso: {
+      base: boolean;
+      hat: boolean;
+    };
+    leftArm: {
+      base: boolean;
+      hat: boolean;
+    };
+    rightArm: {
+      base: boolean;
+      hat: boolean;
+    };
+    leftLeg: {
+      base: boolean;
+      hat: boolean;
+    };
+    rightLeg: {
+      base: boolean;
+      hat: boolean;
+    };
+  };
   fov: number;
   usePerspectiveCam: boolean;
   grid: boolean;
@@ -141,6 +167,32 @@ class PaperDoll extends Component<AProps, AState> {
         type: 'Rotation',
         space: 'Local'
       },
+      partToggles: {
+        head: {
+          base: true,
+          hat: true
+        },
+        torso: {
+          base: true,
+          hat: true
+        },
+        leftArm: {
+          base: true,
+          hat: true
+        },
+        rightArm: {
+          base: true,
+          hat: true
+        },
+        leftLeg: {
+          base: true,
+          hat: true
+        },
+        rightLeg: {
+          base: true,
+          hat: true
+        }
+      },
       fov: 80,
       usePerspectiveCam: true,
       grid: true,
@@ -205,9 +257,10 @@ class PaperDoll extends Component<AProps, AState> {
     if (
       this.state.lightAngle !== prevState.lightAngle ||
       this.state.lightFocus !== prevState.lightFocus
-    ) {
+    )
       this.updateLighting();
-    }
+
+    if (this.state.partToggles !== prevState.partToggles) this.updatePartToggles();
 
     if (this.state.grid !== prevState.grid) {
       this.grid.visible = this.state.grid;
@@ -744,6 +797,17 @@ class PaperDoll extends Component<AProps, AState> {
     this.pivots.leftArm.children[1].visible = this.props.slim;
   };
 
+  updatePartToggles = () => {
+    for (const pivot in this.state.partToggles) {
+      if (!(pivot in this.pivots)) continue;
+
+      const base = this.pivots[pivot].getObjectByName('base');
+      if (base) base.visible = this.state.partToggles[pivot as keyof AState['partToggles']].base;
+      const hat = this.pivots[pivot].getObjectByName('hat');
+      if (hat) hat.visible = this.state.partToggles[pivot as keyof AState['partToggles']].hat;
+    }
+  };
+
   updateFeaturePart = (feature: string | false, part: THREE.Object3D, deselect?: boolean) => {
     if (!feature) {
       part.layers.disable(0);
@@ -994,6 +1058,9 @@ class PaperDoll extends Component<AProps, AState> {
     }
 
     this.pivots.head.position.copy(this.pivots.head.userData.defaultPosition as THREE.Vector3Like);
+    this.pivots.torso.position.copy(
+      this.pivots.torso.userData.defaultPosition as THREE.Vector3Like
+    );
     this.pivots.leftArm.position.copy(
       this.pivots.leftArm.userData.defaultPosition as THREE.Vector3Like
     );
@@ -1028,7 +1095,8 @@ class PaperDoll extends Component<AProps, AState> {
 
         break;
       case 'Crouch Walk':
-        this.pivots.head.position.y -= 1.0;
+        this.pivots.head.position.y -= 4.0;
+        this.pivots.torso.position.y -= 3.0;
 
         this.pivots.torso.rotation.x = 0.5;
 
@@ -1638,6 +1706,7 @@ class PaperDoll extends Component<AProps, AState> {
             lightFocus: this.state.lightFocus,
             pose: this.state.pose,
             poseSettings: this.state.poseSettings,
+            partToggles: this.state.partToggles,
             fov: this.state.fov,
             usePerspectiveCam: this.state.usePerspectiveCam,
             grid: this.state.grid
@@ -1681,6 +1750,7 @@ type BProps = {
     lightFocus: number;
     pose: boolean;
     poseSettings: AState['poseSettings'];
+    partToggles: AState['partToggles'];
     fov: number;
     usePerspectiveCam: boolean;
     grid: boolean;
@@ -1810,6 +1880,14 @@ class PaperDollSettings extends Component<BProps, BState> {
     reader.readAsText(e.target.files[0]);
   };
 
+  togglePart = (part: keyof AState['partToggles'], hat: boolean, value: boolean) => {
+    const toggles = JSON.parse(
+      JSON.stringify(this.props.settings.partToggles)
+    ) as AState['partToggles'];
+    toggles[part][hat ? 'hat' : 'base'] = value;
+    this.props.updateSetting('partToggles', toggles);
+  };
+
   render() {
     return (
       <span className="paperdoll-settings">
@@ -1920,6 +1998,116 @@ class PaperDollSettings extends Component<BProps, BState> {
                     }
                   ]}
                 />
+              </Dropdown>
+              <Dropdown title="Model">
+                <table className="model-toggles">
+                  <tbody>
+                    <tr>
+                      <td />
+                      <td colSpan={2}>
+                        <div className="stack" style={{ width: '56px', height: '56px' }}>
+                          <input
+                            type="checkbox"
+                            checked={this.props.settings.partToggles.head.hat}
+                            onChange={e => this.togglePart('head', true, e.target.checked)}
+                          />
+                          <input
+                            className="inner"
+                            type="checkbox"
+                            checked={this.props.settings.partToggles.head.base}
+                            onChange={e => this.togglePart('head', false, e.target.checked)}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <div
+                          className="stack"
+                          style={{ width: '32px', height: '72px', marginRight: '-8px' }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={this.props.settings.partToggles.rightArm.hat}
+                            onChange={e => this.togglePart('rightArm', true, e.target.checked)}
+                          />
+                          <input
+                            className="inner"
+                            type="checkbox"
+                            checked={this.props.settings.partToggles.rightArm.base}
+                            onChange={e => this.togglePart('rightArm', false, e.target.checked)}
+                          />
+                        </div>
+                      </td>
+                      <td colSpan={2}>
+                        <div className="stack" style={{ width: '56px', height: '72px' }}>
+                          <input
+                            type="checkbox"
+                            checked={this.props.settings.partToggles.torso.hat}
+                            onChange={e => this.togglePart('torso', true, e.target.checked)}
+                          />
+                          <input
+                            className="inner"
+                            type="checkbox"
+                            checked={this.props.settings.partToggles.torso.base}
+                            onChange={e => this.togglePart('torso', false, e.target.checked)}
+                          />
+                        </div>
+                      </td>
+                      <td>
+                        <div
+                          className="stack"
+                          style={{ width: '32px', height: '72px', marginLeft: '-8px' }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={this.props.settings.partToggles.leftArm.hat}
+                            onChange={e => this.togglePart('leftArm', true, e.target.checked)}
+                          />
+                          <input
+                            className="inner"
+                            type="checkbox"
+                            checked={this.props.settings.partToggles.leftArm.base}
+                            onChange={e => this.togglePart('leftArm', false, e.target.checked)}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td />
+                      <td>
+                        <div className="stack" style={{ width: '32px', height: '72px' }}>
+                          <input
+                            type="checkbox"
+                            checked={this.props.settings.partToggles.rightLeg.hat}
+                            onChange={e => this.togglePart('rightLeg', true, e.target.checked)}
+                          />
+                          <input
+                            className="inner"
+                            type="checkbox"
+                            checked={this.props.settings.partToggles.rightLeg.base}
+                            onChange={e => this.togglePart('rightLeg', false, e.target.checked)}
+                          />
+                        </div>
+                      </td>
+                      <td>
+                        <div className="stack" style={{ width: '32px', height: '72px' }}>
+                          <input
+                            type="checkbox"
+                            checked={this.props.settings.partToggles.leftLeg.hat}
+                            onChange={e => this.togglePart('leftLeg', true, e.target.checked)}
+                          />
+                          <input
+                            className="inner"
+                            type="checkbox"
+                            checked={this.props.settings.partToggles.leftLeg.base}
+                            onChange={e => this.togglePart('leftLeg', false, e.target.checked)}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </Dropdown>
             </div>
           )}

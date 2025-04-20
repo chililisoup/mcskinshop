@@ -18,6 +18,7 @@ type AState = {
   edit: boolean;
   view: boolean;
   help: boolean;
+  fullscreen: boolean;
 };
 
 class MenuBar extends Component<AProps, AState> {
@@ -30,8 +31,17 @@ class MenuBar extends Component<AProps, AState> {
       file: false,
       edit: false,
       view: false,
-      help: false
+      help: false,
+      fullscreen: false
     };
+  }
+
+  componentDidMount = () => {
+    document.documentElement.addEventListener('fullscreenchange', this.updateFullscreen);
+  };
+
+  componentWillUnmount() {
+    document.documentElement.removeEventListener('fullscreenchange', this.updateFullscreen);
   }
 
   addLayerFromInput = (e: ChangeEvent<HTMLInputElement>) => {
@@ -74,6 +84,19 @@ class MenuBar extends Component<AProps, AState> {
   downloadSkin = () => {
     this.setState({ file: false });
     this.props.downloadSkin();
+  };
+
+  updateFullscreen = () => {
+    const isFullscreen = !!document.fullscreenElement;
+    if (this.state.fullscreen !== isFullscreen) this.setState({ fullscreen: isFullscreen });
+  };
+
+  toggleFullscreen: () => void = async () => {
+    if (this.state.fullscreen) {
+      if (document.fullscreenElement) await document.exitFullscreen();
+    } else await document.documentElement.requestFullscreen();
+
+    this.setState({ fullscreen: !this.state.fullscreen });
   };
 
   render() {
@@ -157,7 +180,14 @@ class MenuBar extends Component<AProps, AState> {
         </button>
         {this.state.view && (
           <PopUp close={() => this.setState({ view: false })}>
-            <div style={{ marginLeft: '94px' }}>{viewTabChildren}</div>
+            <div style={{ marginLeft: '94px' }}>
+              {viewTabChildren}
+              <hr />
+              <span key="fullscreen">
+                <p>{this.state.fullscreen ? '✓' : ''}</p>
+                <button onClick={this.toggleFullscreen}>Fullscreen</button>
+              </span>
+            </div>
           </PopUp>
         )}
         <button
