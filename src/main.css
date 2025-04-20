@@ -74,6 +74,7 @@ input {
 }
 
 input[type='checkbox'] {
+  position: relative;
   appearance: none;
   display: grid;
   place-content: center;
@@ -99,7 +100,6 @@ input[type='checkbox']:checked::after {
   height: 14px;
   background-color: var(--input-text);
   border-radius: calc(var(--curvature) * 0.5);
-  transform-origin: bottom left;
   clip-path: polygon(11% 43%, 45% 73%, 85% 2%, 100% 13%, 49% 97%, 0 58%);
 }
 
