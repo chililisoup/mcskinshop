@@ -64,6 +64,7 @@ type AState = {
   };
   fov: number;
   usePerspectiveCam: boolean;
+  grid: boolean;
   savedPoses: string[];
 };
 
@@ -108,6 +109,7 @@ class PaperDoll extends Component<AProps, AState> {
   matcapMap = this.textureLoader.load(matcap, matcapMap => matcapMap);
   requestID = 0;
   directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
+  grid = new THREE.GridHelper(16, 16);
 
   renderer?: THREE.WebGLRenderer;
 
@@ -141,6 +143,7 @@ class PaperDoll extends Component<AProps, AState> {
       },
       fov: 80,
       usePerspectiveCam: true,
+      grid: true,
       savedPoses: this.getSavedPoses()
     };
 
@@ -204,6 +207,10 @@ class PaperDoll extends Component<AProps, AState> {
       this.state.lightFocus !== prevState.lightFocus
     ) {
       this.updateLighting();
+    }
+
+    if (this.state.grid !== prevState.grid) {
+      this.grid.visible = this.state.grid;
     }
 
     let updateTextures = false;
@@ -328,6 +335,13 @@ class PaperDoll extends Component<AProps, AState> {
     this.perspCam.add(this.directionalLight);
 
     this.matcapMap = this.textureLoader.load(matcap, matcapMap => matcapMap);
+
+    this.grid.material = new THREE.LineBasicMaterial({
+      color: 'black',
+      transparent: true,
+      opacity: 0.75
+    });
+    this.scene.add(this.grid);
 
     // Debug geometry, can move it to positions to reference code :)
     // this.sphere = new THREE.Mesh(
@@ -1541,6 +1555,7 @@ class PaperDoll extends Component<AProps, AState> {
     this.hoveredOutlinePass.enabled = false;
     this.selectedOutlinePass.enabled = false;
     this.handles.visible = false;
+    this.grid.visible = false;
     this.renderer.setSize(width * scale, height * scale);
     this.composer.setSize(width * scale, height * scale);
     this.renderFrame();
@@ -1551,6 +1566,7 @@ class PaperDoll extends Component<AProps, AState> {
     this.hoveredOutlinePass.enabled = true;
     this.selectedOutlinePass.enabled = true;
     this.handles.visible = true;
+    this.grid.visible = this.state.grid;
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.handleWindowResize();
 
@@ -1623,7 +1639,8 @@ class PaperDoll extends Component<AProps, AState> {
             pose: this.state.pose,
             poseSettings: this.state.poseSettings,
             fov: this.state.fov,
-            usePerspectiveCam: this.state.usePerspectiveCam
+            usePerspectiveCam: this.state.usePerspectiveCam,
+            grid: this.state.grid
           }}
           slim={this.props.slim}
           updateSetting={this.updateSetting}
@@ -1666,6 +1683,7 @@ type BProps = {
     poseSettings: AState['poseSettings'];
     fov: number;
     usePerspectiveCam: boolean;
+    grid: boolean;
   };
 
   slim: boolean;
@@ -1808,6 +1826,13 @@ class PaperDollSettings extends Component<BProps, BState> {
                   id="slimToggle"
                   checked={this.props.slim}
                   onChange={e => this.props.updateSlim(e.target.checked)}
+                />
+                <label htmlFor="gridToggle">Grid</label>
+                <input
+                  type="checkbox"
+                  id="gridToggle"
+                  checked={this.props.settings.grid}
+                  onChange={e => this.updateSetting('grid', e.target.checked)}
                 />
               </span>
               <Dropdown title="Camera">

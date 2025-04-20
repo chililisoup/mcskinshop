@@ -73,6 +73,36 @@ input {
   font-family: var(--alt-font);
 }
 
+input[type='checkbox'] {
+  appearance: none;
+  display: grid;
+  place-content: center;
+  margin: 5px;
+  width: 18px;
+  height: 18px;
+  outline: 2px solid var(--outline);
+}
+
+input[type='checkbox']:checked::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  background-color: var(--accent);
+  border-radius: calc(var(--curvature) * 0.5);
+}
+
+input[type='checkbox']:checked::after {
+  position: absolute;
+  content: '';
+  margin: 2px;
+  width: 14px;
+  height: 14px;
+  background-color: var(--input-text);
+  border-radius: calc(var(--curvature) * 0.5);
+  transform-origin: bottom left;
+  clip-path: polygon(11% 43%, 45% 73%, 85% 2%, 100% 13%, 49% 97%, 0 58%);
+}
+
 button:hover:enabled,
 input:hover:enabled,
 select:hover:enabled,
@@ -421,7 +451,7 @@ hr {
 }
 
 .manager-layer-buttons > button,
-.manager-layer-colors > input {
+.manager-layer-colors > .color-picker-parent {
   width: 20px;
   height: 20px;
   margin: 2px;
@@ -535,14 +565,20 @@ h3 {
   display: flex;
   flex-direction: column;
   width: min-content;
-  align-items: center;
+  min-width: 18px;
+  padding: 0;
+  margin: 5px;
 }
 
 .color-label {
-  width: 18px;
-  height: 18px;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
   outline: 2px solid var(--outline);
   image-rendering: pixelated;
+  /* this is needed on chrome, again, and im dumb or somethin */
+  min-height: 18px;
 }
 
 .color-picker {
@@ -556,7 +592,6 @@ h3 {
   align-items: center;
   position: absolute;
   z-index: 1000;
-  left: -100px;
   width: 200px;
   padding: 10px 0 10px;
 }
@@ -569,23 +604,48 @@ h3 {
   bottom: 35px;
 }
 
-.color-picker > div::after {
+.color-picker > div::before {
   content: '';
   position: absolute;
   border-style: solid;
   border-color: var(--outline) transparent;
   display: block;
   width: 0;
+  left: 70px;
+}
+
+.color-picker > div::after,
+.color-picker > div::before {
+  content: '';
+  position: absolute;
+  border-style: solid;
+  border-color: var(--container) transparent;
+  display: block;
+  width: 0;
   left: 90px;
 }
 
-.color-picker-top > div::after {
+.color-picker > div::before {
+  border-color: var(--outline) transparent;
+}
+
+.color-picker-top > div::after,
+.color-picker-top > div::before {
   border-width: 0 10px 10px;
+  top: -7px;
+}
+
+.color-picker-top > div::before {
   top: -10px;
 }
 
-.color-picker-bottom > div::after {
+.color-picker-bottom > div::after,
+.color-picker-bottom > div::before {
   border-width: 10px 10px 0;
+  bottom: -7px;
+}
+
+.color-picker-bottom > div::before {
   bottom: -10px;
 }
 
@@ -753,6 +813,7 @@ h3 {
   cursor: pointer;
   background: none;
   background-color: var(--light-shadow);
+  border-radius: calc(var(--curvature) * 0.5);
 }
 
 .grid-select > *:hover {

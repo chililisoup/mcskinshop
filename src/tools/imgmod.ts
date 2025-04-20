@@ -113,6 +113,32 @@ export class Img extends AbstractLayer {
 
       const imageResult = await createImageBitmap(canvas);
       this.image = imageResult;
+    } else if (
+      image.width === 16 &&
+      this.size[0] === 64 &&
+      image.height === 16 &&
+      this.size[1] === 64
+    ) {
+      ctx.drawImage(result, 16, 0);
+      ctx.drawImage(result, 32, 0);
+      ctx.drawImage(result, 48, 0);
+      ctx.drawImage(result, 0, 16);
+      ctx.drawImage(result, 16, 16);
+      ctx.drawImage(result, 32, 16);
+      ctx.drawImage(result, 48, 16);
+      ctx.drawImage(result, 0, 32);
+      ctx.drawImage(result, 16, 32);
+      ctx.drawImage(result, 32, 32);
+      ctx.drawImage(result, 48, 32);
+      ctx.drawImage(result, 0, 48);
+      ctx.drawImage(result, 16, 48);
+      ctx.drawImage(result, 32, 48);
+      ctx.drawImage(result, 48, 48);
+
+      this.rawSrc = canvas.toDataURL();
+
+      const imageResult = await createImageBitmap(canvas);
+      this.image = imageResult;
     } else this.image = result;
 
     this.rawSrc = canvas.toDataURL();

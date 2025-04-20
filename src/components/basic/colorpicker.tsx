@@ -167,7 +167,10 @@ class ColorPicker extends Component<AProps, AState> {
               className={
                 'color-picker ' + (this.state.bottom ? 'color-picker-bottom' : 'color-picker-top')
               }
-              style={this.state.open ? { display: 'block' } : { display: 'none' }}
+              style={{
+                display: this.state.open ? 'block' : 'none',
+                left: `${this.pickerRef.current ? this.pickerRef.current.clientWidth / 2 - 100 : -90}px`
+              }}
             >
               <div className="container">
                 <input
