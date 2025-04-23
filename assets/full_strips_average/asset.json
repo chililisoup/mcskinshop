@@ -1,0 +1,20 @@
+{
+  "name": "Full Strips - Average",
+  "layers": [
+    {
+      "path": "base.png",
+      "colors": [
+        "#4287f5",
+        {
+          "from": 0,
+          "to": "#0fffdf"
+        },
+        {
+          "from": 0,
+          "to": "#5fe891"
+        }
+      ],
+      "form": "full-squish-average"
+    }
+  ]
+}
