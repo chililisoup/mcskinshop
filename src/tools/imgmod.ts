@@ -1,5 +1,12 @@
 import * as Util from './util';
 
+type Offset = {
+  width: number;
+  height: number;
+  from: [x: number, y: number];
+  to: [x: number, y: number];
+};
+
 const HAT_FLATTENER_OFFSETS = [
   { width: 16, height: 8, from: [40, 0], to: [8, 0] },
   { width: 32, height: 8, from: [32, 8], to: [0, 8] },
@@ -11,7 +18,7 @@ const HAT_FLATTENER_OFFSETS = [
   { width: 16, height: 12, from: [0, 52], to: [16, 52] },
   { width: 8, height: 4, from: [52, 48], to: [36, 48] },
   { width: 16, height: 12, from: [48, 52], to: [32, 52] }
-] as const;
+] as Readonly<Offset>[];
 
 const SLIM_STRETCH_OFFSETS = [
   // right arm base
@@ -30,7 +37,26 @@ const SLIM_STRETCH_OFFSETS = [
   { width: 9, height: 16, from: [53, 48], to: [54, 48] },
   { width: 2, height: 12, from: [60, 52], to: [62, 52] },
   { width: 2, height: 4, from: [56, 48], to: [58, 48] }
-] as const;
+] as Readonly<Offset>[];
+
+const FULL_SQUISH_OFFSETS = [
+  // right arm base
+  { height: 16, width: -1, from: [45, 16], to: [45, 16] },
+  { height: 4, width: -1, from: [49, 16], to: [48, 16] },
+  { height: 12, width: -1, from: [53, 20], to: [52, 20] },
+  // right arm hat
+  { height: 16, width: -1, from: [45, 32], to: [45, 32] },
+  { height: 4, width: -1, from: [49, 32], to: [48, 32] },
+  { height: 12, width: -1, from: [53, 36], to: [52, 36] },
+  // left arm base
+  { height: 16, width: -1, from: [37, 48], to: [37, 48] },
+  { height: 4, width: -1, from: [41, 48], to: [40, 48] },
+  { height: 12, width: -1, from: [45, 52], to: [44, 52] },
+  // left arm hat
+  { height: 16, width: -1, from: [53, 48], to: [53, 48] },
+  { height: 4, width: -1, from: [57, 48], to: [56, 48] },
+  { height: 12, width: -1, from: [61, 52], to: [60, 52] }
+] as Readonly<Offset>[];
 
 export const EMPTY_IMAGE_SOURCE =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIW2NgAAIAAAUAAR4f7BQAAAAASUVORK5CYII=';
@@ -41,7 +67,14 @@ export const checkLayerType = (maybeType: string): LayerType | undefined => {
   if (LAYER_TYPES.find(type => type === maybeType)) return maybeType as LayerType;
 };
 
-export const LAYER_FORMS = ['full-squish', 'slim-stretch'] as const;
+export const LAYER_FORMS = [
+  'full-squish-inner',
+  'full-squish-outer',
+  'full-squish-average',
+  'slim-stretch',
+  'full-only',
+  'slim-only'
+] as const;
 export type LayerForm = (typeof LAYER_FORMS)[number];
 
 export type Hsla = [hue: number, saturation: number, lightness: number, alpha: number];
@@ -175,8 +208,9 @@ export class Img extends AbstractLayer {
   // rawSrc contains uncolored image data,
   // so going to 0% opacity and back doesnt break anything
   rawSrc = EMPTY_IMAGE_SOURCE;
-  size = [64, 64];
+  size: [w: number, h: number] = [64, 64];
   dynamic = false;
+  linearOpacity = false;
   fileHandle?: FileSystemFileHandle;
   observer?: FileSystemObserver;
   internalUpdateCallback?: () => void;
@@ -260,6 +294,8 @@ export class Img extends AbstractLayer {
     copy.rawSrc = this.rawSrc;
     copy.image = this.image;
     copy.name = this.name;
+    copy.size = [this.size[0], this.size[1]];
+    copy.linearOpacity = this.linearOpacity;
     copy.layerForm = this.layerForm;
 
     return copy;
@@ -323,11 +359,18 @@ export class Img extends AbstractLayer {
     const canvas = document.createElement('canvas');
     canvas.width = this.size[0];
     canvas.height = this.size[1];
+
+    if (
+      (this.layerForm === 'full-only' && Util.getSlim()) ||
+      (this.layerForm === 'slim-only' && !Util.getSlim())
+    )
+      return await createImageBitmap(canvas);
+
     const ctx = canvas.getContext('2d')!;
 
     ctx.drawImage(this.image, 0, 0);
 
-    const reverse = this.layerForm === 'full-squish';
+    const reverse = this.layerForm !== 'slim-stretch';
 
     if (reverse === Util.getSlim()) {
       const from = reverse ? 'to' : 'from';
@@ -357,21 +400,40 @@ export class Img extends AbstractLayer {
         ctx.clearRect(46, 52, 2, 12);
         ctx.clearRect(58, 48, 2, 4);
         ctx.clearRect(62, 52, 2, 12);
+
+        const width = this.layerForm === 'full-squish-average' ? 2 : 1;
+        const move = this.layerForm === 'full-squish-inner' ? 1 : 0;
+
+        FULL_SQUISH_OFFSETS.forEach(offset => {
+          ctx.clearRect(offset.to[0], offset.to[1], 1, offset.height);
+          ctx.drawImage(
+            this.image!,
+            offset.from[0] + move * (offset.width / 2 + 1),
+            offset.from[1],
+            width,
+            offset.height,
+            offset.to[0],
+            offset.to[1],
+            1,
+            offset.height
+          );
+        });
       }
     }
 
     return await createImageBitmap(canvas);
   };
 
-  getImageData = () => {
-    if (!this.image) return;
+  getImageData = (image?: ImageBitmap) => {
+    image = image ?? this.image;
+    if (!image) return;
 
     const canvas = document.createElement('canvas');
     canvas.width = this.size[0];
     canvas.height = this.size[1];
     const ctx = canvas.getContext('2d')!;
 
-    ctx.drawImage(this.image, 0, 0);
+    ctx.drawImage(image, 0, 0);
     return ctx.getImageData(0, 0, this.size[0], this.size[1]);
   };
 
@@ -564,6 +626,39 @@ export class Layer extends AbstractLayer {
         else ctx.globalCompositeOperation = sublayer.blend;
 
         const image = sublayer.layerForm ? await sublayer.form() : sublayer.image;
+
+        if (sublayer.linearOpacity) {
+          const subImageData = sublayer.getImageData(image);
+          if (!subImageData) return;
+          const subData = subImageData.data;
+
+          const imageData = ctx.getImageData(0, 0, sublayer.size[0], sublayer.size[1]);
+          const data = imageData.data;
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3] === 0) {
+              data[i] = subData[i];
+              data[i + 1] = subData[i + 1];
+              data[i + 2] = subData[i + 2];
+              data[i + 3] = subData[i + 3];
+              continue;
+            }
+
+            if (subData[i + 3] === 0) continue;
+
+            const mix = data[i + 3] / (data[i + 3] + subData[i + 3]);
+            const invMix = 1 - mix;
+
+            data[i] = data[i] * mix + subData[i] * invMix;
+            data[i + 1] = data[i + 1] * mix + subData[i + 1] * invMix;
+            data[i + 2] = data[i + 2] * mix + subData[i + 2] * invMix;
+            data[i + 3] += subData[i + 3];
+          }
+
+          ctx.putImageData(imageData, 0, 0);
+
+          return;
+        }
+
         ctx.drawImage(image, 0, 0);
       })
     );

@@ -79,6 +79,8 @@ class LayerAdder extends Component<AProps, AState> {
             const imageBlob = await zip.file(layer.path)?.async('blob');
             if (!imageBlob) continue;
 
+            const name = `${asset.name}.${layer.path.split('.')[0]}`;
+
             const layerForm =
               'form' in layer && ImgMod.LAYER_FORMS.find(form => form === layer.form)
                 ? (layer.form as ImgMod.LayerForm)
@@ -123,6 +125,8 @@ class LayerAdder extends Component<AProps, AState> {
 
                 const image = new ImgMod.Img();
                 asset.sublayers.push(image);
+                image.name = `${name}.${i + 1}`;
+                image.linearOpacity = true;
                 image.layerForm = layerForm;
                 await image.loadImage(imageBlob);
 
@@ -136,6 +140,7 @@ class LayerAdder extends Component<AProps, AState> {
 
             const image = new ImgMod.Img();
             asset.sublayers.push(image);
+            image.name = name;
             image.layerForm = layerForm;
             await image.loadImage(imageBlob);
           }
