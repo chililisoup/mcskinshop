@@ -11,8 +11,8 @@
 
 # production
 /build
-/src/asset_map.json
-/public/compressed
+src/asset_map.json
+public/assets/compressed
 
 # misc
 .DS_Store
