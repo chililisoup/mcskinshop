@@ -1,3 +1,5 @@
+import * as Util from './util';
+
 const HAT_FLATTENER_OFFSETS = [
   { width: 16, height: 8, from: [40, 0], to: [8, 0] },
   { width: 32, height: 8, from: [32, 8], to: [0, 8] },
@@ -11,6 +13,25 @@ const HAT_FLATTENER_OFFSETS = [
   { width: 16, height: 12, from: [48, 52], to: [32, 52] }
 ] as const;
 
+const SLIM_STRETCH_OFFSETS = [
+  // right arm base
+  { width: 9, height: 16, from: [45, 16], to: [46, 16] },
+  { width: 2, height: 12, from: [52, 20], to: [54, 20] },
+  { width: 2, height: 4, from: [48, 16], to: [50, 16] },
+  // right arm hat
+  { width: 9, height: 16, from: [45, 32], to: [46, 32] },
+  { width: 2, height: 12, from: [52, 36], to: [54, 36] },
+  { width: 2, height: 4, from: [48, 32], to: [50, 32] },
+  // left arm base
+  { width: 9, height: 16, from: [37, 48], to: [38, 48] },
+  { width: 2, height: 12, from: [44, 52], to: [46, 52] },
+  { width: 2, height: 4, from: [40, 48], to: [42, 48] },
+  // left arm hat
+  { width: 9, height: 16, from: [53, 48], to: [54, 48] },
+  { width: 2, height: 12, from: [60, 52], to: [62, 52] },
+  { width: 2, height: 4, from: [56, 48], to: [58, 48] }
+] as const;
+
 export const EMPTY_IMAGE_SOURCE =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIW2NgAAIAAAUAAR4f7BQAAAAASUVORK5CYII=';
 
@@ -19,6 +40,10 @@ export type LayerType = (typeof LAYER_TYPES)[number];
 export const checkLayerType = (maybeType: string): LayerType | undefined => {
   if (LAYER_TYPES.find(type => type === maybeType)) return maybeType as LayerType;
 };
+
+export const LAYER_FORMS = ['full-squish', 'slim-stretch'] as const;
+export type LayerForm = (typeof LAYER_FORMS)[number];
+
 export type Hsla = [hue: number, saturation: number, lightness: number, alpha: number];
 export type RelativeColor = { from: number; offset: Hsla };
 
@@ -146,6 +171,7 @@ export abstract class AbstractLayer {
 
 export class Img extends AbstractLayer {
   type;
+  layerForm?: LayerForm;
   // rawSrc contains uncolored image data,
   // so going to 0% opacity and back doesnt break anything
   rawSrc = EMPTY_IMAGE_SOURCE;
@@ -234,6 +260,7 @@ export class Img extends AbstractLayer {
     copy.rawSrc = this.rawSrc;
     copy.image = this.image;
     copy.name = this.name;
+    copy.layerForm = this.layerForm;
 
     return copy;
   };
@@ -276,9 +303,9 @@ export class Img extends AbstractLayer {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
     for (let i = 0; i < data.length; i += 4) {
-      const avg = (data[i] + data[i + 1] + data[i + 2]) / 765; // 255 * 3
+      const avg = 1 - (data[i] + data[i + 1] + data[i + 2]) / 765; // 255 * 3
       const amt = Math.max(1 - Math.abs(avg - peak) * length, 0);
-      data[i + 3] *= 1 - amt;
+      data[i + 3] *= amt;
     }
 
     ctx.putImageData(imageData, 0, 0);
@@ -288,6 +315,52 @@ export class Img extends AbstractLayer {
       this.rawSrc = this.src;
       this.image = result;
     });
+  };
+
+  form = async () => {
+    if (!this.image) return Promise.reject(new Error('No image to form'));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = this.size[0];
+    canvas.height = this.size[1];
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.drawImage(this.image, 0, 0);
+
+    const reverse = this.layerForm === 'full-squish';
+
+    if (reverse === Util.getSlim()) {
+      const from = reverse ? 'to' : 'from';
+      const to = reverse ? 'from' : 'to';
+
+      SLIM_STRETCH_OFFSETS.forEach(offset => {
+        ctx.clearRect(offset[to][0], offset[to][1], offset.width, offset.height);
+        ctx.drawImage(
+          this.image!,
+          offset[from][0],
+          offset[from][1],
+          offset.width,
+          offset.height,
+          offset[to][0],
+          offset[to][1],
+          offset.width,
+          offset.height
+        );
+      });
+
+      if (reverse) {
+        ctx.clearRect(50, 16, 2, 4);
+        ctx.clearRect(54, 20, 2, 12);
+        ctx.clearRect(50, 32, 2, 4);
+        ctx.clearRect(54, 36, 2, 12);
+        ctx.clearRect(42, 48, 2, 4);
+        ctx.clearRect(46, 52, 2, 12);
+        ctx.clearRect(58, 48, 2, 4);
+        ctx.clearRect(62, 52, 2, 12);
+      }
+    }
+
+    return await createImageBitmap(canvas);
   };
 
   getImageData = () => {
@@ -451,7 +524,7 @@ export class Layer extends AbstractLayer {
     return this.filter;
   };
 
-  render = (ctx?: CanvasRenderingContext2D) => {
+  render = async (ctx?: CanvasRenderingContext2D) => {
     const dom = !ctx;
 
     if (!ctx) {
@@ -461,36 +534,39 @@ export class Layer extends AbstractLayer {
       ctx = canvas.getContext('2d')!;
     }
 
-    this.sublayers.forEach(sublayer => {
-      if (!sublayer) return;
-      if (!sublayer.active) return;
+    await Promise.all(
+      this.sublayers.map(async sublayer => {
+        if (!sublayer) return;
+        if (!sublayer.active) return;
 
-      ctx.filter =
-        'opacity(100%) hue-rotate(0) saturate(100%) brightness(100%) contrast(100%) invert(0) sepia(0)';
-      ctx.globalCompositeOperation = 'source-over';
-      if (sublayer instanceof Layer) {
-        void sublayer.render(ctx);
-        return;
-      }
-      if (!(sublayer instanceof Img)) return;
-      if (!sublayer.image) return;
+        ctx.filter =
+          'opacity(100%) hue-rotate(0) saturate(100%) brightness(100%) contrast(100%) invert(0) sepia(0)';
+        ctx.globalCompositeOperation = 'source-over';
+        if (sublayer instanceof Layer) {
+          await sublayer.render(ctx);
+          return;
+        }
+        if (!(sublayer instanceof Img)) return;
+        if (!sublayer.image) return;
 
-      if (sublayer.type === 'flatten' || sublayer.type === 'blowup') {
-        // copy pixels to new location
-        sublayer.flattenWithRespect(ctx, sublayer.type === 'blowup');
+        if (sublayer.type === 'flatten' || sublayer.type === 'blowup') {
+          // copy pixels to new location
+          sublayer.flattenWithRespect(ctx, sublayer.type === 'blowup');
 
-        // erase pixels from old location
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.drawImage(sublayer.image, 0, 0);
-        return;
-      }
+          // erase pixels from old location
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.drawImage(sublayer.image, 0, 0);
+          return;
+        }
 
-      ctx.filter = sublayer.filter;
-      if (sublayer.type === 'erase') ctx.globalCompositeOperation = 'destination-out';
-      else ctx.globalCompositeOperation = sublayer.blend;
+        ctx.filter = sublayer.filter;
+        if (sublayer.type === 'erase') ctx.globalCompositeOperation = 'destination-out';
+        else ctx.globalCompositeOperation = sublayer.blend;
 
-      ctx.drawImage(sublayer.image, 0, 0);
-    });
+        const image = sublayer.layerForm ? await sublayer.form() : sublayer.image;
+        ctx.drawImage(image, 0, 0);
+      })
+    );
 
     if (dom)
       return createImageBitmap(ctx.canvas).then(result => {

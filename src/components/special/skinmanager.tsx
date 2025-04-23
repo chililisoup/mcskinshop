@@ -72,6 +72,10 @@ class SkinManager extends Component<AProps, AState> {
     document.removeEventListener('keydown', this.onKeyDown);
   }
 
+  componentDidUpdate = () => {
+    Util.setSlim(this.state.slim);
+  };
+
   onKeyDown = (e: KeyboardEvent) => {
     if (!e.ctrlKey) return;
 
@@ -124,7 +128,14 @@ class SkinManager extends Component<AProps, AState> {
     this.setState({ editHints: [name, ''] });
   };
 
-  updateSlim = (slim: boolean) => this.setState({ slim: slim });
+  updateSlim: (slim: boolean) => void = async slim => {
+    Util.setSlim(slim);
+
+    if (this.layers.sublayers.length) {
+      await this.layers.render();
+      this.setState({ skin: this.layers.src, slim: slim });
+    } else this.setState({ skin: undefined, slim: slim });
+  };
 
   updateSkin: () => void = async () => {
     if (this.layers.sublayers.length) {

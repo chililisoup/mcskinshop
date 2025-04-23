@@ -79,6 +79,11 @@ class LayerAdder extends Component<AProps, AState> {
             const imageBlob = await zip.file(layer.path)?.async('blob');
             if (!imageBlob) continue;
 
+            const layerForm =
+              'form' in layer && ImgMod.LAYER_FORMS.find(form => form === layer.form)
+                ? (layer.form as ImgMod.LayerForm)
+                : undefined;
+
             if ('colors' in layer && Array.isArray(layer.colors)) {
               asset.colors = [];
               const colorCount = layer.colors.length - 1;
@@ -106,11 +111,6 @@ class LayerAdder extends Component<AProps, AState> {
                   if ('to' in color && typeof color.to === 'string') {
                     const from: unknown = layer.colors[color.from];
                     if (typeof from !== 'string') continue;
-
-                    console.log(ImgMod.getHslaOffset(
-                      ImgMod.colorAsHsla(from),
-                      ImgMod.colorAsHsla(color.to)
-                    ));
                     asset.colors.push({
                       from: color.from,
                       offset: ImgMod.getHslaOffset(
@@ -123,6 +123,7 @@ class LayerAdder extends Component<AProps, AState> {
 
                 const image = new ImgMod.Img();
                 asset.sublayers.push(image);
+                image.layerForm = layerForm;
                 await image.loadImage(imageBlob);
 
                 if (colorCount > 0) await image.mask(i / colorCount, colorCount);
@@ -135,6 +136,7 @@ class LayerAdder extends Component<AProps, AState> {
 
             const image = new ImgMod.Img();
             asset.sublayers.push(image);
+            image.layerForm = layerForm;
             await image.loadImage(imageBlob);
           }
         } catch (error) {
