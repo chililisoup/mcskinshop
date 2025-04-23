@@ -5,6 +5,7 @@
   "dependencies": {
     "firebase": "^11.6.0",
     "jsx": "^0.9.89",
+    "jszip": "^3.10.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "three": "^0.160.1",

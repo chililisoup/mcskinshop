@@ -19,6 +19,83 @@ export type LayerType = (typeof LAYER_TYPES)[number];
 export const checkLayerType = (maybeType: string): LayerType | undefined => {
   if (LAYER_TYPES.find(type => type === maybeType)) return maybeType as LayerType;
 };
+export type Hsla = [hue: number, saturation: number, lightness: number, alpha: number];
+export type RelativeColor = { from: number; offset: Hsla };
+
+// https://gist.github.com/xenozauros/f6e185c8de2a04cdfecf
+export const hexToHsla: (hex: string) => Hsla = hex => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.slice(0, 7));
+
+  if (!result) return [0, 0, 0, 0];
+
+  const r = parseInt(result[1], 16) / 255;
+  const g = parseInt(result[2], 16) / 255;
+  const b = parseInt(result[3], 16) / 255;
+  const a = hex.length === 9 ? parseInt(hex.slice(7), 16) / 255 : 1;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max === min)
+    h = s = 0; // achromatic
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+      default:
+        break;
+    }
+    h /= 6;
+  }
+
+  return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100), a];
+};
+
+// https://stackoverflow.com/a/44134328
+export const hslaToHex = (hsla: Hsla) => {
+  const h = hsla[0];
+  const s = hsla[1];
+  const l = hsla[2] / 100;
+  const a = hsla[3];
+  const amt = (s * Math.min(l, 1 - l)) / 100;
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = l - amt * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color)
+      .toString(16)
+      .padStart(2, '0'); // convert to Hex and prefix "0" if needed
+  };
+  return `#${f(0)}${f(8)}${f(4)}${a < 1 ? Math.round(255 * a).toString(16) : ''}`;
+};
+
+export const hslaToString = (hsla: Hsla) => `hsla(${hsla[0]},${hsla[1]}%,${hsla[2]}%,${hsla[3]})`;
+
+export const hslToString = (hsl: Hsla) => `hsl(${hsl[0]},${hsl[1]}%,${hsl[2]}%)`;
+
+export const getHslaOffset = (from: Hsla, to: Hsla) => {
+  return [to[0] - from[0], to[1] / from[1], to[2] / from[2], to[3] / from[3]] as Hsla;
+};
+
+export const applyHslaOffset = (from: Hsla, offset: Hsla) => {
+  return [
+    from[0] + offset[0],
+    from[1] * offset[1],
+    from[2] * offset[2],
+    from[3] * offset[3]
+  ] as Hsla;
+};
 
 export const colorAsHex = (color: string) => {
   if (color.startsWith('#')) return color;
@@ -39,6 +116,8 @@ export const colorAsHex = (color: string) => {
     (rgba[3] !== 255 ? rgba[3].toString(16).padStart(2, '0') : '')
   );
 };
+
+export const colorAsHsla = (color: string) => hexToHsla(colorAsHex(color));
 
 export abstract class AbstractLayer {
   blend: GlobalCompositeOperation;
@@ -67,6 +146,8 @@ export abstract class AbstractLayer {
 
 export class Img extends AbstractLayer {
   type;
+  // rawSrc contains uncolored image data,
+  // so going to 0% opacity and back doesnt break anything
   rawSrc = EMPTY_IMAGE_SOURCE;
   size = [64, 64];
   dynamic = false;
@@ -80,7 +161,7 @@ export class Img extends AbstractLayer {
     this.type = type ?? 'normal';
   }
 
-  loadImage = async (image: HTMLImageElement) => {
+  loadImage = async (image: ImageBitmapSource) => {
     const result = await createImageBitmap(image);
 
     const canvas = document.createElement('canvas');
@@ -96,7 +177,7 @@ export class Img extends AbstractLayer {
 
     ctx.drawImage(result, 0, 0);
 
-    if (image.height === 32 && this.size[1] === 64) {
+    if (result.height === 32 && this.size[1] === 64) {
       ctx.setTransform(-1, 0, 0, 1, 64, 0); // Mirror, move into frame
 
       ctx.drawImage(result, 44, 16, 4, 4, 24, 48, 4, 4); // Arm top
@@ -109,36 +190,21 @@ export class Img extends AbstractLayer {
       ctx.drawImage(result, 0, 20, 12, 12, 36, 52, 12, 12); // Leg front/sides
       ctx.drawImage(result, 12, 20, 4, 12, 32, 52, 4, 12); // Leg back
 
-      this.rawSrc = canvas.toDataURL();
-
-      const imageResult = await createImageBitmap(canvas);
-      this.image = imageResult;
+      this.image = await createImageBitmap(canvas);
     } else if (
-      image.width === 16 &&
+      result.width === 16 &&
       this.size[0] === 64 &&
-      image.height === 16 &&
+      result.height === 16 &&
       this.size[1] === 64
     ) {
-      ctx.drawImage(result, 16, 0);
-      ctx.drawImage(result, 32, 0);
-      ctx.drawImage(result, 48, 0);
-      ctx.drawImage(result, 0, 16);
-      ctx.drawImage(result, 16, 16);
-      ctx.drawImage(result, 32, 16);
-      ctx.drawImage(result, 48, 16);
-      ctx.drawImage(result, 0, 32);
-      ctx.drawImage(result, 16, 32);
-      ctx.drawImage(result, 32, 32);
-      ctx.drawImage(result, 48, 32);
-      ctx.drawImage(result, 0, 48);
-      ctx.drawImage(result, 16, 48);
-      ctx.drawImage(result, 32, 48);
-      ctx.drawImage(result, 48, 48);
+      const pattern = ctx.createPattern(result, 'repeat');
+      if (pattern) {
+        ctx.clearRect(0, 0, 64, 64);
+        ctx.fillStyle = pattern;
+        ctx.fillRect(0, 0, 64, 64);
+      }
 
-      this.rawSrc = canvas.toDataURL();
-
-      const imageResult = await createImageBitmap(canvas);
-      this.image = imageResult;
+      this.image = await createImageBitmap(canvas);
     } else this.image = result;
 
     this.rawSrc = canvas.toDataURL();
@@ -193,6 +259,33 @@ export class Img extends AbstractLayer {
 
     await createImageBitmap(canvas).then(result => {
       this.src = canvas.toDataURL();
+      this.image = result;
+    });
+  };
+
+  mask = async (peak: number, length: number) => {
+    if (!this.image) return Promise.reject(new Error('No image to mask'));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = this.size[0];
+    canvas.height = this.size[1];
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.drawImage(this.image, 0, 0);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const avg = (data[i] + data[i + 1] + data[i + 2]) / 765; // 255 * 3
+      const amt = Math.max(1 - Math.abs(avg - peak) * length, 0);
+      data[i + 3] *= 1 - amt;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    await createImageBitmap(canvas).then(result => {
+      this.src = canvas.toDataURL();
+      this.rawSrc = this.src;
       this.image = result;
     });
   };
@@ -296,7 +389,7 @@ export class Layer extends AbstractLayer {
 
   constructor(
     sublayers?: AbstractLayer[],
-    colors?: string | string[],
+    colors?: string | (string | RelativeColor)[],
     blend?: GlobalCompositeOperation,
     filter?: string
   ) {
@@ -315,7 +408,14 @@ export class Layer extends AbstractLayer {
       this.colors = new Array(this.sublayers.length).fill(this.colors);
   };
 
-  color: (colors?: string | string[]) => Promise<unknown> = colors => {
+  getTrueColor = (color: RelativeColor) => {
+    const from = this.colors[color.from];
+    if (typeof from !== 'string') return '#FFFFFF';
+
+    return hslaToString(applyHslaOffset(colorAsHsla(from), color.offset));
+  };
+
+  color: (colors?: string | (string | RelativeColor)[]) => Promise<unknown> = colors => {
     this.colors = colors ?? this.colors;
     this.assertColorArray();
 
@@ -323,11 +423,15 @@ export class Layer extends AbstractLayer {
       return Promise.reject(new Error('Color count does not match sublayer count'));
 
     return Promise.all(
-      this.sublayers.map((layer, i) => {
-        return layer instanceof Img || layer instanceof Layer
-          ? layer.color(this.colors[i])
-          : Promise.reject(new Error('Incompatible layer type'));
-      })
+      this.sublayers.map((layer, i) =>
+        layer instanceof Img || layer instanceof Layer
+          ? layer.color(
+              typeof this.colors[i] === 'string'
+                ? this.colors[i]
+                : this.getTrueColor(this.colors[i])
+            )
+          : Promise.reject(new Error('Incompatible layer type'))
+      )
     );
   };
 
@@ -396,8 +500,13 @@ export class Layer extends AbstractLayer {
   };
 
   copy = () => {
-    const copy = new Layer([], this.colors, this.blend, this.filter);
-    copy.advanced = this.advanced;
+    const copy = new Layer(
+      [],
+      typeof this.colors === 'string' ? this.colors : [...this.colors],
+      this.blend,
+      this.filter
+    );
+    copy.advanced = this.advanced ? [...this.advanced] : undefined;
     copy.name = this.name;
 
     this.sublayers.forEach(layer => copy.sublayers.push(layer.copy()));

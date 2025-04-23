@@ -83,7 +83,7 @@ class LayerManager extends Component<AProps, AState> {
         topLayer.assertColorArray();
 
         bottomLayer.sublayers.push(...topLayer.sublayers);
-        (bottomLayer.colors as string[]).push(...topLayer.colors);
+        (bottomLayer.colors as (string | ImgMod.RelativeColor)[]).push(...topLayer.colors);
 
         if (bottomLayer.advanced || topLayer.advanced) {
           bottomLayer.assertAdvancedArray();
@@ -93,7 +93,7 @@ class LayerManager extends Component<AProps, AState> {
         }
       } else {
         bottomLayer.sublayers.push(topLayer);
-        (bottomLayer.colors as string[]).push('null');
+        (bottomLayer.colors as (string | ImgMod.RelativeColor)[]).push('null');
 
         if (bottomLayer.advanced) bottomLayer.advanced.push(true);
       }
@@ -137,6 +137,7 @@ class LayerManager extends Component<AProps, AState> {
     layer.sublayers.forEach((sublayer, i) => {
       sublayer.name ??= `${layer.name}.${i}`;
       sublayer.id ??= Util.randomKey();
+      if (sublayer instanceof ImgMod.Img) sublayer.rawSrc = sublayer.src;
     });
 
     this.props.layers.splice(index, 1, ...layer.sublayers);
@@ -311,17 +312,29 @@ class Layer extends Component<BProps, BState> {
 
       if (layer.colors instanceof Array) {
         layer.colors.forEach((color, i) => {
-          if (
-            !ImgMod.checkLayerType(color) &&
-            (!layer.advanced || !layer.advanced[i] || this.state.fxOpen)
-          ) {
-            colors.push(
-              <ColorPicker
-                key={i + (layer.id ?? '')}
-                default={color}
-                update={color => this.changeColor(i, color)}
-              />
-            );
+          if (!layer.advanced || !layer.advanced[i] || this.state.fxOpen) {
+            if (typeof color === 'string' && !ImgMod.checkLayerType(color))
+              colors.push(
+                <ColorPicker
+                  key={i + (layer.id ?? '')}
+                  default={color}
+                  update={color => this.changeColor(i, color)}
+                />
+              );
+            else if (typeof color === 'object')
+              colors.push(
+                <ColorPicker
+                  key={i + (layer.id ?? '')}
+                  default={layer.getTrueColor(color)}
+                  linked={true}
+                  unlink={() => {
+                    const colors = [...layer.colors];
+                    colors[i] = layer.getTrueColor(color);
+                    layer.colors = colors;
+                    this.updateLayer();
+                  }}
+                />
+              );
           }
         });
       }
@@ -528,7 +541,7 @@ class LayerPreview extends Component<CProps, CState> {
     this.updatePreview();
   }
 
-  componentDidUpdate(prevProps: CProps) {
+  componentDidUpdate(prevProps: Readonly<CProps>) {
     if (prevProps !== this.props) this.updatePreview();
   }
 

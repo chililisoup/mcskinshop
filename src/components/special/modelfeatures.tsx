@@ -3,7 +3,7 @@ import * as ImgMod from '../../tools/imgmod';
 import * as Util from '../../tools/util';
 import asset_map from '../../asset_map.json';
 import Dropdown from '../basic/dropdown';
-import GridSelect, { Option } from '../basic/gridselect';
+import GridSelect, { Crop, Option } from '../basic/gridselect';
 
 type AssetType = 'capes' | 'equipment' | 'leggings';
 
@@ -119,30 +119,65 @@ class ModelFeatures extends Component<AProps, AState> {
           uploadCustom={() => this.uploadCustom(['availableCapes', [64, 32]])}
           options={this.state.availableCapes}
           changeFeature={option => this.changeFeature('cape', option)}
+          crop={{
+            aspectRatio: 2.0,
+            x: 1.05 / 64,
+            y: 1.05 / 32,
+            sx: 20.9 / 64,
+            sy: 15.9 / 32
+          }}
         />
         <FeatureEntry
           title="Helmets"
           uploadCustom={() => this.uploadCustom(['availableHelmets', [64, 32]])}
           options={this.state.availableHelmets}
           changeFeature={option => this.changeFeature('helmet', option)}
+          crop={{
+            aspectRatio: 2.0,
+            x: 0.05 / 64,
+            y: 0.05 / 32,
+            sx: 15.9 / 64,
+            sy: 15.9 / 32
+          }}
         />
         <FeatureEntry
           title="Chestplates"
           uploadCustom={() => this.uploadCustom(['availableChestplates', [64, 32]])}
           options={this.state.availableChestplates}
           changeFeature={option => this.changeFeature('chestplate', option)}
+          crop={{
+            aspectRatio: 2.0,
+            x: 16.05 / 64,
+            y: 20.05 / 32,
+            sx: 15.9 / 64,
+            sy: 11.9 / 32
+          }}
         />
         <FeatureEntry
           title="Leggings"
           uploadCustom={() => this.uploadCustom(['availableLeggings', [64, 32]])}
           options={this.state.availableLeggings}
           changeFeature={option => this.changeFeature('leggings', option)}
+          crop={{
+            aspectRatio: 2.0,
+            x: 20.05 / 64,
+            y: 27.05 / 32,
+            sx: 7.9 / 64,
+            sy: 4.9 / 32
+          }}
         />
         <FeatureEntry
           title="Boots"
           uploadCustom={() => this.uploadCustom(['availableBoots', [64, 32]])}
           options={this.state.availableBoots}
           changeFeature={option => this.changeFeature('boots', option)}
+          crop={{
+            aspectRatio: 2.0,
+            x: 0.05 / 64,
+            y: 26.05 / 32,
+            sx: 11.9 / 64,
+            sy: 5.9 / 32
+          }}
         />
       </div>
     );
@@ -155,6 +190,7 @@ type BProps = {
   targetGridEntryWidth?: number;
   options: readonly Option[];
   changeFeature: (option: string | false) => void;
+  crop?: Crop;
 };
 
 class FeatureEntry extends Component<BProps> {
@@ -165,7 +201,8 @@ class FeatureEntry extends Component<BProps> {
           <button onClick={this.props.uploadCustom}>Upload custom...</button>
           <GridSelect
             emptyOption
-            targetWidth={this.props.targetGridEntryWidth ?? 100}
+            targetWidth={this.props.targetGridEntryWidth}
+            crop={this.props.crop}
             options={this.props.options}
             select={this.props.changeFeature}
           />

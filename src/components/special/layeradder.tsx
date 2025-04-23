@@ -1,14 +1,16 @@
 import React, { Component, ReactNode } from 'react';
 import * as ImgMod from '../../tools/imgmod';
 import * as Util from '../../tools/util';
-import fakedatabase from '../../fakedatabase.json';
+import JSZip from 'jszip';
+
+const fakedatabase = await Util.getRemoteJson('/assets/compressed/fake_database.json');
 
 type AProps = {
   addLayer: (layer: ImgMod.AbstractLayer) => void;
 };
 
 type AState = {
-  layers: ImgMod.Layer;
+  assets: ImgMod.Layer[];
 };
 
 class LayerAdder extends Component<AProps, AState> {
@@ -16,7 +18,7 @@ class LayerAdder extends Component<AProps, AState> {
     super(props);
 
     this.state = {
-      layers: new ImgMod.Layer()
+      assets: []
     };
   }
 
@@ -24,68 +26,144 @@ class LayerAdder extends Component<AProps, AState> {
     this.loadAssets();
   }
 
-  addLayer: (id: number) => void = async (id: number) => {
-    const layer = new ImgMod.Layer();
-    layer.name = fakedatabase[id].name;
-    // Using spread operators since imported json objects
-    // are mutable global constants for some reason
-    layer.colors = [...fakedatabase[id].colors];
-    layer.advanced = [...fakedatabase[id].advanced];
+  addLayer = (id: number) => {
+    const layer = this.state.assets[id].copy();
     layer.id = Util.randomKey();
-
-    await Promise.all(
-      fakedatabase[id].layers.map((src, i) => {
-        const image = new ImgMod.Img();
-        layer.sublayers.push(image);
-
-        const layerType = ImgMod.checkLayerType(fakedatabase[id].colors[i]);
-        if (layerType) image.type = layerType;
-
-        return image.render(import.meta.env.ASSET_PREFIX + fakedatabase[id].loc + src);
-      })
-    );
-
     this.props.addLayer(layer);
   };
 
   loadAssets: () => void = async () => {
-    const layers = new ImgMod.Layer();
+    if (!(fakedatabase && Array.isArray(fakedatabase))) return;
 
-    await Promise.all(
-      fakedatabase.map(async asset => {
-        const sublayer = new ImgMod.Layer();
-        layers.sublayers.push(sublayer);
+    const layers = await Promise.all(
+      fakedatabase.map(async name => {
+        const asset = new ImgMod.Layer();
+        if (typeof name !== 'string') return asset;
 
-        await Promise.all(
-          asset.layers.map(src => {
+        try {
+          const response = await fetch(`/assets/compressed/${name}.zip`);
+          if (!response.ok) throw new Error(`Response status: ${response.status}`);
+
+          const zip = new JSZip();
+          await zip.loadAsync(await response.blob());
+          const rawParams = await zip.file('asset.json')?.async('text');
+          if (!rawParams) throw new Error(`Failed to get asset.json from ${name}.zip`);
+
+          const params: unknown = JSON.parse(rawParams);
+
+          if (
+            !(
+              params &&
+              typeof params === 'object' &&
+              'name' in params &&
+              typeof params.name === 'string' &&
+              'layers' in params &&
+              Array.isArray(params.layers)
+            )
+          )
+            throw new Error(`Malformed asset.json in ${name}.zip`);
+
+          asset.name = params.name;
+
+          for (const layer of params.layers as unknown[]) {
+            if (
+              !(
+                layer &&
+                typeof layer === 'object' &&
+                'path' in layer &&
+                typeof layer.path === 'string'
+              )
+            )
+              continue;
+
+            const imageBlob = await zip.file(layer.path)?.async('blob');
+            if (!imageBlob) continue;
+
+            if ('colors' in layer && Array.isArray(layer.colors)) {
+              asset.colors = [];
+              const colorCount = layer.colors.length - 1;
+
+              for (let i = 0; i < layer.colors.length; i++) {
+                const color: unknown = layer.colors[i];
+                if (typeof color !== 'string') {
+                  if (
+                    !(
+                      color &&
+                      typeof color === 'object' &&
+                      'from' in color &&
+                      typeof color.from === 'number'
+                    )
+                  )
+                    continue;
+
+                  if (
+                    'offset' in color &&
+                    Array.isArray(color.offset) &&
+                    color.offset.length === 4 &&
+                    !color.offset.find(value => typeof value !== 'number')
+                  )
+                    asset.colors.push({ from: color.from, offset: color.offset as ImgMod.Hsla });
+                  if ('to' in color && typeof color.to === 'string') {
+                    const from: unknown = layer.colors[color.from];
+                    if (typeof from !== 'string') continue;
+
+                    console.log(ImgMod.getHslaOffset(
+                      ImgMod.colorAsHsla(from),
+                      ImgMod.colorAsHsla(color.to)
+                    ));
+                    asset.colors.push({
+                      from: color.from,
+                      offset: ImgMod.getHslaOffset(
+                        ImgMod.colorAsHsla(from),
+                        ImgMod.colorAsHsla(color.to)
+                      )
+                    });
+                  } else continue;
+                } else asset.colors.push(color + '');
+
+                const image = new ImgMod.Img();
+                asset.sublayers.push(image);
+                await image.loadImage(imageBlob);
+
+                if (colorCount > 0) await image.mask(i / colorCount, colorCount);
+              }
+
+              await asset.color();
+
+              continue;
+            }
+
             const image = new ImgMod.Img();
-            sublayer.sublayers.push(image);
-            return image.render(import.meta.env.ASSET_PREFIX + asset.loc + src);
-          })
-        );
-        return sublayer.render();
+            asset.sublayers.push(image);
+            await image.loadImage(imageBlob);
+          }
+        } catch (error) {
+          asset.name = name + ' (ERRORED)';
+          console.error(error);
+        }
+
+        await asset.render();
+        return asset;
       })
     );
 
-    this.setState({ layers: layers });
+    this.setState({ assets: layers });
   };
 
   render() {
     let elem: ReactNode = <div />;
-    if (this.state.layers.sublayers.length) {
-      elem = this.state.layers.sublayers.map((sublayer, i) => {
-        return (
-          <div className="container" key={fakedatabase[i].name}>
-            <span>
-              <img src={sublayer.src} alt={fakedatabase[i].name} title={fakedatabase[i].name} />
-              <div>
-                <p>{fakedatabase[i].name}</p>
-                <button onClick={this.addLayer.bind(this, i)}>+</button>
-              </div>
-            </span>
-          </div>
-        );
-      });
+    if (this.state.assets.length) {
+      elem = this.state.assets.map((asset, i) => (
+        <div className="container" key={asset.name}>
+          <span>
+            <img src={asset.src} alt={asset.name} title={asset.name} />
+            <div>
+              <p>{asset.name}</p>
+              <button onClick={this.addLayer.bind(this, i)}>+</button>
+            </div>
+          </span>
+        </div>
+      ));
     }
 
     return (

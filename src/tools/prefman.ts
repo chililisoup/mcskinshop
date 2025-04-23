@@ -39,7 +39,7 @@ export type Prefs = {
 
 export const defaultPrefs: Prefs = {
   theme: 'default',
-  curvature: 4,
+  curvature: 8,
   useFallbackSkinSource: false,
   '--main-bg': '#202633',
   '--container': '#434664',

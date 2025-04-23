@@ -12,7 +12,7 @@
   --input: var(--medium-shadow);
   --input-text: var(--highlight);
 
-  --curvature: 4px;
+  --curvature: 8px;
 
   --accent: rgb(79, 195, 255);
   --no-accent: rgb(255, 255, 255, 0.25);
@@ -478,13 +478,10 @@ hr {
   flex: 1;
   flex-direction: column-reverse;
   width: 325px;
-  overflow-y: auto;
+  overflow: hidden auto;
   background: var(--empty-area);
   box-shadow: inset var(--box-shadow);
   padding: 0;
-}
-
-.layer-manager:first-child {
   margin-top: auto;
 }
 
@@ -516,6 +513,7 @@ hr {
 
 .manager-layer > span {
   height: 50px;
+  flex-wrap: nowrap;
 }
 
 span.layerTitle {
@@ -602,13 +600,14 @@ h3 {
   text-align: center;
 }
 
-.highlighted {
-  outline: 2px solid var(--highlight);
-}
-
 .model-features {
   width: 325px;
   overflow-y: auto;
+}
+
+.model-features > p {
+  height: max-content;
+  flex-shrink: 0;
 }
 
 .color-picker-parent {
@@ -621,6 +620,7 @@ h3 {
 }
 
 .color-label {
+  position: relative;
   margin: 0;
   padding: 0;
   width: 100%;
@@ -629,6 +629,56 @@ h3 {
   image-rendering: pixelated;
   /* this is needed on chrome, again, and im dumb or somethin */
   min-height: 18px;
+}
+
+.color-label.linked::before,
+.color-label.linked::after {
+  content: '';
+  position: absolute;
+  display: block;
+}
+
+.color-label.linked::before {
+  width: calc(50% + 4px);
+  height: calc(50% + 4px);
+  top: -2px;
+  right: -2px;
+  clip-path: polygon(
+    0% 0%,
+    35.79% 0%,
+    49.63% 13.84%,
+    63.48% 0%,
+    100% 0%,
+    100% 100%,
+    63.48% 100%,
+    49.63% 86.16%,
+    35.79% 100%,
+    0% 100%
+  );
+  background-color: var(--outline);
+}
+
+.color-label.linked::after {
+  width: 50%;
+  height: 50%;
+  top: 0;
+  right: 0;
+  clip-path: polygon(
+    0% 0%,
+    19.91% 0%,
+    80.12% 80.12%,
+    80.12% 0%,
+    100% 0%,
+    100% 100%,
+    80.02% 100%,
+    19.88% 19.88%,
+    19.88% 80.12%,
+    80.52% 0%,
+    80.12% 19.88%,
+    19.76% 100%,
+    0% 100%
+  );
+  background-color: var(--highlight);
 }
 
 .color-picker {
@@ -866,18 +916,55 @@ h3 {
   border-radius: calc(var(--curvature) * 0.5);
 }
 
-.grid-select > *:hover {
-  background-color: var(--dark-shadow);
+.grid-select > .highlighted::before {
+  position: absolute;
+  content: '';
+  width: 100%;
+  height: 100%;
+  outline: 4px solid var(--accent);
+  box-shadow: 0 0 12px 4px var(--dark-shadow) inset;
+  outline-offset: -4px;
+  pointer-events: none;
 }
 
-.grid-select > div {
+.grid-select > *:hover::before {
+  position: absolute;
+  content: '';
+  width: 100%;
+  height: 100%;
+  background: var(--medium-shadow);
+  outline: 2px solid var(--highlight);
+  outline-offset: -2px;
+  pointer-events: none;
+}
+
+.grid-select > .highlighted:hover::before {
+  outline: 4px solid var(--accent);
+  outline-offset: -4px;
+}
+
+.grid-select > .true-option {
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.grid-select > .true-option > img {
+  padding: 0;
+  height: auto;
+  width: 100%;
+  background: none;
+}
+
+.grid-select > .none-option {
   display: flex;
   position: relative;
   justify-content: center;
   align-items: center;
 }
 
-.grid-select > div > img {
+.grid-select > .none-option > img {
   position: absolute;
   padding: 0;
   height: 100%;
@@ -888,7 +975,7 @@ h3 {
 
 *:disabled {
   cursor: default;
-  color: var(--outline);
+  font-style: italic;
   font-weight: normal;
 }
 
@@ -936,4 +1023,9 @@ label:has(+ input:disabled) {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.spread {
+  display: flex;
+  justify-content: space-evenly;
 }

@@ -1,0 +1,16 @@
+{
+  "name": "Flat Base",
+  "layers": [
+    {
+      "path": "base.png",
+      "colors": [
+        "#E0AA94",
+        {
+          "from": 0,
+          "to": "#CC8D72"
+        }
+      ],
+      "form": "full-squish"
+    }
+  ]
+}

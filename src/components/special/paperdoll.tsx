@@ -244,7 +244,7 @@ class PaperDoll extends Component<AProps, AState> {
     if (this.renderer) this.renderer.dispose();
   }
 
-  componentDidUpdate(prevProps: AProps, prevState: AState) {
+  componentDidUpdate(prevProps: Readonly<AProps>, prevState: Readonly<AState>) {
     if (this.state.explode !== prevState.explode) this.updateExplode();
 
     if (
@@ -1895,6 +1895,33 @@ class PaperDollSettings extends Component<BProps, BState> {
     this.props.updateSetting('partToggles', toggles);
   };
 
+  togglePartSet = (partSet: 'base' | 'hat' | 'all') => {
+    let on = 0;
+
+    if (partSet === 'all')
+      for (const part in this.props.settings.partToggles) {
+        if (this.props.settings.partToggles[part as keyof AState['partToggles']].base) on++;
+        if (this.props.settings.partToggles[part as keyof AState['partToggles']].hat) on++;
+      }
+    else
+      for (const part in this.props.settings.partToggles)
+        if (this.props.settings.partToggles[part as keyof AState['partToggles']][partSet]) on++;
+
+    const toggle = on <= (partSet === 'all' ? 6 : 3);
+    const toggles = JSON.parse(
+      JSON.stringify(this.props.settings.partToggles)
+    ) as AState['partToggles'];
+
+    if (partSet === 'all')
+      for (const part in this.props.settings.partToggles)
+        toggles[part as keyof AState['partToggles']] = { base: toggle, hat: toggle };
+    else
+      for (const part in this.props.settings.partToggles)
+        toggles[part as keyof AState['partToggles']][partSet] = toggle;
+
+    this.props.updateSetting('partToggles', toggles);
+  };
+
   render() {
     return (
       <span className="paperdoll-settings">
@@ -2115,6 +2142,11 @@ class PaperDollSettings extends Component<BProps, BState> {
                     </tr>
                   </tbody>
                 </table>
+                <span className="spread">
+                  <button onClick={() => this.togglePartSet('hat')}>Toggle Hat</button>
+                  <button onClick={() => this.togglePartSet('base')}>Toggle Base</button>
+                  <button onClick={() => this.togglePartSet('all')}>Toggle All</button>
+                </span>
               </Dropdown>
             </div>
           )}

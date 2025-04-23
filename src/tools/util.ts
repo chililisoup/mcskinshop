@@ -28,6 +28,20 @@ export const download = async (filename: string, content: string) => {
   link.click();
 };
 
+export const getRemoteJson = async (path: string) => {
+  try {
+    const response = await fetch(path);
+    if (!response.ok) throw new Error(`Response status: ${response.status}`);
+
+    const json: unknown = await response.json();
+    if (json && typeof json === 'object') return json;
+    
+    throw new Error(`Could not load JSON at ${path}`);
+  } catch (error) {
+    console.error(error);
+  }
+};
+
 export const corsProxy = (url: string) => 'https://corsproxy.io/?url=' + url;
 
 // https://stackoverflow.com/a/30106551
