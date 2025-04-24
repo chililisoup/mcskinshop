@@ -569,9 +569,14 @@ export class Layer extends AbstractLayer {
     this.colors.push(...colors);
   };
 
-  replaceLayer = (index: number, ...layers: AbstractLayer[]) => {
-    this.sublayers.splice(index, 1, ...layers);
-    this.colors.splice(index, 1, ...(new Array(layers.length).fill(undefined) as undefined[]));
+  replaceLayer = (index: number, layers: AbstractLayer | AbstractLayer[]) => {
+    if (Array.isArray(layers)) {
+      this.sublayers.splice(index, 1, ...layers);
+      this.colors.splice(index, 1, ...(new Array(layers.length).fill(undefined) as undefined[]));
+    } else {
+      this.sublayers.splice(index, 1, layers);
+      this.colors.splice(index, 1, undefined);
+    }
   };
 
   moveLayer = (index: number, change: number) => {
@@ -660,7 +665,7 @@ export class Layer extends AbstractLayer {
       if (sublayer instanceof Img) sublayer.rawSrc = sublayer.src;
     });
 
-    this.replaceLayer(index, ...layer.sublayers);
+    this.replaceLayer(index, layer.sublayers);
     return true;
   };
 
