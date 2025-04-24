@@ -1,0 +1,134 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Asset name"
+    },
+    "layers": {
+      "oneOf": [
+        { "$ref": "#/definitions/layer" },
+        {
+          "description": "Array of layers",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/layer" }
+        }
+      ]
+    }
+  },
+  "required": ["name", "layers"],
+  "additionalProperties": false,
+  "definitions": {
+    "path": {
+      "description": "Image file path",
+      "type": "string"
+    },
+    "color": {
+      "oneOf": [
+        {
+          "description": "CSS color value",
+          "type": "string"
+        },
+        {
+          "description": "Relative color link",
+          "type": "object",
+          "properties": {
+            "from": {
+              "description": "Base color index",
+              "type": "integer",
+              "minimum": 0
+            },
+            "to": {
+              "description": "CSS color to create offset from \"from\" from",
+              "type": "string"
+            },
+            "offset": {
+              "description": "HSLA offset array",
+              "type": "array",
+              "prefixItems": [
+                {
+                  "description": "Hue offset",
+                  "type": "number"
+                },
+                {
+                  "description": "Saturation offset",
+                  "type": "number"
+                },
+                {
+                  "description": "Lightness offset",
+                  "type": "number"
+                },
+                {
+                  "description": "Alpha offset",
+                  "type": "number"
+                }
+              ],
+              "minItems": 4,
+              "maxItems": 4
+            }
+          },
+          "oneOf": [{ "required": ["from", "to"] }, { "required": ["from", "offset"] }],
+          "additionalProperties": false
+        },
+        {
+          "description": "Copy color link",
+          "type": "object",
+          "properties": {
+            "copy": {
+              "description": "Base color index",
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "layer": {
+      "oneOf": [
+        { "$ref": "#/definitions/path" },
+        {
+          "description": "Asset layer definition",
+          "type": "object",
+          "properties": {
+            "path": { "$ref": "#/definitions/path" },
+            "color": {
+              "oneOf": [
+                { "$ref": "#/definitions/color" },
+                {
+                  "description": "Array of colors to be applied in a gradient from white to black in base image",
+                  "type": "array",
+                  "minItems": 1,
+                  "items": { "$ref": "#/definitions/color" }
+                }
+              ]
+            },
+            "form": {
+              "description": "Layer resize method. Not resized if unset.",
+              "enum": [
+                "full-squish-inner",
+                "full-squish-outer",
+                "full-squish-average",
+                "slim-stretch",
+                "full-only",
+                "slim-only"
+              ]
+            },
+            "type": {
+              "description": "Layer effect type. Normal if unset.",
+              "enum": ["normal", "erase", "flatten", "blowup"]
+            },
+            "maskFormat": {
+              "description": "Effect mask format. Grayscale if unset.",
+              "enum": ["grayscale", "alpha"]
+            }
+          },
+          "required": ["path"],
+          "anyOf": [{ "not": { "required": ["maskFormat"] } }, { "required": ["type"] }],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

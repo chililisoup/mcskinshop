@@ -9,21 +9,25 @@ import Dropdown from '../basic/dropdown';
 const fakedatabase = await Util.getRemoteJson('/assets/compressed/fake_database.json');
 
 /*
+
+type AssetLayer =
+  | {
+      path: string;
+      color?:
+        | ImgMod.Color
+        | ImgMod.UnloadedRelativeColor
+        | (ImgMod.Color | ImgMod.UnloadedRelativeColor)[];
+      type?: ImgMod.LayerType;
+      form?: ImgMod.LayerForm;
+      maskFormat?: 'grayscale' | 'alpha'; // default is grayscale
+    }
+  | string;
+
 type Asset = {
   name: string;
-  layers:
-    | (
-        | {
-            path: string;
-            color?: ImgMod.Color | ImgMod.UnloadedRelativeColor;
-            type?: ImgMod.LayerType;
-            form?: ImgMod.LayerForm;
-            maskFormat?: 'grayscale' | 'alpha'; // default is grayscale
-          }
-        | string
-      )[]
-    | string;
+  layers: AssetLayer | AssetLayer[];
 };
+
 */
 
 type AProps = {
@@ -94,7 +98,7 @@ class AssetPack extends Component<BProps, BState> {
   }
 
   parseColor: (color: unknown) => ImgMod.Color | ImgMod.UnloadedRelativeColor = color => {
-    if (color === null) return;
+    if (!color) return;
     if (typeof color === 'string') return color;
     if (typeof color !== 'object') return;
 
@@ -116,6 +120,15 @@ class AssetPack extends Component<BProps, BState> {
     if ('copy' in color && typeof color.copy === 'number') return { copy: color.copy };
   };
 
+  parseColors = (colors: unknown) => {
+    if (Array.isArray(colors)) {
+      if (colors.length === 0) return;
+      if (colors.length === 1) return this.parseColor(colors[0]);
+      return colors.map(this.parseColor);
+    }
+    return this.parseColor(colors);
+  };
+
   loadAsset = async (path: string, name: string, zip: JSZip) => {
     const rawParams = await zip.file(`${path}asset.json`)?.async('text');
     if (!rawParams) throw new Error(`Failed to get asset.json from ${name}.zip/${path}`);
@@ -128,8 +141,7 @@ class AssetPack extends Component<BProps, BState> {
         typeof params === 'object' &&
         'name' in params &&
         typeof params.name === 'string' &&
-        'layers' in params &&
-        (typeof params.layers === 'string' || Array.isArray(params.layers))
+        'layers' in params
       )
     )
       throw new Error(`Malformed asset.json in ${name}.zip/${path}`);
@@ -137,9 +149,9 @@ class AssetPack extends Component<BProps, BState> {
     const assetLayers: ImgMod.AbstractLayer[] = [];
     const assetColors: (ImgMod.Color | ImgMod.UnloadedRelativeColor)[] = [];
 
-    for (const layer of (typeof params.layers === 'string'
-      ? [params.layers]
-      : params.layers) as unknown[]) {
+    for (const layer of (Array.isArray(params.layers)
+      ? params.layers
+      : [params.layers]) as unknown[]) {
       if (typeof layer === 'string') {
         const imageBlob = await zip.file(path + layer)?.async('blob');
         if (!imageBlob) continue;
@@ -174,11 +186,13 @@ class AssetPack extends Component<BProps, BState> {
           ? (layer.form as ImgMod.LayerForm)
           : undefined;
 
-      if ('colors' in layer && Array.isArray(layer.colors)) {
-        const colorCount = layer.colors.length - 1;
+      const layerColor = 'color' in layer ? this.parseColors(layer.color) : undefined;
 
-        for (let i = 0; i < layer.colors.length; i++) {
-          const color = this.parseColor(layer.colors[i]);
+      if (Array.isArray(layerColor)) {
+        const colorCount = layerColor.length - 1;
+
+        for (let i = 0; i < layerColor.length; i++) {
+          const color = this.parseColor(layerColor[i]);
 
           const image = new ImgMod.Img(layerType);
           image.name = `${name}.${i + 1}`;
@@ -189,7 +203,7 @@ class AssetPack extends Component<BProps, BState> {
           assetLayers.push(image);
           assetColors.push(color);
 
-          if (colorCount > 0) await image.gradientMask(i / colorCount, colorCount);
+          await image.gradientMask(i / colorCount, colorCount);
         }
 
         continue;
@@ -208,8 +222,7 @@ class AssetPack extends Component<BProps, BState> {
         await image.convertGrayscaleMask();
 
       assetLayers.push(image);
-      if ('color' in layer && layer.color) assetColors.push(this.parseColor(layer.color));
-      else assetColors.push(undefined);
+      assetColors.push(layerColor);
     }
 
     const asset = new ImgMod.Layer(assetLayers, assetColors);

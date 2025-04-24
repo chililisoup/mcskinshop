@@ -3,7 +3,7 @@
   "layers": [
     {
       "path": "base.png",
-      "colors": [
+      "color": [
         "#4287f5",
         {
           "from": 0,

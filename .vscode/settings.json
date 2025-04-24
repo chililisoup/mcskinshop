@@ -1,9 +1,15 @@
 {
-    "eslint.workingDirectories": [
-        {
-            "mode": "auto"
-        }
-    ],
-    "eslint.useFlatConfig": true,
-    "editor.tabSize": 2
+  "eslint.workingDirectories": [
+    {
+      "mode": "auto"
+    }
+  ],
+  "eslint.useFlatConfig": true,
+  "editor.tabSize": 2,
+  "json.schemas": [
+    {
+      "fileMatch": ["/assets/*/*/asset.json"],
+      "url": "./asset_schema.json" 
+    }
+  ]
 }
