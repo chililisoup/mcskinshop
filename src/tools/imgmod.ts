@@ -39,6 +39,7 @@ const SLIM_STRETCH_OFFSETS = [
   { width: 2, height: 4, from: [56, 48], to: [58, 48] }
 ] as Readonly<Offset>[];
 
+// slightly bugged
 const FULL_SQUISH_OFFSETS = [
   // right arm base
   { height: 16, width: -1, from: [45, 16], to: [45, 16] },

@@ -1,3 +1,5 @@
+// todo: add mask settings (grayscale/alpha)
+
 import React, { Component, ReactNode } from 'react';
 import * as ImgMod from '../../tools/imgmod';
 import * as Util from '../../tools/util';
@@ -30,11 +32,7 @@ class LayerAdder extends Component<AProps, AState> {
   loadAssetPacks = () => {
     if (!(fakedatabase && Array.isArray(fakedatabase))) return;
 
-    const packs: string[] = [];
-
-    for (const name of fakedatabase) if (typeof name === 'string') packs.push(name);
-
-    this.setState({ packs: packs });
+    this.setState({ packs: fakedatabase.filter(name => typeof name === 'string') });
   };
 
   render() {

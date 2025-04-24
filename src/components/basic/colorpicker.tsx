@@ -85,7 +85,7 @@ class ColorPicker extends Component<AProps, AState> {
 
   setFromString = (color: string) => {
     const newHsla = ImgMod.colorAsHsla(color);
-    if (!newHsla) return this.setState({ hex: ImgMod.hslaToHex(newHsla) });
+    if (!this.props.alpha) newHsla[3] = this.state.hsla[3];
     this.setHsla(newHsla, color);
   };
 

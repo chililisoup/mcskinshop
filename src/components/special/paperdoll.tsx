@@ -1415,7 +1415,7 @@ class PaperDoll extends Component<AProps, AState> {
       !this.handle &&
       !(this.selectedObject && this.state.poseSettings.mode === 'Simple')
     ) {
-      const intersects = this.raycaster.intersectObject(this.scene, true);
+      const intersects = this.raycaster.intersectObject(this.doll, true);
       const poseable =
         intersects.length > 0 ? this.findPosableAncestor(intersects[0].object) : false;
 
