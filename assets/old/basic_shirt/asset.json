@@ -4,7 +4,8 @@
     {
       "path": "erase.png",
       "type": "erase",
-      "form": "slim-stretch"
+      "form": "slim-stretch",
+      "maskFormat": "alpha"
     },
     {
       "path": "base.png",

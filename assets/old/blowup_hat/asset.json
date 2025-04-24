@@ -3,7 +3,8 @@
   "layers": [
     {
       "path": "blowup_hat.png",
-      "type": "blowup"
+      "type": "blowup",
+      "maskFormat": "alpha"
     }
   ]
 }

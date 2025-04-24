@@ -3,7 +3,8 @@
   "layers": [
     {
       "path": "erase.png",
-      "type": "erase"
+      "type": "erase",
+      "maskFormat": "alpha"
     },
     {
       "path": "base.png",

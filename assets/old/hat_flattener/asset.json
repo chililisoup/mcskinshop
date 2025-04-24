@@ -3,7 +3,8 @@
   "layers": [
     {
       "path": "hat_flattener.png",
-      "type": "flatten"
+      "type": "flatten",
+      "maskFormat": "alpha"
     }
   ]
 }

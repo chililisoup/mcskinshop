@@ -326,7 +326,35 @@ export class Img extends AbstractLayer {
     return Promise.resolve();
   };
 
-  mask = async (peak: number, length: number) => {
+  convertGrayscaleMask = async () => {
+    if (!this.image) return Promise.reject(new Error('No mask to convert'));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = this.size[0];
+    canvas.height = this.size[1];
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.drawImage(this.image, 0, 0);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      data[i + 3] = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      data[i] = 0;
+      data[i + 1] = 0;
+      data[i + 2] = 0;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    await createImageBitmap(canvas).then(result => {
+      this.src = canvas.toDataURL();
+      this.rawSrc = this.src;
+      this.image = result;
+    });
+  };
+
+  gradientMask = async (peak: number, length: number) => {
     if (!this.image) return Promise.reject(new Error('No image to mask'));
 
     const canvas = document.createElement('canvas');

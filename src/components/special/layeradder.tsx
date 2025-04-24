@@ -8,6 +8,24 @@ import Dropdown from '../basic/dropdown';
 
 const fakedatabase = await Util.getRemoteJson('/assets/compressed/fake_database.json');
 
+/*
+type Asset = {
+  name: string;
+  layers:
+    | (
+        | {
+            path: string;
+            color?: ImgMod.Color | ImgMod.UnloadedRelativeColor;
+            type?: ImgMod.LayerType;
+            form?: ImgMod.LayerForm;
+            maskFormat?: 'grayscale' | 'alpha'; // default is grayscale
+          }
+        | string
+      )[]
+    | string;
+};
+*/
+
 type AProps = {
   addLayer: (layer: ImgMod.AbstractLayer) => void;
 };
@@ -111,7 +129,7 @@ class AssetPack extends Component<BProps, BState> {
         'name' in params &&
         typeof params.name === 'string' &&
         'layers' in params &&
-        Array.isArray(params.layers)
+        (typeof params.layers === 'string' || Array.isArray(params.layers))
       )
     )
       throw new Error(`Malformed asset.json in ${name}.zip/${path}`);
@@ -119,7 +137,9 @@ class AssetPack extends Component<BProps, BState> {
     const assetLayers: ImgMod.AbstractLayer[] = [];
     const assetColors: (ImgMod.Color | ImgMod.UnloadedRelativeColor)[] = [];
 
-    for (const layer of params.layers as unknown[]) {
+    for (const layer of (typeof params.layers === 'string'
+      ? [params.layers]
+      : params.layers) as unknown[]) {
       if (typeof layer === 'string') {
         const imageBlob = await zip.file(path + layer)?.async('blob');
         if (!imageBlob) continue;
@@ -169,7 +189,7 @@ class AssetPack extends Component<BProps, BState> {
           assetLayers.push(image);
           assetColors.push(color);
 
-          if (colorCount > 0) await image.mask(i / colorCount, colorCount);
+          if (colorCount > 0) await image.gradientMask(i / colorCount, colorCount);
         }
 
         continue;
@@ -179,6 +199,13 @@ class AssetPack extends Component<BProps, BState> {
       image.name = name;
       image.layerForm = layerForm;
       await image.loadImage(imageBlob);
+
+      if (
+        layerType &&
+        layerType !== 'normal' &&
+        ('maskFormat' in layer ? layer.maskFormat !== 'alpha' : true)
+      )
+        await image.convertGrayscaleMask();
 
       assetLayers.push(image);
       if ('color' in layer && layer.color) assetColors.push(this.parseColor(layer.color));
