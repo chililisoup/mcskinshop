@@ -39,24 +39,23 @@ const SLIM_STRETCH_OFFSETS = [
   { width: 2, height: 4, from: [56, 48], to: [58, 48] }
 ] as Readonly<Offset>[];
 
-// slightly bugged
 const FULL_SQUISH_OFFSETS = [
   // right arm base
-  { height: 16, width: -1, from: [45, 16], to: [45, 16] },
-  { height: 4, width: -1, from: [49, 16], to: [48, 16] },
+  { height: 16, width: 1, from: [45, 16], to: [45, 16] },
+  { height: 4, width: 1, from: [49, 16], to: [48, 16] },
   { height: 12, width: -1, from: [53, 20], to: [52, 20] },
   // right arm hat
-  { height: 16, width: -1, from: [45, 32], to: [45, 32] },
-  { height: 4, width: -1, from: [49, 32], to: [48, 32] },
+  { height: 16, width: 1, from: [45, 32], to: [45, 32] },
+  { height: 4, width: 1, from: [49, 32], to: [48, 32] },
   { height: 12, width: -1, from: [53, 36], to: [52, 36] },
   // left arm base
   { height: 16, width: -1, from: [37, 48], to: [37, 48] },
   { height: 4, width: -1, from: [41, 48], to: [40, 48] },
-  { height: 12, width: -1, from: [45, 52], to: [44, 52] },
+  { height: 12, width: 1, from: [45, 52], to: [44, 52] },
   // left arm hat
   { height: 16, width: -1, from: [53, 48], to: [53, 48] },
   { height: 4, width: -1, from: [57, 48], to: [56, 48] },
-  { height: 12, width: -1, from: [61, 52], to: [60, 52] }
+  { height: 12, width: 1, from: [61, 52], to: [60, 52] }
 ] as Readonly<Offset>[];
 
 export const EMPTY_IMAGE_SOURCE =
@@ -408,13 +407,13 @@ export class Img extends AbstractLayer {
         ctx.clearRect(62, 52, 2, 12);
 
         const width = this.layerForm === 'full-squish-average' ? 2 : 1;
-        const move = this.layerForm === 'full-squish-inner' ? 1 : 0;
+        const move = this.layerForm === 'full-squish-inner' ? 1 : -1;
 
         FULL_SQUISH_OFFSETS.forEach(offset => {
           ctx.clearRect(offset.to[0], offset.to[1], 1, offset.height);
           ctx.drawImage(
             this.image!,
-            offset.from[0] + move * (offset.width / 2 + 1),
+            offset.from[0] + (move * offset.width + 1) * 0.5 * (2 - width),
             offset.from[1],
             width,
             offset.height,
@@ -675,14 +674,33 @@ export class Layer extends AbstractLayer {
     this.advanced ??= new Array(this.sublayers.length).fill(false);
   };
 
-  getTrueColor = (color: RelativeColor | CopyColor) => {
-    const rawBase = 'from' in color ? this.colors[color.from] : this.colors[color.copy];
-    if (!rawBase) return '#FFFFFF';
-    const base: unknown = typeof rawBase === 'string' ? rawBase : this.getTrueColor(rawBase);
-    if (typeof base !== 'string') return '#FFFFFF';
+  getTrueColor = (index: number, checked?: number[]) => {
+    const color = this.colors[index];
+    if (!color) return '#FFFFFF';
 
-    if ('from' in color) return hslaToString(applyHslaOffset(colorAsHsla(base), color.offset));
-    else return base;
+    if (typeof color === 'string') return color;
+
+    if ('from' in color || 'copy' in color) {
+      const baseIndex = 'from' in color ? color.from : color.copy;
+
+      if (baseIndex === index || checked?.includes(baseIndex)) return '#FFFFFF';
+      const base = this.colors[baseIndex];
+      if (!base) return '#FFFFFF';
+
+      const trueBase: unknown =
+        typeof base === 'string'
+          ? base
+          : this.getTrueColor(baseIndex, checked ? checked.concat(index) : [index]);
+
+      if (typeof trueBase !== 'string') return '#FFFFFF';
+
+      if ('from' in color)
+        return hslaToString(applyHslaOffset(colorAsHsla(trueBase), color.offset));
+
+      return trueBase;
+    }
+
+    return '#FFFFFF';
   };
 
   color = async () => {
@@ -699,7 +717,7 @@ export class Layer extends AbstractLayer {
         if (!this.colors[i]) return Promise.resolve();
 
         return layer.color(
-          typeof this.colors[i] === 'string' ? this.colors[i] : this.getTrueColor(this.colors[i])
+          typeof this.colors[i] === 'string' ? this.colors[i] : this.getTrueColor(i)
         );
       })
     );

@@ -251,10 +251,10 @@ class Layer extends Component<BProps, BState> {
             colors.push(
               <ColorPicker
                 key={i + (layer.id ?? '')}
-                default={layer.getTrueColor(color)}
+                default={layer.getTrueColor(i)}
                 linked={true}
                 unlink={() => {
-                  layer.setColor(i, layer.getTrueColor(color));
+                  layer.setColor(i, layer.getTrueColor(i));
                   this.updateLayer();
                 }}
               />
