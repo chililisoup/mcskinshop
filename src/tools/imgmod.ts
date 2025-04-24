@@ -61,7 +61,7 @@ const FULL_SQUISH_OFFSETS = [
 export const EMPTY_IMAGE_SOURCE =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIW2NgAAIAAAUAAR4f7BQAAAAASUVORK5CYII=';
 
-export const LAYER_TYPES = ['normal', 'erase', 'flatten', 'blowup', 'null'] as const;
+export const LAYER_TYPES = ['normal', 'erase', 'flatten', 'blowup'] as const;
 export type LayerType = (typeof LAYER_TYPES)[number];
 export const checkLayerType = (maybeType: string): LayerType | undefined => {
   if (LAYER_TYPES.find(type => type === maybeType)) return maybeType as LayerType;
@@ -79,6 +79,7 @@ export type LayerForm = (typeof LAYER_FORMS)[number];
 
 export type Hsla = [hue: number, saturation: number, lightness: number, alpha: number];
 export type RelativeColor = { from: number; offset: Hsla };
+export type Color = string | RelativeColor | undefined;
 
 // https://gist.github.com/xenozauros/f6e185c8de2a04cdfecf
 export const hexToHsla: (hex: string) => Hsla = hex => {
@@ -143,15 +144,15 @@ export const hslaToString = (hsla: Hsla) => `hsla(${hsla[0]},${hsla[1]}%,${hsla[
 export const hslToString = (hsl: Hsla) => `hsl(${hsl[0]},${hsl[1]}%,${hsl[2]}%)`;
 
 export const getHslaOffset = (from: Hsla, to: Hsla) => {
-  return [to[0] - from[0], to[1] / from[1], to[2] / from[2], to[3] / from[3]] as Hsla;
+  return [to[0] - from[0], to[1] - from[1], to[2] - from[2], to[3] - from[3]] as Hsla;
 };
 
 export const applyHslaOffset = (from: Hsla, offset: Hsla) => {
   return [
-    from[0] + offset[0],
-    from[1] * offset[1],
-    from[2] * offset[2],
-    from[3] * offset[3]
+    (from[0] + offset[0]) % 360,
+    Util.clamp(from[1] + offset[1], 0, 100),
+    Util.clamp(from[2] + offset[2], 0, 100),
+    Util.clamp(from[3] + offset[3], 0, 1)
   ] as Hsla;
 };
 
@@ -184,11 +185,12 @@ export abstract class AbstractLayer {
   src = EMPTY_IMAGE_SOURCE;
   image?: ImageBitmap;
   name?: string;
-  id?: string;
+  id: string;
 
   constructor(blend?: GlobalCompositeOperation, filter?: string) {
     this.blend = blend ?? 'source-over';
     this.filter = filter ?? '';
+    this.id = Util.randomKey();
   }
 
   abstract render: () => Promise<void> | undefined;
@@ -304,12 +306,6 @@ export class Img extends AbstractLayer {
   color = async (color: string) => {
     if (!this.image) return Promise.reject(new Error('No image to color'));
 
-    const layerType = checkLayerType(color);
-    if (layerType) {
-      this.type = layerType;
-      return;
-    }
-
     const canvas = document.createElement('canvas');
     canvas.width = this.size[0];
     canvas.height = this.size[1];
@@ -324,6 +320,8 @@ export class Img extends AbstractLayer {
       this.src = canvas.toDataURL();
       this.image = result;
     });
+
+    return Promise.resolve();
   };
 
   mask = async (peak: number, length: number) => {
@@ -518,29 +516,140 @@ export class Img extends AbstractLayer {
 }
 
 export class Layer extends AbstractLayer {
-  sublayers;
-  colors;
+  private sublayers;
+  private colors: Color[];
   advanced?: boolean[];
 
   constructor(
     sublayers?: AbstractLayer[],
-    colors?: string | (string | RelativeColor)[],
+    colors?: Color[],
     blend?: GlobalCompositeOperation,
     filter?: string
   ) {
     super(blend, filter);
 
     this.sublayers = sublayers ?? [];
-    this.colors = colors ?? '#FFFFFF';
+    this.colors =
+      colors && colors.length === this.sublayers.length
+        ? colors
+        : (new Array(this.sublayers.length).fill(undefined) as undefined[]);
   }
+
+  getLayers = () => this.sublayers as readonly AbstractLayer[];
+
+  getLayer = (index: number) => this.sublayers[index];
+
+  addLayer = (layer: AbstractLayer, color?: Color) => {
+    this.sublayers.push(layer);
+    this.colors.push(color);
+  };
+
+  addLayers = (layers: AbstractLayer[], colors?: Color[]) => {
+    if (!colors || colors.length !== layers.length)
+      colors = new Array(layers.length).fill(undefined);
+
+    this.sublayers = this.sublayers.concat(layers);
+    this.colors = this.colors.concat(colors);
+  };
+
+  replaceLayer = (index: number, ...layers: AbstractLayer[]) => {
+    this.sublayers.splice(index, 1, ...layers);
+    this.colors.splice(index, 1, ...(new Array(layers.length).fill(undefined) as undefined[]));
+  };
+
+  moveLayer = (index: number, change: number) => {
+    if (index + change < 0) change = this.sublayers.length - 1;
+    if (index + change >= this.sublayers.length) change = 0 - (this.sublayers.length - 1);
+
+    const layer = this.sublayers[index];
+    this.sublayers.splice(index, 1);
+    this.sublayers.splice(index + change, 0, layer);
+
+    const color = this.colors[index];
+    this.colors.splice(index, 1);
+    this.colors.splice(index + change, 0, color);
+  };
+
+  duplicateLayer = (index: number) => {
+    const layer = this.sublayers[index].copy();
+    this.sublayers.splice(index + 1, 0, layer);
+    const color = this.colors[index];
+    this.colors.splice(index + 1, 0, color);
+    return layer;
+  };
+
+  removeLayer = (index: number) => {
+    this.sublayers.splice(index, 1);
+    this.colors.splice(index, 1);
+  };
+
+  flattenLayer = async (index: number) => {
+    const baseLayer = this.sublayers[index];
+
+    const flatLayer = new Img();
+    flatLayer.name = baseLayer.name;
+    flatLayer.id = baseLayer.id;
+
+    await baseLayer.render();
+    await flatLayer.render(baseLayer.src);
+
+    this.replaceLayer(index, flatLayer);
+    baseLayer.cleanup();
+  };
+
+  mergeLayers = (topIndex: number, bottomIndex: number) => {
+    if (this.sublayers.length < 2) return;
+
+    const topLayer = this.sublayers[topIndex];
+    const bottomLayer = this.sublayers[bottomIndex];
+
+    const mergedLayer = new Layer();
+    mergedLayer.name = bottomLayer.name + ' + ' + topLayer.name;
+
+    if (bottomLayer instanceof Layer)
+      mergedLayer.addLayers(bottomLayer.sublayers, bottomLayer.colors);
+    else mergedLayer.addLayer(bottomLayer);
+
+    if (topLayer instanceof Layer) {
+      const length = mergedLayer.sublayers.length;
+      const topColors = topLayer.colors.map(color => {
+        if (typeof color !== 'object') return color;
+        const newColor: RelativeColor = {
+          from: color.from + length,
+          offset: [...color.offset]
+        };
+        return newColor;
+      });
+
+      mergedLayer.addLayers(topLayer.sublayers, topColors);
+    } else mergedLayer.addLayer(topLayer);
+
+    this.removeLayer(topIndex);
+    this.replaceLayer(bottomIndex, mergedLayer);
+    return mergedLayer;
+  };
+
+  separateLayer = (index: number) => {
+    const layer = this.sublayers[index];
+    if (!(layer instanceof Layer)) return false;
+
+    layer.sublayers.forEach((sublayer, i) => {
+      sublayer.name ??= `${layer.name}.${i}`;
+      if (sublayer instanceof Img) sublayer.rawSrc = sublayer.src;
+    });
+
+    this.replaceLayer(index, ...layer.sublayers);
+    return true;
+  };
+
+  getColors = () => this.colors as readonly Color[];
+
+  setColor = (index: number, color: Color) => {
+    this.colors[index] = color;
+  };
 
   assertAdvancedArray = () => {
     this.advanced ??= new Array(this.sublayers.length).fill(false);
-  };
-
-  assertColorArray = () => {
-    if (typeof this.colors === 'string')
-      this.colors = new Array(this.sublayers.length).fill(this.colors);
   };
 
   getTrueColor = (color: RelativeColor) => {
@@ -550,24 +659,26 @@ export class Layer extends AbstractLayer {
     return hslaToString(applyHslaOffset(colorAsHsla(from), color.offset));
   };
 
-  color: (colors?: string | (string | RelativeColor)[]) => Promise<unknown> = colors => {
-    this.colors = colors ?? this.colors;
-    this.assertColorArray();
-
+  color = async () => {
     if (this.colors.length !== this.sublayers.length)
       return Promise.reject(new Error('Color count does not match sublayer count'));
 
-    return Promise.all(
-      this.sublayers.map((layer, i) =>
-        layer instanceof Img || layer instanceof Layer
-          ? layer.color(
-              typeof this.colors[i] === 'string'
-                ? this.colors[i]
-                : this.getTrueColor(this.colors[i])
-            )
-          : Promise.reject(new Error('Incompatible layer type'))
-      )
+    await Promise.all(
+      this.sublayers.map((layer, i) => {
+        if (!(layer instanceof Img || layer instanceof Layer))
+          return Promise.reject(new Error('Incompatible layer type'));
+
+        if (layer instanceof Layer) return layer.color();
+
+        if (!this.colors[i]) return Promise.resolve();
+
+        return layer.color(
+          typeof this.colors[i] === 'string' ? this.colors[i] : this.getTrueColor(this.colors[i])
+        );
+      })
     );
+
+    return Promise.resolve();
   };
 
   propagateBlendMode = (blend?: GlobalCompositeOperation) => {
@@ -596,72 +707,99 @@ export class Layer extends AbstractLayer {
       ctx = canvas.getContext('2d')!;
     }
 
-    await Promise.all(
-      this.sublayers.map(async sublayer => {
-        if (!sublayer) return;
-        if (!sublayer.active) return;
+    let loCtx: CanvasRenderingContext2D | undefined = undefined;
+    let loIndex: number | undefined = undefined;
 
-        ctx.filter =
-          'opacity(100%) hue-rotate(0) saturate(100%) brightness(100%) contrast(100%) invert(0) sepia(0)';
-        ctx.globalCompositeOperation = 'source-over';
-        if (sublayer instanceof Layer) {
-          await sublayer.render(ctx);
-          return;
+    for (let i = 0; i < this.sublayers.length; i++) {
+      const sublayer = this.sublayers[i];
+
+      if (loCtx) {
+        const color = this.colors[i];
+        if (
+          !(sublayer instanceof Img && sublayer.linearOpacity) ||
+          !(loIndex === i || (typeof color === 'object' && color.from === loIndex))
+        ) {
+          ctx.drawImage(loCtx.canvas, 0, 0);
+          loCtx = undefined;
+          loIndex = undefined;
         }
-        if (!(sublayer instanceof Img)) return;
-        if (!sublayer.image) return;
+      }
 
-        if (sublayer.type === 'flatten' || sublayer.type === 'blowup') {
-          // copy pixels to new location
-          sublayer.flattenWithRespect(ctx, sublayer.type === 'blowup');
+      if (!sublayer) continue;
+      if (!sublayer.active) continue;
 
-          // erase pixels from old location
-          ctx.globalCompositeOperation = 'destination-out';
-          ctx.drawImage(sublayer.image, 0, 0);
-          return;
+      ctx.filter =
+        'opacity(100%) hue-rotate(0) saturate(100%) brightness(100%) contrast(100%) invert(0) sepia(0)';
+      ctx.globalCompositeOperation = 'source-over';
+      if (sublayer instanceof Layer) {
+        await sublayer.render(ctx);
+        continue;
+      }
+      if (!(sublayer instanceof Img)) continue;
+      if (!sublayer.image) continue;
+
+      if (sublayer.type === 'flatten' || sublayer.type === 'blowup') {
+        // copy pixels to new location
+        sublayer.flattenWithRespect(ctx, sublayer.type === 'blowup');
+
+        // erase pixels from old location
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.drawImage(sublayer.image, 0, 0);
+        continue;
+      }
+
+      ctx.filter = sublayer.filter;
+      if (sublayer.type === 'erase') ctx.globalCompositeOperation = 'destination-out';
+      else ctx.globalCompositeOperation = sublayer.blend;
+
+      const image = sublayer.layerForm ? await sublayer.form() : sublayer.image;
+
+      if (sublayer.linearOpacity) {
+        const subImageData = sublayer.getImageData(image);
+        if (!subImageData) continue;
+        const subData = subImageData.data;
+
+        if (!loCtx) {
+          const loCanvas = document.createElement('canvas');
+          loCanvas.width = 64;
+          loCanvas.height = 64;
+          loCtx = loCanvas.getContext('2d')!;
+
+          const color: Color = this.colors[i];
+          loIndex = typeof color === 'object' ? color.from : i;
         }
 
-        ctx.filter = sublayer.filter;
-        if (sublayer.type === 'erase') ctx.globalCompositeOperation = 'destination-out';
-        else ctx.globalCompositeOperation = sublayer.blend;
-
-        const image = sublayer.layerForm ? await sublayer.form() : sublayer.image;
-
-        if (sublayer.linearOpacity) {
-          const subImageData = sublayer.getImageData(image);
-          if (!subImageData) return;
-          const subData = subImageData.data;
-
-          const imageData = ctx.getImageData(0, 0, sublayer.size[0], sublayer.size[1]);
-          const data = imageData.data;
-          for (let i = 0; i < data.length; i += 4) {
-            if (data[i + 3] === 0) {
-              data[i] = subData[i];
-              data[i + 1] = subData[i + 1];
-              data[i + 2] = subData[i + 2];
-              data[i + 3] = subData[i + 3];
-              continue;
-            }
-
-            if (subData[i + 3] === 0) continue;
-
-            const mix = data[i + 3] / (data[i + 3] + subData[i + 3]);
-            const invMix = 1 - mix;
-
-            data[i] = data[i] * mix + subData[i] * invMix;
-            data[i + 1] = data[i + 1] * mix + subData[i + 1] * invMix;
-            data[i + 2] = data[i + 2] * mix + subData[i + 2] * invMix;
-            data[i + 3] += subData[i + 3];
+        const imageData = loCtx.getImageData(0, 0, sublayer.size[0], sublayer.size[1]);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] === 0) {
+            data[i] = subData[i];
+            data[i + 1] = subData[i + 1];
+            data[i + 2] = subData[i + 2];
+            data[i + 3] = subData[i + 3];
+            continue;
           }
 
-          ctx.putImageData(imageData, 0, 0);
+          if (subData[i + 3] === 0) continue;
 
-          return;
+          const mix = data[i + 3] / (data[i + 3] + subData[i + 3]);
+          const invMix = 1 - mix;
+
+          data[i] = data[i] * mix + subData[i] * invMix;
+          data[i + 1] = data[i + 1] * mix + subData[i + 1] * invMix;
+          data[i + 2] = data[i + 2] * mix + subData[i + 2] * invMix;
+          data[i + 3] += subData[i + 3];
         }
 
-        ctx.drawImage(image, 0, 0);
-      })
-    );
+        loCtx.putImageData(imageData, 0, 0);
+
+        continue;
+      }
+
+      ctx.drawImage(image, 0, 0);
+    }
+
+    if (loCtx) ctx.drawImage(loCtx.canvas, 0, 0);
 
     if (dom)
       return createImageBitmap(ctx.canvas).then(result => {
@@ -672,15 +810,13 @@ export class Layer extends AbstractLayer {
 
   copy = () => {
     const copy = new Layer(
-      [],
-      typeof this.colors === 'string' ? this.colors : [...this.colors],
+      this.sublayers.map(layer => layer.copy()),
+      [...this.colors],
       this.blend,
       this.filter
     );
     copy.advanced = this.advanced ? [...this.advanced] : undefined;
     copy.name = this.name;
-
-    this.sublayers.forEach(layer => copy.sublayers.push(layer.copy()));
 
     return copy;
   };

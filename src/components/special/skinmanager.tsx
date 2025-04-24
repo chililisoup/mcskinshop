@@ -131,14 +131,14 @@ class SkinManager extends Component<AProps, AState> {
   updateSlim: (slim: boolean) => void = async slim => {
     Util.setSlim(slim);
 
-    if (this.layers.sublayers.length) {
+    if (this.layers.getLayers().length) {
       await this.layers.render();
       this.setState({ skin: this.layers.src, slim: slim });
     } else this.setState({ skin: undefined, slim: slim });
   };
 
   updateSkin: () => void = async () => {
-    if (this.layers.sublayers.length) {
+    if (this.layers.getLayers().length) {
       await this.layers.render();
       this.setState({ skin: this.layers.src });
     } else this.setState({ skin: undefined });
@@ -149,7 +149,7 @@ class SkinManager extends Component<AProps, AState> {
   };
 
   addLayer = (layer: ImgMod.AbstractLayer) => {
-    this.layers.sublayers.push(layer);
+    this.layers.addLayer(layer);
     this.updateSkin();
   };
 
@@ -228,7 +228,6 @@ class SkinManager extends Component<AProps, AState> {
 
     const image = new ImgMod.Img();
     image.name = name;
-    image.id = Util.randomKey();
 
     await image.render(url);
 
@@ -252,7 +251,6 @@ class SkinManager extends Component<AProps, AState> {
     const file = await fileHandle.getFile();
     const image = new ImgMod.Img();
     image.name = file.name;
-    image.id = Util.randomKey();
 
     image.internalUpdateCallback = () => this.updateSkin();
     image.observeDynamic(fileHandle);
@@ -315,7 +313,7 @@ class SkinManager extends Component<AProps, AState> {
         <div className="SkinManager">
           {this.state.layerManager && (
             <LayerManager
-              layers={this.layers.sublayers}
+              layers={this.layers}
               updateLayers={this.updateLayers}
               slim={this.state.slim}
             />

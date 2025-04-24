@@ -1,6 +1,5 @@
 import React, { ChangeEvent, Component, RefObject } from 'react';
 import * as ImgMod from '../../tools/imgmod';
-import * as Util from '../../tools/util';
 import asset_map from '../../asset_map.json';
 import Dropdown from '../basic/dropdown';
 import GridSelect, { Crop, Option } from '../basic/gridselect';
@@ -78,7 +77,6 @@ class ModelFeatures extends Component<AProps, AState> {
     const image = new ImgMod.Img();
     image.size = this.uploadFeature[1];
     image.name = e.target.files[0].name;
-    image.id = Util.randomKey();
 
     await image.render(URL.createObjectURL(e.target.files[0]));
 

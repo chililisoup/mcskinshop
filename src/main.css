@@ -797,6 +797,12 @@ h3 {
   border: 2px solid var(--highlight);
 }
 
+.color-picker > div > input:disabled::-webkit-slider-thumb,
+.color-picker > div > input:disabled::-moz-range-thumb {
+  border: 2px solid var(--outline);
+  cursor: default;
+}
+
 .slider {
   appearance: none;
   image-rendering: pixelated;

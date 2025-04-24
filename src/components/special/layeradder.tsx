@@ -28,7 +28,6 @@ class LayerAdder extends Component<AProps, AState> {
 
   addLayer = (id: number) => {
     const layer = this.state.assets[id].copy();
-    layer.id = Util.randomKey();
     this.props.addLayer(layer);
   };
 
@@ -66,6 +65,19 @@ class LayerAdder extends Component<AProps, AState> {
           asset.name = params.name;
 
           for (const layer of params.layers as unknown[]) {
+            if (typeof layer === 'string') {
+              const imageBlob = await zip.file(layer)?.async('blob');
+              if (!imageBlob) continue;
+
+              const image = new ImgMod.Img();
+              image.name = `${asset.name}.${layer.split('.')[0]}`;
+              await image.loadImage(imageBlob);
+
+              asset.addLayer(image);
+
+              continue;
+            }
+
             if (
               !(
                 layer &&
@@ -81,18 +93,24 @@ class LayerAdder extends Component<AProps, AState> {
 
             const name = `${asset.name}.${layer.path.split('.')[0]}`;
 
+            const layerType =
+              'type' in layer && ImgMod.LAYER_TYPES.find(type => type === layer.type)
+                ? (layer.type as ImgMod.LayerType)
+                : undefined;
+
             const layerForm =
               'form' in layer && ImgMod.LAYER_FORMS.find(form => form === layer.form)
                 ? (layer.form as ImgMod.LayerForm)
                 : undefined;
 
             if ('colors' in layer && Array.isArray(layer.colors)) {
-              asset.colors = [];
               const colorCount = layer.colors.length - 1;
 
               for (let i = 0; i < layer.colors.length; i++) {
                 const color: unknown = layer.colors[i];
-                if (typeof color !== 'string') {
+
+                let assetColor: ImgMod.Color;
+                if (color !== null && typeof color !== 'string') {
                   if (
                     !(
                       color &&
@@ -109,46 +127,51 @@ class LayerAdder extends Component<AProps, AState> {
                     color.offset.length === 4 &&
                     !color.offset.find(value => typeof value !== 'number')
                   )
-                    asset.colors.push({ from: color.from, offset: color.offset as ImgMod.Hsla });
-                  if ('to' in color && typeof color.to === 'string') {
+                    assetColor = { from: color.from, offset: color.offset as ImgMod.Hsla };
+                  else if ('to' in color && typeof color.to === 'string') {
                     const from: unknown = layer.colors[color.from];
                     if (typeof from !== 'string') continue;
-                    asset.colors.push({
+                    assetColor = {
                       from: color.from,
                       offset: ImgMod.getHslaOffset(
                         ImgMod.colorAsHsla(from),
                         ImgMod.colorAsHsla(color.to)
                       )
-                    });
+                    };
                   } else continue;
-                } else asset.colors.push(color + '');
+                } else if (color) assetColor = color;
+                else continue;
 
-                const image = new ImgMod.Img();
-                asset.sublayers.push(image);
+                const image = new ImgMod.Img(layerType);
                 image.name = `${name}.${i + 1}`;
                 image.linearOpacity = true;
                 image.layerForm = layerForm;
                 await image.loadImage(imageBlob);
 
+                asset.addLayer(image, assetColor);
+
                 if (colorCount > 0) await image.mask(i / colorCount, colorCount);
               }
-
-              await asset.color();
 
               continue;
             }
 
-            const image = new ImgMod.Img();
-            asset.sublayers.push(image);
+            const image = new ImgMod.Img(layerType);
             image.name = name;
             image.layerForm = layerForm;
             await image.loadImage(imageBlob);
+
+            asset.addLayer(
+              image,
+              'color' in layer && typeof layer.color === 'string' ? layer.color : undefined
+            );
           }
         } catch (error) {
           asset.name = name + ' (ERRORED)';
           console.error(error);
         }
 
+        await asset.color();
         await asset.render();
         return asset;
       })

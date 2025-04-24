@@ -1,6 +1,5 @@
 import React, { ChangeEvent, Component, ReactNode } from 'react';
 import * as ImgMod from '../../tools/imgmod';
-import * as Util from '../../tools/util';
 import ColorPicker from '../basic/colorpicker';
 
 type AProps = {
@@ -21,7 +20,6 @@ class AssetCreator extends Component<AProps, AState> {
 
     const layers = new ImgMod.Layer([], []);
     layers.advanced = [];
-    layers.id = Util.randomKey();
 
     this.state = {
       name: '',
@@ -40,62 +38,31 @@ class AssetCreator extends Component<AProps, AState> {
 
   addLayer = () => {
     const layers = this.state.layers;
-    const layer = new ImgMod.Img();
-    layer.id = Util.randomKey();
-    layers.sublayers.push(layer);
-    if (layers.colors instanceof Array) layers.colors.push('#000000');
-    if (layers.advanced instanceof Array) layers.advanced.push(false);
+    layers.addLayer(new ImgMod.Img(), '#000000');
     this.setState({ layers: layers });
   };
 
   removeLayer = (index: number) => {
     const layers = this.state.layers;
-    if (!(layers.colors instanceof Array)) return;
-    if (!(layers.advanced instanceof Array)) return;
-
-    layers.sublayers.splice(index, 1);
-    layers.colors.splice(index, 1);
-    layers.advanced.splice(index, 1);
+    layers.removeLayer(index);
     this.setState({ layers: layers });
   };
 
   moveLayer = (index: number, change: number) => {
     const layers = this.state.layers;
-    if (!(layers.colors instanceof Array)) return;
-    if (!(layers.advanced instanceof Array)) return;
-
-    const layer = layers.sublayers[index];
-    const color = layers.colors[index];
-    const advanced = layers.advanced[index];
-
-    if (index + change < 0) change = layers.sublayers.length - 1;
-    if (index + change >= layers.sublayers.length) change = 0 - (layers.sublayers.length - 1);
-
-    layers.sublayers.splice(index, 1);
-    layers.sublayers.splice(index + change, 0, layer);
-
-    layers.colors.splice(index, 1);
-    layers.colors.splice(index + change, 0, color);
-
-    layers.advanced.splice(index, 1);
-    layers.advanced.splice(index + change, 0, advanced);
-
+    layers.moveLayer(index, change);
     this.setState({ layers: layers });
   };
 
   updateAsset = (index: number, asset: ImgMod.AbstractLayer) => {
     const layers = this.state.layers;
-    layers.sublayers[index] = asset;
-
+    layers.replaceLayer(index, asset);
     this.setState({ layers: layers });
   };
 
   setColor = (index: number, color: string) => {
     const layers = this.state.layers;
-    if (!(layers.colors instanceof Array)) return;
-
-    layers.colors[index] = color;
-
+    layers.setColor(index, color);
     this.setState({ layers: layers });
   };
 
@@ -110,22 +77,24 @@ class AssetCreator extends Component<AProps, AState> {
 
   render() {
     let elem: ReactNode = <div />;
-    if (this.state.layers.sublayers.length) {
-      elem = this.state.layers.sublayers.map(
-        (asset, i) =>
-          asset instanceof ImgMod.Img && (
-            <AssetLayer
-              key={asset.id}
-              asset={asset}
-              index={i}
-              removeLayer={this.removeLayer}
-              moveLayer={this.moveLayer}
-              updateAsset={this.updateAsset}
-              setColor={this.setColor}
-              setAdvanced={this.setAdvanced}
-            />
-          )
-      );
+    if (this.state.layers.getLayers().length) {
+      elem = this.state.layers
+        .getLayers()
+        .map(
+          (asset, i) =>
+            asset instanceof ImgMod.Img && (
+              <AssetLayer
+                key={asset.id}
+                asset={asset}
+                index={i}
+                removeLayer={this.removeLayer}
+                moveLayer={this.moveLayer}
+                updateAsset={this.updateAsset}
+                setColor={this.setColor}
+                setAdvanced={this.setAdvanced}
+              />
+            )
+        );
     }
 
     return (
@@ -193,7 +162,6 @@ class AssetLayer extends Component<BProps, BState> {
     if (!e.target.files) return;
     const asset = this.state.asset;
     asset.name = e.target.files[0].name.slice(0, -4).replaceAll(' ', '_').toLowerCase();
-    asset.id = Util.randomKey();
 
     await asset.render(URL.createObjectURL(e.target.files[0]));
 
