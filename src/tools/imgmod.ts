@@ -68,6 +68,7 @@ export const checkLayerType = (maybeType: string): LayerType | undefined => {
 };
 
 export const LAYER_FORMS = [
+  'universal',
   'full-squish-inner',
   'full-squish-outer',
   'full-squish-average',
@@ -208,7 +209,7 @@ export abstract class AbstractLayer {
 
 export class Img extends AbstractLayer {
   type;
-  layerForm?: LayerForm;
+  form;
   // rawSrc contains uncolored image data,
   // so going to 0% opacity and back doesnt break anything
   rawSrc = EMPTY_IMAGE_SOURCE;
@@ -219,10 +220,16 @@ export class Img extends AbstractLayer {
   observer?: FileSystemObserver;
   internalUpdateCallback?: () => void;
 
-  constructor(type?: LayerType, blend?: GlobalCompositeOperation, filter?: string) {
+  constructor(
+    type?: LayerType,
+    form?: LayerForm,
+    blend?: GlobalCompositeOperation,
+    filter?: string
+  ) {
     super(blend, filter);
 
     this.type = type ?? 'normal';
+    this.form = form ?? 'universal';
   }
 
   loadImage = async (image: ImageBitmapSource) => {
@@ -293,14 +300,14 @@ export class Img extends AbstractLayer {
   };
 
   copy = () => {
-    const copy = new Img(this.type, this.blend, this.filter);
+    const copy = new Img(this.type, this.form, this.blend, this.filter);
     copy.src = this.src;
     copy.rawSrc = this.rawSrc;
     copy.image = this.image;
     copy.name = this.name;
     copy.size = [this.size[0], this.size[1]];
     copy.linearOpacity = this.linearOpacity;
-    copy.layerForm = this.layerForm;
+    copy.form = this.form;
 
     return copy;
   };
@@ -381,17 +388,18 @@ export class Img extends AbstractLayer {
     });
   };
 
-  form = async () => {
+  applyForm = async () => {
     if (!this.image) return Promise.reject(new Error('No image to form'));
+    if (this.form === 'universal') return this.image;
 
     const canvas = document.createElement('canvas');
     canvas.width = this.size[0];
     canvas.height = this.size[1];
 
-    if (this.layerForm === 'full-only' || this.layerForm === 'slim-only') {
+    if (this.form === 'full-only' || this.form === 'slim-only') {
       if (
-        (this.layerForm === 'full-only' && !Util.getSlim()) ||
-        (this.layerForm === 'slim-only' && Util.getSlim())
+        (this.form === 'full-only' && !Util.getSlim()) ||
+        (this.form === 'slim-only' && Util.getSlim())
       ) {
         const ctx = canvas.getContext('2d')!;
         ctx.drawImage(this.image, 0, 0);
@@ -403,7 +411,7 @@ export class Img extends AbstractLayer {
     const ctx = canvas.getContext('2d')!;
     ctx.drawImage(this.image, 0, 0);
 
-    const reverse = this.layerForm !== 'slim-stretch';
+    const reverse = this.form !== 'slim-stretch';
 
     if (reverse === Util.getSlim()) {
       const from = reverse ? 'to' : 'from';
@@ -434,8 +442,8 @@ export class Img extends AbstractLayer {
         ctx.clearRect(58, 48, 2, 4);
         ctx.clearRect(62, 52, 2, 12);
 
-        const width = this.layerForm === 'full-squish-average' ? 2 : 1;
-        const move = this.layerForm === 'full-squish-inner' ? 1 : -1;
+        const width = this.form === 'full-squish-average' ? 2 : 1;
+        const move = this.form === 'full-squish-inner' ? 1 : -1;
 
         FULL_SQUISH_OFFSETS.forEach(offset => {
           ctx.clearRect(offset.to[0], offset.to[1], 1, offset.height);
@@ -641,7 +649,8 @@ export class Layer extends AbstractLayer {
     flatLayer.id = baseLayer.id;
 
     await baseLayer.render();
-    await flatLayer.render(baseLayer.src);
+    if (baseLayer instanceof Img) await flatLayer.loadImage(await baseLayer.applyForm());
+    else await flatLayer.render(baseLayer.src);
 
     this.replaceLayer(index, flatLayer);
     baseLayer.cleanup();
@@ -832,7 +841,7 @@ export class Layer extends AbstractLayer {
       if (sublayer.type === 'erase') ctx.globalCompositeOperation = 'destination-out';
       else ctx.globalCompositeOperation = sublayer.blend;
 
-      const image = sublayer.layerForm ? await sublayer.form() : sublayer.image;
+      const image = await sublayer.applyForm();
 
       if (sublayer.linearOpacity) {
         const subImageData = sublayer.getImageData(image);

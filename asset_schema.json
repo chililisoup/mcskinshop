@@ -105,8 +105,9 @@
               ]
             },
             "form": {
-              "description": "Layer resize method. Not resized if unset.",
+              "description": "Layer resize method. Universal for no resizing. Defaults to universal.",
               "enum": [
+                "universal",
                 "full-squish-inner",
                 "full-squish-outer",
                 "full-squish-average",

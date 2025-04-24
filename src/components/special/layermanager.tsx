@@ -3,7 +3,7 @@ import * as ImgMod from '../../tools/imgmod';
 import LayerEditor from './layereditor';
 import ColorPicker from '../basic/colorpicker';
 import DraggableWindow from '../basic/draggablewindow';
-import PropertiesList from '../basic/propertieslist';
+import PropertiesList, { Property } from '../basic/propertieslist';
 
 type AProps = {
   layers: ImgMod.Layer;
@@ -263,6 +263,137 @@ class Layer extends Component<BProps, BState> {
       });
     }
 
+    const properties: Property[] = [
+      {
+        name: 'Blend Mode',
+        id: 'blend',
+        type: 'select',
+        value: this.props.asset.blend,
+        options: [
+          ['source-over', 'Source Over'],
+          ['source-in', 'Source In'],
+          ['source-out', 'Source Out'],
+          ['source-atop', 'Source Atop'],
+          ['destination-over', 'Destination Over'],
+          ['destination-in', 'Destination In'],
+          ['destination-out', 'Destination Out'],
+          ['destination-atop', 'Destination Atop'],
+          ['lighter', 'Lighter'],
+          ['copy', 'Copy'],
+          ['xor', 'XOR'],
+          ['multiply', 'Multiply'],
+          ['screen', 'Screen'],
+          ['overlay', 'Overlay'],
+          ['darken', 'Darken'],
+          ['lighten', 'Lighten'],
+          ['color-dodge', 'Color Dodge'],
+          ['color-burn', 'Color Burn'],
+          ['hard-light', 'Hard Light'],
+          ['soft-light', 'Soft Light'],
+          ['difference', 'Difference'],
+          ['exclusion', 'Exclusion'],
+          ['hue', 'Hue'],
+          ['saturation', 'Saturation'],
+          ['color', 'Color'],
+          ['luminosity', 'Luminosity']
+        ]
+      },
+      {
+        name: 'Opacity',
+        id: 'opacity',
+        type: 'range',
+        value: this.state.opacity,
+        min: 0,
+        max: 100,
+        subtype: 'percent'
+      },
+      {
+        name: 'Hue',
+        id: 'hue',
+        type: 'range',
+        value: this.state.hue,
+        min: -180,
+        max: 180,
+        subtype: 'degrees'
+      },
+      {
+        name: 'Saturation',
+        id: 'saturation',
+        type: 'range',
+        value: this.state.saturation,
+        min: 0,
+        max: 200,
+        subtype: 'percent'
+      },
+      {
+        name: 'Brightness',
+        id: 'brightness',
+        type: 'range',
+        value: this.state.brightness,
+        min: 0,
+        max: 200,
+        subtype: 'percent'
+      },
+      {
+        name: 'Contrast',
+        id: 'contrast',
+        type: 'range',
+        value: this.state.contrast,
+        min: 0,
+        max: 200,
+        subtype: 'percent'
+      },
+      {
+        name: 'Invert',
+        id: 'invert',
+        type: 'range',
+        value: this.state.invert,
+        min: 0,
+        max: 100,
+        subtype: 'percent'
+      },
+      {
+        name: 'Sepia',
+        id: 'sepia',
+        type: 'range',
+        value: this.state.sepia,
+        min: 0,
+        max: 100,
+        subtype: 'percent'
+      }
+    ];
+
+    if (this.props.asset instanceof ImgMod.Img)
+      properties.push(
+        {
+          name: 'Type',
+          id: 'type',
+          type: 'select',
+          value: this.props.asset.type,
+          options: [
+            ['normal', 'Normal'],
+            ['erase', 'Erase'],
+            ['flatten', 'Flatten'],
+            ['blowup', 'Blowup']
+          ]
+        },
+        {
+          name: 'Form',
+          id: 'form',
+          type: 'select',
+          value: this.props.asset.form,
+          options: [
+            ['universal', 'Universal'],
+            ['full-squish-inner', 'Full Squish - Inner'],
+            ['full-squish-outer', 'Full Squish - Outer'],
+            ['full-squish-average', 'Full Squish - Average'],
+            ['slim-stretch', 'Slim Stretch'],
+            ['full-only', 'Full Only'],
+            ['slim-only', 'Slim Only']
+          ]
+        }
+      );
+
     return (
       <div className="manager-layer container">
         <span className="layerTitle">
@@ -334,106 +465,16 @@ class Layer extends Component<BProps, BState> {
             }}
             stringCallback={(id, value) => {
               if (id === 'blend') this.changeBlendMode(value as GlobalCompositeOperation);
-            }}
-            properties={[
-              {
-                name: 'Blend Mode',
-                id: 'blend',
-                type: 'select',
-                value: this.props.asset.blend,
-                options: [
-                  ['source-over', 'Source Over'],
-                  ['source-in', 'Source In'],
-                  ['source-out', 'Source Out'],
-                  ['source-atop', 'Source Atop'],
-                  ['destination-over', 'Destination Over'],
-                  ['destination-in', 'Destination In'],
-                  ['destination-out', 'Destination Out'],
-                  ['destination-atop', 'Destination Atop'],
-                  ['lighter', 'Lighter'],
-                  ['copy', 'Copy'],
-                  ['xor', 'XOR'],
-                  ['multiply', 'Multiply'],
-                  ['screen', 'Screen'],
-                  ['overlay', 'Overlay'],
-                  ['darken', 'Darken'],
-                  ['lighten', 'Lighten'],
-                  ['color-dodge', 'Color Dodge'],
-                  ['color-burn', 'Color Burn'],
-                  ['hard-light', 'Hard Light'],
-                  ['soft-light', 'Soft Light'],
-                  ['difference', 'Difference'],
-                  ['exclusion', 'Exclusion'],
-                  ['hue', 'Hue'],
-                  ['saturation', 'Saturation'],
-                  ['color', 'Color'],
-                  ['luminosity', 'Luminosity']
-                ]
-              },
-              {
-                name: 'Opacity',
-                id: 'opacity',
-                type: 'range',
-                value: this.state.opacity,
-                min: 0,
-                max: 100,
-                subtype: 'percent'
-              },
-              {
-                name: 'Hue',
-                id: 'hue',
-                type: 'range',
-                value: this.state.hue,
-                min: -180,
-                max: 180,
-                subtype: 'degrees'
-              },
-              {
-                name: 'Saturation',
-                id: 'saturation',
-                type: 'range',
-                value: this.state.saturation,
-                min: 0,
-                max: 200,
-                subtype: 'percent'
-              },
-              {
-                name: 'Brightness',
-                id: 'brightness',
-                type: 'range',
-                value: this.state.brightness,
-                min: 0,
-                max: 200,
-                subtype: 'percent'
-              },
-              {
-                name: 'Contrast',
-                id: 'contrast',
-                type: 'range',
-                value: this.state.contrast,
-                min: 0,
-                max: 200,
-                subtype: 'percent'
-              },
-              {
-                name: 'Invert',
-                id: 'invert',
-                type: 'range',
-                value: this.state.invert,
-                min: 0,
-                max: 100,
-                subtype: 'percent'
-              },
-              {
-                name: 'Sepia',
-                id: 'sepia',
-                type: 'range',
-                value: this.state.sepia,
-                min: 0,
-                max: 100,
-                subtype: 'percent'
+              if (id === 'type' && this.props.asset instanceof ImgMod.Img) {
+                this.props.asset.type = value as ImgMod.LayerType;
+                this.updateLayer();
               }
-            ]}
+              if (id === 'form' && this.props.asset instanceof ImgMod.Img) {
+                this.props.asset.form = value as ImgMod.LayerForm;
+                this.updateLayer();
+              }
+            }}
+            properties={properties}
           />
         )}
       </div>

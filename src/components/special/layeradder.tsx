@@ -1,5 +1,3 @@
-// todo: add mask settings (grayscale/alpha)
-
 import React, { Component, ReactNode } from 'react';
 import * as ImgMod from '../../tools/imgmod';
 import * as Util from '../../tools/util';
@@ -194,10 +192,9 @@ class AssetPack extends Component<BProps, BState> {
         for (let i = 0; i < layerColor.length; i++) {
           const color = this.parseColor(layerColor[i]);
 
-          const image = new ImgMod.Img(layerType);
+          const image = new ImgMod.Img(layerType, layerForm);
           image.name = `${name}.${i + 1}`;
           image.linearOpacity = true;
-          image.layerForm = layerForm;
           await image.loadImage(imageBlob);
 
           assetLayers.push(image);
@@ -209,9 +206,8 @@ class AssetPack extends Component<BProps, BState> {
         continue;
       }
 
-      const image = new ImgMod.Img(layerType);
+      const image = new ImgMod.Img(layerType, layerForm);
       image.name = name;
-      image.layerForm = layerForm;
       await image.loadImage(imageBlob);
 
       if (
