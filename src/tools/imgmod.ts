@@ -708,15 +708,15 @@ export class Layer extends AbstractLayer {
       return Promise.reject(new Error('Color count does not match sublayer count'));
 
     await Promise.all(
-      this.sublayers.map((layer, i) => {
+      this.sublayers.map(async (layer, i) => {
         if (!(layer instanceof Img || layer instanceof Layer))
           return Promise.reject(new Error('Incompatible layer type'));
 
-        if (layer instanceof Layer) return layer.color();
+        if (layer instanceof Layer) await layer.color();
 
-        if (!this.colors[i]) return Promise.resolve();
+        if (!this.colors[i]) return;
 
-        return layer.color(
+        await layer.color(
           typeof this.colors[i] === 'string' ? this.colors[i] : this.getTrueColor(i)
         );
       })
