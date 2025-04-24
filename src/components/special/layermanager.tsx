@@ -239,7 +239,7 @@ class Layer extends Component<BProps, BState> {
 
       layer.getColors().forEach((color, i) => {
         if (!layer.advanced || !layer.advanced[i] || this.state.fxOpen) {
-          if (typeof color === 'string' && !ImgMod.checkLayerType(color))
+          if (typeof color === 'string')
             colors.push(
               <ColorPicker
                 key={i + (layer.id ?? '')}
@@ -247,7 +247,7 @@ class Layer extends Component<BProps, BState> {
                 update={color => this.changeColor(i, color)}
               />
             );
-          else if (typeof color === 'object')
+          else if (typeof color === 'object' && !('copy' in color))
             colors.push(
               <ColorPicker
                 key={i + (layer.id ?? '')}

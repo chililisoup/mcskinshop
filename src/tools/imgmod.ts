@@ -79,7 +79,9 @@ export type LayerForm = (typeof LAYER_FORMS)[number];
 
 export type Hsla = [hue: number, saturation: number, lightness: number, alpha: number];
 export type RelativeColor = { from: number; offset: Hsla };
-export type Color = string | RelativeColor | undefined;
+export type UnloadedRelativeColor = { from: number; to: string };
+export type CopyColor = { copy: number };
+export type Color = string | RelativeColor | CopyColor | undefined;
 
 // https://gist.github.com/xenozauros/f6e185c8de2a04cdfecf
 export const hexToHsla: (hex: string) => Hsla = hex => {
@@ -358,14 +360,19 @@ export class Img extends AbstractLayer {
     canvas.width = this.size[0];
     canvas.height = this.size[1];
 
-    if (
-      (this.layerForm === 'full-only' && Util.getSlim()) ||
-      (this.layerForm === 'slim-only' && !Util.getSlim())
-    )
+    if (this.layerForm === 'full-only' || this.layerForm === 'slim-only') {
+      if (
+        (this.layerForm === 'full-only' && !Util.getSlim()) ||
+        (this.layerForm === 'slim-only' && Util.getSlim())
+      ) {
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(this.image, 0, 0);
+      }
+
       return await createImageBitmap(canvas);
+    }
 
     const ctx = canvas.getContext('2d')!;
-
     ctx.drawImage(this.image, 0, 0);
 
     const reverse = this.layerForm !== 'slim-stretch';
@@ -522,7 +529,7 @@ export class Layer extends AbstractLayer {
 
   constructor(
     sublayers?: AbstractLayer[],
-    colors?: Color[],
+    colors?: (Color | UnloadedRelativeColor)[],
     blend?: GlobalCompositeOperation,
     filter?: string
   ) {
@@ -531,7 +538,17 @@ export class Layer extends AbstractLayer {
     this.sublayers = sublayers ?? [];
     this.colors =
       colors && colors.length === this.sublayers.length
-        ? colors
+        ? colors.map(color => {
+            if (typeof color !== 'object') return color;
+            if (!('to' in color)) return color;
+
+            const from: unknown = colors[color.from];
+            if (typeof from !== 'string') return;
+            return {
+              from: color.from,
+              offset: getHslaOffset(colorAsHsla(from), colorAsHsla(color.to))
+            };
+          })
         : (new Array(this.sublayers.length).fill(undefined) as undefined[]);
   }
 
@@ -548,8 +565,8 @@ export class Layer extends AbstractLayer {
     if (!colors || colors.length !== layers.length)
       colors = new Array(layers.length).fill(undefined);
 
-    this.sublayers = this.sublayers.concat(layers);
-    this.colors = this.colors.concat(colors);
+    this.sublayers.push(...layers);
+    this.colors.push(...colors);
   };
 
   replaceLayer = (index: number, ...layers: AbstractLayer[]) => {
@@ -614,10 +631,15 @@ export class Layer extends AbstractLayer {
       const length = mergedLayer.sublayers.length;
       const topColors = topLayer.colors.map(color => {
         if (typeof color !== 'object') return color;
-        const newColor: RelativeColor = {
-          from: color.from + length,
-          offset: [...color.offset]
-        };
+        const newColor: RelativeColor | CopyColor =
+          'from' in color
+            ? {
+                from: color.from + length,
+                offset: [...color.offset]
+              }
+            : {
+                copy: color.copy + length
+              };
         return newColor;
       });
 
@@ -652,11 +674,14 @@ export class Layer extends AbstractLayer {
     this.advanced ??= new Array(this.sublayers.length).fill(false);
   };
 
-  getTrueColor = (color: RelativeColor) => {
-    const from = this.colors[color.from];
-    if (typeof from !== 'string') return '#FFFFFF';
+  getTrueColor = (color: RelativeColor | CopyColor) => {
+    const rawBase = 'from' in color ? this.colors[color.from] : this.colors[color.copy];
+    if (!rawBase) return '#FFFFFF';
+    const base: unknown = typeof rawBase === 'string' ? rawBase : this.getTrueColor(rawBase);
+    if (typeof base !== 'string') return '#FFFFFF';
 
-    return hslaToString(applyHslaOffset(colorAsHsla(from), color.offset));
+    if ('from' in color) return hslaToString(applyHslaOffset(colorAsHsla(base), color.offset));
+    else return base;
   };
 
   color = async () => {
@@ -717,7 +742,10 @@ export class Layer extends AbstractLayer {
         const color = this.colors[i];
         if (
           !(sublayer instanceof Img && sublayer.linearOpacity) ||
-          !(loIndex === i || (typeof color === 'object' && color.from === loIndex))
+          !(
+            loIndex === i ||
+            (typeof color === 'object' && 'from' in color && color.from === loIndex)
+          )
         ) {
           ctx.drawImage(loCtx.canvas, 0, 0);
           loCtx = undefined;
@@ -766,7 +794,7 @@ export class Layer extends AbstractLayer {
           loCtx = loCanvas.getContext('2d')!;
 
           const color: Color = this.colors[i];
-          loIndex = typeof color === 'object' ? color.from : i;
+          loIndex = typeof color === 'object' && 'from' in color ? color.from : i;
         }
 
         const imageData = loCtx.getImageData(0, 0, sublayer.size[0], sublayer.size[1]);

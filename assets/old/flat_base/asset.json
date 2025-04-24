@@ -1,0 +1,32 @@
+{
+  "name": "Flat Base",
+  "layers": [
+    {
+      "path": "base_full.png",
+      "color": "#E0AA94",
+      "form": "full-only"
+    },
+    {
+      "path": "base_slim.png",
+      "color": {
+        "copy": 0
+      },
+      "form": "slim-only"
+    },
+    {
+      "path": "shade_full.png",
+      "color": {
+        "from": 0,
+        "to": "#CC8D72"
+      },
+      "form": "full-only"
+    },
+    {
+      "path": "shade_slim.png",
+      "color": {
+        "copy": 2
+      },
+      "form": "slim-only"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "Body Hat Remover",
+  "layers": [
+    {
+      "path": "body_hat_remover.png",
+      "type": "erase"
+    }
+  ]
+}

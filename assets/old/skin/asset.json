@@ -1,0 +1,26 @@
+{
+  "name": "Beveled Skin",
+  "layers": [
+    {
+      "path": "base.png",
+      "color": "#F9D3B1",
+      "form": "full-squish-inner"
+    },
+    {
+      "path": "highlight.png",
+      "color": {
+        "from": 0,
+        "to": "#990A88"
+      },
+      "form": "full-squish-inner"
+    },
+    {
+      "path": "shade.png",
+      "color": {
+        "from": 0,
+        "to": "#FFFFFF"
+      },
+      "form": "full-squish-inner"
+    }
+  ]
+}

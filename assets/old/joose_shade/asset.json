@@ -1,0 +1,10 @@
+{
+  "name": "Joose Shade",
+  "layers": [
+    {
+      "path": "joose_shade.png",
+      "color": "#000000",
+      "form": "full-squish-inner"
+    }
+  ]
+}

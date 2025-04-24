@@ -1,0 +1,9 @@
+{
+  "name": "Full Hat Remover",
+  "layers": [
+    {
+      "path": "hat_remover.png",
+      "type": "erase"
+    }
+  ]
+}

@@ -83,10 +83,10 @@ class ColorPicker extends Component<AProps, AState> {
     this.setHsla(newHsla);
   };
 
-  setHex = (hex: string) => {
-    const newHsla = ImgMod.hexToHsla(hex);
-    if (!newHsla) return this.setState({ hex: hex });
-    this.setHsla(newHsla, hex);
+  setFromString = (color: string) => {
+    const newHsla = ImgMod.colorAsHsla(color);
+    if (!newHsla) return this.setState({ hex: ImgMod.hslaToHex(newHsla) });
+    this.setHsla(newHsla, color);
   };
 
   togglePicker = () => {
@@ -206,7 +206,7 @@ class ColorPicker extends Component<AProps, AState> {
                   <input
                     placeholder="#ffffff"
                     value={this.state.hex}
-                    onChange={e => this.setHex(e.target.value)}
+                    onChange={e => this.setFromString(e.target.value)}
                     disabled={this.props.linked}
                   />
                 </span>

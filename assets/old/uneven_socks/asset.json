@@ -1,0 +1,21 @@
+{
+  "name": "Uneven Socks",
+  "layers": [
+    {
+      "path": "erase.png",
+      "type": "erase"
+    },
+    {
+      "path": "color.png",
+      "color": "#515151"
+    },
+    {
+      "path": "color_1.png",
+      "color": {
+        "from": 1,
+        "to": "#878787"
+      }
+    },
+    "shade.png"
+  ]
+}

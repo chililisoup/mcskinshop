@@ -1,0 +1,9 @@
+{
+  "name": "Full Hat Blowup",
+  "layers": [
+    {
+      "path": "blowup_hat.png",
+      "type": "blowup"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Smiley Shirt :)",
+  "layers": [
+    {
+      "path": "base.png",
+      "color": "#eba134",
+      "form": "full-squish-inner"
+    },
+    "mid.png",
+    {
+      "path": "shade.png",
+      "color": "#000000",
+      "form": "full-squish-inner"
+    }
+  ]
+}

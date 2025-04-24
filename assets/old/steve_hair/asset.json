@@ -1,0 +1,10 @@
+{
+  "name": "Steve Hair",
+  "layers": [
+    {
+      "path": "base.png",
+      "color": "#2E2110"
+    },
+    "shade.png"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Biker Face",
+  "layers": [
+    "eyes.png",
+    {
+      "path": "pupils.png",
+      "color": "#9CFF2B"
+    },
+    {
+      "path": "hair.png",
+      "color": "#54431A"
+    }
+  ]
+}

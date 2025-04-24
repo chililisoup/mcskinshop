@@ -1,0 +1,10 @@
+{
+  "name": "Fancy Man",
+  "layers": [
+    {
+      "path": "base.png",
+      "color": "#b39431"
+    },
+    "shade.png"
+  ]
+}

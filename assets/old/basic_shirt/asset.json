@@ -1,0 +1,28 @@
+{
+  "name": "Basic Shirt",
+  "layers": [
+    {
+      "path": "erase.png",
+      "type": "erase",
+      "form": "slim-stretch"
+    },
+    {
+      "path": "base.png",
+      "color": "#FFF38B",
+      "form": "slim-stretch"
+    },
+    {
+      "path": "accent.png",
+      "color": "#FFFFFF",
+      "form": "slim-stretch"
+    },
+    {
+      "path": "shade.png",
+      "color": {
+        "from": 1,
+        "to": "#1F3F61"
+      },
+      "form": "slim-stretch"
+    }
+  ]
+}

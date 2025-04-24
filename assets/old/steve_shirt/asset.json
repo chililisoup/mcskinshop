@@ -1,0 +1,16 @@
+{
+  "name": "Steve Shirt",
+  "layers": [
+    {
+      "path": "base.png",
+      "color": "#00CCCC"
+    },
+    {
+      "path": "shade.png",
+      "color": {
+        "from": 0,
+        "to": "#213535"
+      }
+    }
+  ]
+}

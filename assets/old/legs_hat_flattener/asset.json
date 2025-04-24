@@ -1,0 +1,9 @@
+{
+  "name": "Legs Hat Flattener",
+  "layers": [
+    {
+      "path": "legs_hat_flattener.png",
+      "type": "flatten"
+    }
+  ]
+}

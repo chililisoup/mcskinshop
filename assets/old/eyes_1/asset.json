@@ -1,0 +1,17 @@
+{
+  "name": "Steve Eyes",
+  "layers": [
+    "base.png",
+    {
+      "path": "color.png",
+      "color": "#523D89"
+    },
+    {
+      "path": "color_1.png",
+      "color": {
+        "from": 1,
+        "offset": [0, 0, 0, 0]
+      }
+    }
+  ]
+}
