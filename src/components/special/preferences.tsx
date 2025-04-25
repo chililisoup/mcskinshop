@@ -42,6 +42,8 @@ class Preferences extends Component<AProps> {
               if (id === '--icon-invert') this.props.manager.setPrefs({ '--icon-invert': value });
               if (id === 'useFallbackSkinSource')
                 this.props.manager.setPrefs({ useFallbackSkinSource: value });
+              if (id === 'autosetImageForm')
+                this.props.manager.setPrefs({ autosetImageForm: value });
               this.props.updatePrefs(this.props.manager);
             }}
             properties={[
@@ -82,6 +84,12 @@ class Preferences extends Component<AProps> {
                     value: values['--icon-invert']
                   }
                 ])
+              },
+              {
+                name: 'Autoset Image Form',
+                id: 'autosetImageForm',
+                type: 'checkbox',
+                value: values.autosetImageForm
               },
               {
                 name: 'Use Fallback Skin Source',

@@ -1,6 +1,7 @@
 import React, { Component, ReactNode } from 'react';
 import * as ImgMod from '../../tools/imgmod';
 import * as Util from '../../tools/util';
+import steve from '@assets/steve.png';
 import JSZip from 'jszip';
 import Dropdown from '../basic/dropdown';
 
@@ -30,6 +31,7 @@ type Asset = {
 
 type AProps = {
   addLayer: (layer: ImgMod.AbstractLayer) => void;
+  addDefaultLayer: () => void;
 };
 
 type AState = {
@@ -67,7 +69,20 @@ class LayerAdder extends Component<AProps, AState> {
 
     return (
       <div className="layer-adder">
-        <div className="layer-adder-content">{elem}</div>
+        <div className="layer-adder-content">
+          {elem}
+          <Dropdown title="Default">
+            <div className="container">
+              <span>
+                <img src={steve} alt="Steve & Alex" title="Steve & Alex" />
+                <div>
+                  <p>Steve & Alex</p>
+                  <button onClick={this.props.addDefaultLayer}>+</button>
+                </div>
+              </span>
+            </div>
+          </Dropdown>
+        </div>
       </div>
     );
   }

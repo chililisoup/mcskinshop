@@ -32,15 +32,14 @@ export const USER_THEME_COLOR_VARS = {
 export type Prefs = {
   -readonly [key in keyof typeof SELECT_PREFS]: keyof (typeof SELECT_PREFS)[key];
 } & Record<keyof typeof USER_THEME_COLOR_VARS, string> & {
-    curvature: number;
-    useFallbackSkinSource: boolean;
     '--icon-invert': boolean;
+    curvature: number;
+    autosetImageForm: boolean;
+    useFallbackSkinSource: boolean;
   };
 
 export const defaultPrefs: Prefs = {
   theme: 'default',
-  curvature: 8,
-  useFallbackSkinSource: false,
   '--main-bg': '#202633',
   '--container': '#434664',
   '--container-alt': '#282a3c',
@@ -56,7 +55,10 @@ export const defaultPrefs: Prefs = {
   '--accent': '#4fc3ff',
   '--no-accent': 'rgb(255, 255, 255, 0.25)',
   '--shadow': 'rgba(0, 0, 0, 0)',
-  '--icon-invert': false
+  '--icon-invert': false,
+  curvature: 8,
+  autosetImageForm: false,
+  useFallbackSkinSource: false
 } as const;
 
 export class Manager {

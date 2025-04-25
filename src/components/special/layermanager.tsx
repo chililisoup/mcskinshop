@@ -119,7 +119,7 @@ class LayerManager extends Component<AProps, AState> {
           <div className="container layer-manager">{elem}</div>
           <button onClick={this.addLayer}>New Layer</button>
         </div>
-        {selectedLayerIndex && selectedLayer instanceof ImgMod.Img && (
+        {selectedLayerIndex !== null && selectedLayer instanceof ImgMod.Img && (
           <DraggableWindow
             title={selectedLayer.name ?? ''}
             startPos={{ x: 350, y: 0 }}

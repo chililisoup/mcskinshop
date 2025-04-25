@@ -8,8 +8,6 @@ import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
-import steve from '@assets/steve.png';
-import alex from '@assets/alex.png';
 import matcap from '@assets/matcap.png';
 import skinmodel from '../../skinmodel.json';
 import save_render from '@assets/save_render.png';
@@ -41,7 +39,7 @@ type PoseEntry = {
 };
 
 type AProps = {
-  skin?: string;
+  skin: string;
   slim: boolean;
   updateSlim: (slim: boolean) => void;
   modelFeatures: Features;
@@ -585,8 +583,7 @@ class PaperDoll extends Component<AProps, AState> {
   };
 
   textureSetup = () => {
-    const skin = this.props.skin ?? (this.props.slim ? alex : steve);
-    this.textureLoader.load(skin, texture => {
+    this.textureLoader.load(this.props.skin, texture => {
       texture.magFilter = THREE.NearestFilter;
 
       this.materials[this.state.shade ? 'shaded' : 'flat'].forEach(mat => {

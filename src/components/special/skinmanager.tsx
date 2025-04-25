@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import * as ImgMod from '../../tools/imgmod';
 import * as Util from '../../tools/util';
+import steve from '@assets/steve.png';
+import alex from '@assets/alex.png';
 import PaperDoll from './paperdoll';
 import LayerManager from './layermanager';
 import LayerAdder from './layeradder';
@@ -20,7 +22,7 @@ type RedoEdit = [name: string, redoCallback: UndoCallback];
 type AProps = object;
 
 type AState = {
-  skin?: string;
+  skin: string;
   slim: boolean;
   editHints: [string, string];
   modelFeatures: Features;
@@ -43,7 +45,7 @@ class SkinManager extends Component<AProps, AState> {
     super(props);
 
     this.state = {
-      skin: undefined,
+      skin: steve,
       slim: false,
       editHints: ['', ''],
       modelFeatures: {
@@ -66,6 +68,7 @@ class SkinManager extends Component<AProps, AState> {
 
   componentDidMount() {
     document.addEventListener('keydown', this.onKeyDown);
+    void this.setDefaultLayers();
   }
 
   componentWillUnmount() {
@@ -74,6 +77,25 @@ class SkinManager extends Component<AProps, AState> {
 
   componentDidUpdate = () => {
     Util.setSlim(this.state.slim);
+  };
+
+  setDefaultLayers = async (add?: boolean) => {
+    if (!add && this.layers.getLayers().length) return;
+
+    const steveImg = new ImgMod.Img('normal', 'full-only');
+    steveImg.name = 'Steve';
+    await steveImg.render(steve);
+
+    const alexImg = new ImgMod.Img('normal', 'slim-only');
+    alexImg.name = 'Alex';
+    await alexImg.render(alex);
+
+    const layer = new ImgMod.Layer([steveImg, alexImg]);
+    layer.name = 'Steve & Alex';
+
+    if (add) this.layers.addLayer(layer);
+    else this.layers = new ImgMod.Layer([layer]);
+    this.updateSkin();
   };
 
   onKeyDown = (e: KeyboardEvent) => {
@@ -128,20 +150,12 @@ class SkinManager extends Component<AProps, AState> {
     this.setState({ editHints: [name, ''] });
   };
 
-  updateSlim: (slim: boolean) => void = async slim => {
+  updateSkin: (slim?: boolean) => void = async slim => {
+    slim ??= this.state.slim;
     Util.setSlim(slim);
 
-    if (this.layers.getLayers().length) {
-      await this.layers.render();
-      this.setState({ skin: this.layers.src, slim: slim });
-    } else this.setState({ skin: undefined, slim: slim });
-  };
-
-  updateSkin: () => void = async () => {
-    if (this.layers.getLayers().length) {
-      await this.layers.render();
-      this.setState({ skin: this.layers.src });
-    } else this.setState({ skin: undefined });
+    await this.layers.render();
+    this.setState({ skin: this.layers.src, slim: slim });
   };
 
   updateLayers = () => {
@@ -223,6 +237,13 @@ class SkinManager extends Component<AProps, AState> {
     }
   };
 
+  processSkinUpload = (image: ImgMod.Img) => {
+    this.addLayer(image);
+    const slim = image.detectSlimModel();
+    if (this.state.prefMan.get().autosetImageForm) image.form = slim ? 'slim-stretch' : 'full-squish-inner';
+    this.updateSkin(image.detectSlimModel());
+  };
+
   uploadSkin: (name: string, url?: string) => void = async (name, url) => {
     url ??= await this.getSkinFromUsername(name);
 
@@ -230,9 +251,7 @@ class SkinManager extends Component<AProps, AState> {
     image.name = name;
 
     await image.render(url);
-
-    this.addLayer(image);
-    this.updateSlim(image.detectSlimModel());
+    this.processSkinUpload(image);
   };
 
   uploadDynamicSkin: () => void = async () => {
@@ -256,9 +275,7 @@ class SkinManager extends Component<AProps, AState> {
     image.observeDynamic(fileHandle);
 
     await image.render(URL.createObjectURL(file));
-
-    this.addLayer(image);
-    this.updateSlim(image.detectSlimModel());
+    this.processSkinUpload(image);
   };
 
   downloadSkin: () => void = async () => {
@@ -322,7 +339,7 @@ class SkinManager extends Component<AProps, AState> {
             <PaperDoll
               skin={this.state.skin}
               slim={this.state.slim}
-              updateSlim={this.updateSlim}
+              updateSlim={this.updateSkin}
               modelFeatures={this.state.modelFeatures}
               addEdit={this.addEdit}
             />
@@ -331,7 +348,12 @@ class SkinManager extends Component<AProps, AState> {
             <Preview skin={this.state.skin} close={() => this.updateState('preview', false)} />
           )}
           {this.state.assetCreator && <AssetCreator addLayer={this.addLayer} />}
-          {this.state.layerAdder && <LayerAdder addLayer={this.addLayer} />}
+          {this.state.layerAdder && (
+            <LayerAdder
+              addLayer={this.addLayer}
+              addDefaultLayer={() => void this.setDefaultLayers(true)}
+            />
+          )}
           {this.state.modelFeaturesWindow && (
             <ModelFeatures
               updateFeatures={features => this.updateState('modelFeatures', features)}
