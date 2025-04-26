@@ -1,4 +1,4 @@
-import React, { Component, ReactNode } from 'react';
+import React, { Component, ReactNode, RefObject } from 'react';
 import * as ImgMod from '../../tools/imgmod';
 import LayerEditor from './layereditor';
 import ColorPicker from '../basic/colorpicker';
@@ -13,14 +13,18 @@ type AProps = {
 
 type AState = {
   selectedLayer?: string;
+  insertingIndex?: number;
 };
 
 class LayerManager extends Component<AProps, AState> {
+  managerRef: RefObject<HTMLDivElement | null> = React.createRef();
+
   constructor(props: AProps) {
     super(props);
 
     this.state = {
-      selectedLayer: undefined
+      selectedLayer: undefined,
+      insertingIndex: undefined
     };
   }
 
@@ -81,8 +85,74 @@ class LayerManager extends Component<AProps, AState> {
     this.props.updateLayers();
   };
 
+  onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!e.dataTransfer.types.includes('application/mcss-layer')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (!this.managerRef.current) return;
+
+    this.managerRef.current.classList.add('dragover');
+
+    const children = this.managerRef.current.children;
+    if (children.length < 1) return;
+
+    let closestDist: undefined | number = undefined;
+    let index = 0;
+
+    const checkDist = (y: number, i: number) => {
+      const dist = Math.abs(e.clientY - y);
+      if (closestDist === undefined || dist < closestDist) {
+        closestDist = dist;
+        index = i;
+      }
+    };
+
+    let indexOffset = 0;
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.tagName === 'HR') {
+        indexOffset++;
+        continue;
+      }
+
+      const rect = child.getBoundingClientRect();
+      checkDist(rect.top, i + 1 - indexOffset);
+      checkDist(rect.bottom, i - indexOffset);
+    }
+
+    if (index !== this.state.insertingIndex) this.setState({ insertingIndex: index });
+  };
+
+  onDragLeave = () => {
+    this.managerRef.current?.classList.remove('dragover');
+  };
+
+  onDragEnd = () => {
+    this.onDragLeave();
+    if (this.state.insertingIndex !== undefined) this.setState({ insertingIndex: undefined });
+  };
+
+  onDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    if (this.state.insertingIndex === undefined) return this.onDragLeave();
+
+    const from = parseInt(e.dataTransfer.getData('application/mcss-layer'));
+
+    if (!Number.isNaN(from) && from >= 0 && from < this.props.layers.getLayers().length) {
+      const to =
+        this.state.insertingIndex > from
+          ? this.state.insertingIndex - 1
+          : this.state.insertingIndex;
+
+      if (from !== to) this.moveLayer(from, to - from);
+    }
+
+    this.onDragEnd();
+  };
+
   render() {
-    let elem: ReactNode = <div />;
+    let elem: React.JSX.Element | React.JSX.Element[] = <div />;
+
     if (this.props.layers.getLayers().length) {
       elem = this.props.layers
         .getLayers()
@@ -92,7 +162,6 @@ class LayerManager extends Component<AProps, AState> {
             asset={asset}
             index={i}
             updateLayer={this.updateLayer}
-            moveLayer={this.moveLayer}
             duplicateLayer={this.duplicateLayer}
             removeLayer={this.removeLayer}
             flattenLayer={this.flattenLayer}
@@ -101,7 +170,10 @@ class LayerManager extends Component<AProps, AState> {
             ungroup={this.ungroup}
           />
         ));
-    }
+
+      if (this.state.insertingIndex !== undefined)
+        elem.splice(this.state.insertingIndex, 0, <hr key="INSERT_SPLITTER" />);
+    } else if (this.state.insertingIndex !== undefined) elem = [<hr key="INSERT_SPLITTER" />];
 
     let selectedLayer = null;
     let selectedLayerIndex = null;
@@ -116,7 +188,17 @@ class LayerManager extends Component<AProps, AState> {
     return (
       <div>
         <div className="LayerManager">
-          <div className="container layer-manager">{elem}</div>
+          <div
+            className="container layer-manager"
+            onDragEnter={this.onDragOver}
+            onDragOver={this.onDragOver}
+            onDragLeave={this.onDragLeave}
+            onDragEnd={this.onDragEnd}
+            onDrop={this.onDrop}
+            ref={this.managerRef}
+          >
+            {elem}
+          </div>
           <button onClick={this.addLayer}>New Layer</button>
         </div>
         {selectedLayerIndex !== null && selectedLayer instanceof ImgMod.Img && (
@@ -141,7 +223,6 @@ type BProps = {
   asset: ImgMod.AbstractLayer;
   index: number;
   updateLayer: (index: number, newLayer: ImgMod.AbstractLayer) => void;
-  moveLayer: (index: number, change: number) => void;
   duplicateLayer: (index: number) => void;
   removeLayer: (index: number) => void;
   flattenLayer: (index: number) => void;
@@ -151,6 +232,7 @@ type BProps = {
 };
 
 type BState = {
+  editingName: boolean;
   fxOpen: boolean;
   opacity: number;
   hue: number;
@@ -162,10 +244,13 @@ type BState = {
 };
 
 class Layer extends Component<BProps, BState> {
+  layerRef: RefObject<HTMLDivElement | null> = React.createRef();
+
   constructor(props: BProps) {
     super(props);
 
     this.state = {
+      editingName: false,
       fxOpen: false,
       opacity: 100,
       hue: 0,
@@ -231,6 +316,17 @@ class Layer extends Component<BProps, BState> {
   };
 
   updateLayer = () => this.props.updateLayer(this.props.index, this.props.asset);
+
+  onDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('application/mcss-layer', String(this.props.index));
+
+    this.layerRef.current?.classList.add('dragging');
+  };
+
+  onDragEnd = () => {
+    this.layerRef.current?.classList.remove('dragging');
+  };
 
   render() {
     const colors: ReactNode[] = [];
@@ -395,7 +491,13 @@ class Layer extends Component<BProps, BState> {
       );
 
     return (
-      <div className="manager-layer container">
+      <div
+        className="manager-layer container"
+        draggable={true}
+        onDragStart={this.onDragStart}
+        onDragEnd={this.onDragEnd}
+        ref={this.layerRef}
+      >
         <span className="layerTitle">
           <input
             type="checkbox"
@@ -403,11 +505,24 @@ class Layer extends Component<BProps, BState> {
             checked={this.props.asset.active}
             onChange={() => this.toggleActive()}
           />
-          <input
-            type="text"
-            value={this.props.asset.name ?? ''}
-            onChange={e => this.renameLayer(e.target.value)}
-          />
+          {!this.state.editingName && (
+            <p onDoubleClick={() => this.setState({ editingName: true })}>
+              {this.props.asset.name ?? ''}
+            </p>
+          )}
+          {this.state.editingName && (
+            <input
+              type="text"
+              autoFocus={true}
+              value={this.props.asset.name ?? ''}
+              onChange={e => this.renameLayer(e.target.value)}
+              onFocus={e => e.target.select()}
+              onBlur={() => this.setState({ editingName: false })}
+              onKeyDown={e => {
+                if (e.key === 'Enter') this.setState({ editingName: false });
+              }}
+            />
+          )}
           {this.props.asset instanceof ImgMod.Img && !this.props.asset.dynamic && (
             <button onClick={() => this.props.selectForEdit(this.props.index)}>Edit</button>
           )}
@@ -421,19 +536,9 @@ class Layer extends Component<BProps, BState> {
             {this.state.fxOpen ? '/\\' : '\\/'}
           </button>
         </span>
+        <hr />
         <span>
           <LayerPreview asset={this.props.asset} />
-          <div className="manager-layer-buttons">
-            <button onClick={() => this.props.moveLayer(this.props.index, 1)} title="Move Layer Up">
-              &#9650;
-            </button>
-            <button
-              onClick={() => this.props.moveLayer(this.props.index, -1)}
-              title="Move Layer Down"
-            >
-              &#9660;
-            </button>
-          </div>
           <div className="manager-layer-buttons">
             <button
               onClick={() => this.props.duplicateLayer(this.props.index)}

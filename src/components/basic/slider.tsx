@@ -12,11 +12,26 @@ type AProps = {
   id?: string;
   subtype?: SubType;
   disabled?: boolean;
+  allowExceed?: boolean;
+  enforceStep?: boolean;
 };
 
-class Slider extends Component<AProps> {
+type AState = {
+  typing: boolean;
+};
+
+class Slider extends Component<AProps, AState> {
+  prevValues = [0, 0, 0];
+  textVal = '0';
+
   constructor(props: AProps) {
     super(props);
+
+    this.state = {
+      typing: false
+    };
+
+    this.prevValues = [props.value, props.value, props.value];
   }
 
   buildLabel = () => {
@@ -38,6 +53,26 @@ class Slider extends Component<AProps> {
     }
   };
 
+  setFromText = () => {
+    this.setState({ typing: false });
+
+    if (!this.props.callback) return;
+
+    let value = Number(this.textVal);
+
+    if (this.props.enforceStep) {
+      const step = this.props.step ?? 1;
+      value += step / 2;
+      value -= value % step;
+    }
+
+    if (!this.props.allowExceed)
+      value = Util.clamp(value, this.props.min ?? 0, this.props.max ?? 100);
+
+    this.prevValues = [value, value, value];
+    this.props.callback(value);
+  };
+
   render() {
     const min = this.props.min ?? 0;
     const max = this.props.max ?? 100;
@@ -45,7 +80,19 @@ class Slider extends Component<AProps> {
     const shadow = Math.min(stop + 6, 100);
 
     return (
-      <div className="stack">
+      <div
+        className="stack"
+        onClick={() => {
+          this.prevValues.shift();
+          this.prevValues.push(this.props.value);
+        }}
+        onDoubleClick={() => {
+          if (this.props.callback) this.props.callback(this.prevValues[0]);
+
+          this.textVal = String(this.prevValues[0]);
+          this.setState({ typing: true });
+        }}
+      >
         <input
           type="range"
           className="slider"
@@ -59,14 +106,31 @@ class Slider extends Component<AProps> {
             this.props.callback && this.props.callback(Number((e.target as HTMLInputElement).value))
           }
           style={{
-            background: `linear-gradient(to right,
-              var(--${this.props.disabled ? 'no-accent' : 'accent'}) ${stop}%,
-              color-mix(in srgb, var(--input) 100%, var(--dark-shadow) 100%) ${stop}%,
-              var(--input) ${shadow}%)`
+            background:
+              'linear-gradient(to right,' +
+              `var(--${this.props.disabled ? 'no-accent' : 'accent'}) ${stop}%,` +
+              `color-mix(in srgb, var(--input) 100%, var(--dark-shadow) 100%) ${stop}%,` +
+              `var(--input) ${shadow}%)`
           }}
         />
         <div className="slider-label center">
-          <p>{this.buildLabel()}</p>
+          {!this.state.typing && <p>{this.buildLabel()}</p>}
+          {this.state.typing && (
+            <input
+              type="number"
+              autoFocus={true}
+              defaultValue={this.textVal}
+              min={this.props.min}
+              max={this.props.max}
+              step={this.props.step}
+              onChange={e => {
+                this.textVal = e.target.value;
+              }}
+              onFocus={e => e.target.select()}
+              onBlur={() => this.setFromText()}
+              onKeyDown={e => e.key === 'Enter' && this.setFromText()}
+            />
+          )}
         </div>
       </div>
     );

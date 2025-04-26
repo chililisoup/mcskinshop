@@ -483,6 +483,30 @@ hr {
   box-shadow: inset var(--box-shadow);
   padding: 0;
   margin-top: auto;
+  position: relative;
+}
+
+.layer-manager > hr {
+  position: relative;
+  height: 0;
+  outline: none;
+  z-index: 2;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.layer-manager.dragover > hr::after {
+  content: '';
+  position: absolute;
+  display: block;
+  height: 4px;
+  width: 100%;
+  /* background: linear-gradient(transparent, var(--accent), transparent); */
+  background-color: var(--accent);
+  box-shadow: 0 0 4px 2px var(--accent);
+  z-index: 2;
 }
 
 .manager-layer {
@@ -490,6 +514,17 @@ hr {
   padding: 3px;
   padding-top: 0;
   margin-top: 2px;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
+.manager-layer:has(span.layerTitle:hover) {
+  background-color: var(--container-alt);
+}
+
+.manager-layer.dragging {
+  opacity: 0.5;
 }
 
 .manager-layer-buttons {
@@ -516,16 +551,30 @@ hr {
   flex-wrap: nowrap;
 }
 
+.manager-layer > span > * {
+  pointer-events: initial;
+}
+
+.manager-layer > hr {
+  margin-bottom: 4px;
+}
+
 span.layerTitle {
   height: auto;
   flex-wrap: nowrap;
+  margin-bottom: 4px;
+  cursor: grab;
+  border-radius: calc(var(--curvature) * 1);
+  pointer-events: initial;
 }
 
-span.layerTitle input {
+span.layerTitle input,
+span.layerTitle p {
   margin-right: 6px;
 }
 
-span.layerTitle input[type='text'] {
+span.layerTitle input[type='text'],
+span.layerTitle p {
   min-width: 0;
   flex-grow: 1;
 }
@@ -825,8 +874,9 @@ h3 {
   pointer-events: none;
 }
 
-.slider-label > p {
+.slider-label > * {
   width: 100%;
+  background-color: transparent;
 }
 
 .dropdown {
