@@ -605,6 +605,19 @@ export class Layer extends AbstractLayer {
     this.colors.push(...colors);
   };
 
+  insertLayer = (index: number, layer: AbstractLayer, color?: Color) => {
+    this.sublayers.splice(index, 0, layer);
+    this.colors.splice(index, 0, color);
+  };
+
+  insertLayers = (index: number, layers: AbstractLayer[], colors?: Color[]) => {
+    if (!colors || colors.length !== layers.length)
+      colors = new Array(layers.length).fill(undefined);
+
+    this.sublayers.splice(index, 0, ...layers);
+    this.colors.splice(index, 0, ...colors);
+  };
+
   replaceLayer = (index: number, layers: AbstractLayer | AbstractLayer[]) => {
     if (Array.isArray(layers)) {
       this.sublayers.splice(index, 1, ...layers);

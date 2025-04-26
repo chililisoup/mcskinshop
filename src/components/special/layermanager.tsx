@@ -1,5 +1,6 @@
 import React, { Component, ReactNode, RefObject } from 'react';
 import * as ImgMod from '../../tools/imgmod';
+import * as PrefMan from '../../tools/prefman';
 import LayerEditor from './layereditor';
 import ColorPicker from '../basic/colorpicker';
 import DraggableWindow from '../basic/draggablewindow';
@@ -7,8 +8,9 @@ import PropertiesList, { Property } from '../basic/propertieslist';
 
 type AProps = {
   layers: ImgMod.Layer;
-  updateLayers: () => void;
+  updateLayers: (slim?: boolean) => void;
   slim: boolean;
+  manager: PrefMan.Manager;
 };
 
 type AState = {
@@ -86,9 +88,12 @@ class LayerManager extends Component<AProps, AState> {
   };
 
   onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    if (!e.dataTransfer.types.includes('application/mcss-layer')) return;
+    if (e.dataTransfer.types.includes('application/mcss-layer')) e.dataTransfer.dropEffect = 'move';
+    else if (e.dataTransfer.types.includes('Files')) e.dataTransfer.dropEffect = 'copy';
+    else return;
+
+    e.stopPropagation();
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
 
     if (!this.managerRef.current) return;
 
@@ -133,21 +138,75 @@ class LayerManager extends Component<AProps, AState> {
     if (this.state.insertingIndex !== undefined) this.setState({ insertingIndex: undefined });
   };
 
-  onDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    if (this.state.insertingIndex === undefined) return this.onDragLeave();
+  onDropLayer = (from: number, insertingIndex: number) => {
+    if (Number.isNaN(from) || from < 0 || from >= this.props.layers.getLayers().length) return;
+    const to = insertingIndex > from ? insertingIndex - 1 : insertingIndex;
+    if (from !== to) this.moveLayer(from, to - from);
+  };
 
-    const from = parseInt(e.dataTransfer.getData('application/mcss-layer'));
+  onDropFiles: (files: FileList, insertingIndex: number) => void = async (
+    files,
+    insertingIndex
+  ) => {
+    const layers: ImgMod.AbstractLayer[] = [];
 
-    if (!Number.isNaN(from) && from >= 0 && from < this.props.layers.getLayers().length) {
-      const to =
-        this.state.insertingIndex > from
-          ? this.state.insertingIndex - 1
-          : this.state.insertingIndex;
+    // should probably send this up to skin manager cause
+    // it's mostly the same as for single image uploads
+    for (const file of files) {
+      if (file.type.split('/')[0] !== 'image') continue;
 
-      if (from !== to) this.moveLayer(from, to - from);
+      const image = new ImgMod.Img();
+      image.name = file.name.replace(/\.[^/.]+$/, '');
+
+      await image.render(URL.createObjectURL(file));
+
+      if (files.length > 1) {
+        layers.push(image);
+        continue;
+      }
+
+      const slim = image.detectSlimModel();
+      if (this.props.manager.get().autosetImageForm)
+        image.form = slim ? 'slim-stretch' : 'full-squish-inner';
+
+      this.props.layers.insertLayer(insertingIndex, image);
+      this.props.updateLayers(slim);
+
+      return;
     }
 
+    if (layers.length === 0) return;
+
+    const layer = new ImgMod.Layer(layers);
+    layer.name = 'Group import';
+
+    await layer.render();
+    const image = new ImgMod.Img();
+    await image.render(layer.src);
+    const slim = image.detectSlimModel();
+    // need to set up image forms for layers
+    // if (this.props.manager.get().autosetImageForm)
+    //   image.form = slim ? 'slim-stretch' : 'full-squish-inner';
+
+    this.props.layers.insertLayer(insertingIndex, layer);
+    this.props.updateLayers(slim);
+  };
+
+  onDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    if (this.state.insertingIndex === undefined) return this.onDragLeave();
     this.onDragEnd();
+
+    if (e.dataTransfer.types.includes('application/mcss-layer'))
+      this.onDropLayer(
+        parseInt(e.dataTransfer.getData('application/mcss-layer')),
+        this.state.insertingIndex
+      );
+    else if (e.dataTransfer.types.includes('Files'))
+      this.onDropFiles(e.dataTransfer.files, this.state.insertingIndex);
+    else return;
+
+    e.stopPropagation();
+    e.preventDefault();
   };
 
   render() {

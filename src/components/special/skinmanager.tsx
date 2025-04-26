@@ -158,10 +158,6 @@ class SkinManager extends Component<AProps, AState> {
     this.setState({ skin: this.layers.src, slim: slim });
   };
 
-  updateLayers = () => {
-    this.updateSkin();
-  };
-
   addLayer = (layer: ImgMod.AbstractLayer) => {
     this.layers.addLayer(layer);
     this.updateSkin();
@@ -240,8 +236,9 @@ class SkinManager extends Component<AProps, AState> {
   processSkinUpload = (image: ImgMod.Img) => {
     this.addLayer(image);
     const slim = image.detectSlimModel();
-    if (this.state.prefMan.get().autosetImageForm) image.form = slim ? 'slim-stretch' : 'full-squish-inner';
-    this.updateSkin(image.detectSlimModel());
+    if (this.state.prefMan.get().autosetImageForm)
+      image.form = slim ? 'slim-stretch' : 'full-squish-inner';
+    this.updateSkin(slim);
   };
 
   uploadSkin: (name: string, url?: string) => void = async (name, url) => {
@@ -331,8 +328,9 @@ class SkinManager extends Component<AProps, AState> {
           {this.state.layerManager && (
             <LayerManager
               layers={this.layers}
-              updateLayers={this.updateLayers}
+              updateLayers={this.updateSkin}
               slim={this.state.slim}
+              manager={this.state.prefMan}
             />
           )}
           {this.state.paperDoll && (
