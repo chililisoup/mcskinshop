@@ -569,6 +569,10 @@ hr {
   margin-bottom: 4px;
 }
 
+.manager-layer .properties-list {
+  pointer-events: initial;
+}
+
 span.layerTitle {
   height: auto;
   flex-wrap: nowrap;
