@@ -719,6 +719,18 @@ export class Layer extends AbstractLayer {
     return true;
   };
 
+  popLayer: (path: string[]) => AbstractLayer | undefined = path => {
+    const index = parseInt(path[0]);
+
+    if (Number.isNaN(index) || index < 0 || index >= this.sublayers.length) return;
+
+    const layer = this.sublayers[index];
+    if (path.length === 1) {
+      this.removeLayer(index);
+      return layer;
+    } else if (layer instanceof Layer) return layer.popLayer(path.slice(1));
+  };
+
   getColors = () => this.colors as readonly Color[];
 
   setColor = (index: number, color: Color) => {

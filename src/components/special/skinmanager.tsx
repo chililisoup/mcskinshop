@@ -285,7 +285,6 @@ class SkinManager extends Component<AProps, AState> {
 
   render() {
     return (
-      //Make it so layer manager just sends updated layers instead of layer update commands
       <div className="appRoot">
         <MenuBar
           uploadSkin={this.uploadSkin}

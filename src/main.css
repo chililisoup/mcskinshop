@@ -234,16 +234,6 @@ label:has(+ input:checked) > img {
   width: 500px;
 }
 
-.Preview span {
-  flex-flow: nowrap;
-  gap: 6px;
-}
-
-.Preview span button {
-  flex: 1;
-  margin: 0 0 6px;
-}
-
 .Preview img {
   margin-bottom: -4px;
   border-radius: calc(var(--curvature) * 0.5);
@@ -474,7 +464,15 @@ hr {
   flex-direction: column;
 }
 
-.layer-manager {
+.LayerManager > span {
+  margin-top: 7px;
+}
+
+.LayerManager > span > * {
+  margin: 0;
+}
+
+.layer-list {
   flex: 1;
   flex-direction: column-reverse;
   width: 325px;
@@ -482,11 +480,13 @@ hr {
   background: var(--empty-area);
   box-shadow: inset var(--box-shadow);
   padding: 0;
-  margin-top: auto;
+  margin: 0;
   position: relative;
+  /* justify-content: start; */
 }
 
-.layer-manager > hr {
+.layer-list > hr {
+  padding: 0;
   position: relative;
   height: 0;
   outline: none;
@@ -497,13 +497,20 @@ hr {
   justify-content: center;
 }
 
-.layer-manager.dragover > hr::after {
+.dragover {
+  pointer-events: all;
+}
+
+.dragover * {
+  pointer-events: none;
+}
+
+.layer-list.dragover > hr::after {
   content: '';
   position: absolute;
   display: block;
   height: 4px;
   width: 100%;
-  /* background: linear-gradient(transparent, var(--accent), transparent); */
   background-color: var(--accent);
   box-shadow: 0 0 4px 2px var(--accent);
   z-index: 2;
@@ -520,7 +527,7 @@ hr {
   z-index: 1;
 }
 
-.manager-layer:has(span.layerTitle:hover)::after {
+.manager-layer:has(span.layerTitle:hover):not(:has(.sublayers span.layerTitle:hover))::after {
   content: '';
   position: absolute;
   display: block;
@@ -571,6 +578,23 @@ hr {
 
 .manager-layer .properties-list {
   pointer-events: initial;
+}
+
+.manager-layer > .sublayers {
+  margin: 8px 0 8px 16px;
+}
+
+.sublayers .layer-list {
+  width: 100%;
+  outline: none;
+  overflow: visible;
+  background: none;
+}
+
+.sublayers .layer-list:not(:has(.manager-layer)) {
+  background: var(--empty-area);
+  min-height: 32px;
+  pointer-events: all;
 }
 
 span.layerTitle {
@@ -655,7 +679,7 @@ span.layerTitle button {
   outline: none;
 }
 
-.asset-layer-manager {
+.asset-layer-list {
   flex-direction: column-reverse;
   background: var(--empty-area);
 }
@@ -1100,4 +1124,14 @@ label:has(+ input:disabled) {
 .spread {
   display: flex;
   justify-content: space-evenly;
+}
+
+.stretch {
+  flex-flow: nowrap;
+  gap: 6px;
+}
+
+.stretch > * {
+  flex: 1;
+  margin: 0 0 6px;
 }

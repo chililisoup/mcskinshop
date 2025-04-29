@@ -26,7 +26,7 @@ class Preview extends Component<AProps, AState> {
     return (
       <DraggableWindow title="Preview" anchor={{ vw: 1, vh: 1 }} close={this.props.close}>
         <div className="Preview">
-          <span>
+          <span className="stretch">
             <button onClick={() => this.updateSize(Math.max(this.state.size - 1, 1))}>-</button>
             <button onClick={() => this.updateSize(Math.min(this.state.size + 1, 16))}>+</button>
           </span>

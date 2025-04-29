@@ -9,7 +9,7 @@ import * as Util from '../../tools/util';
 type AProps = {
   layer: ImgMod.Img;
   slim: boolean;
-  updateLayer: (layer: ImgMod.AbstractLayer) => void;
+  updateLayer: () => void;
 };
 
 type AState = {
@@ -105,7 +105,7 @@ class LayerEditor extends Component<AProps, AState> {
 
     await this.layer.render();
 
-    this.props.updateLayer(this.layer);
+    this.props.updateLayer();
   };
 
   drawPixel = () => {

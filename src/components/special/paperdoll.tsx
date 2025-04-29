@@ -2030,7 +2030,7 @@ class PaperDollSettings extends Component<BProps, BState> {
                   ]}
                 />
               </Dropdown>
-              <Dropdown title="Model">
+              <Dropdown title="Model Visibility">
                 <table className="model-toggles">
                   <tbody>
                     <tr>
