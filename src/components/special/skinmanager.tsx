@@ -12,6 +12,8 @@ import Preview from './preview';
 import ModelFeatures, { Features } from './modelfeatures';
 import Preferences from './preferences';
 import * as PrefMan from '../../tools/prefman';
+import DraggableWindow from '../basic/draggablewindow';
+import LayerEditor from './layereditor';
 
 export type UndoCallback = () => RedoCallback;
 export type RedoCallback = () => UndoCallback;
@@ -27,6 +29,7 @@ type AState = {
   editHints: [string, string];
   modelFeatures: Features;
   layerManager: boolean;
+  layerEditor: boolean;
   paperDoll: boolean;
   preview: boolean;
   assetCreator: boolean;
@@ -34,6 +37,7 @@ type AState = {
   modelFeaturesWindow: boolean;
   preferences: boolean;
   prefMan: PrefMan.Manager;
+  selectedLayer?: ImgMod.AbstractLayer;
 };
 
 class SkinManager extends Component<AProps, AState> {
@@ -56,13 +60,15 @@ class SkinManager extends Component<AProps, AState> {
         boots: false
       },
       layerManager: true,
+      layerEditor: true,
       paperDoll: true,
       preview: true,
       assetCreator: false,
       layerAdder: false,
       modelFeaturesWindow: false,
       preferences: false,
-      prefMan: new PrefMan.Manager()
+      prefMan: new PrefMan.Manager(),
+      selectedLayer: undefined
     };
   }
 
@@ -95,6 +101,7 @@ class SkinManager extends Component<AProps, AState> {
 
     if (add) this.layers.addLayer(layer);
     else this.layers = new ImgMod.Layer([layer]);
+
     this.updateSkin();
   };
 
@@ -283,6 +290,10 @@ class SkinManager extends Component<AProps, AState> {
     this.setState({ [setting]: value } as Pick<AState, KKey>);
   };
 
+  selectForEdit = (layer: ImgMod.AbstractLayer) => {
+    this.setState({ selectedLayer: layer });
+  };
+
   render() {
     return (
       <div className="appRoot">
@@ -299,6 +310,11 @@ class SkinManager extends Component<AProps, AState> {
               'Layer Manager',
               this.state.layerManager,
               () => this.updateState('layerManager', !this.state.layerManager)
+            ],
+            [
+              'Layer Editor',
+              this.state.layerEditor,
+              () => this.updateState('layerEditor', !this.state.layerEditor)
             ],
             [
               'Paper Doll',
@@ -327,10 +343,26 @@ class SkinManager extends Component<AProps, AState> {
           {this.state.layerManager && (
             <LayerManager
               layers={this.layers}
-              updateLayers={this.updateSkin}
+              updateSkin={this.updateSkin}
               slim={this.state.slim}
               manager={this.state.prefMan}
+              selectForEdit={this.selectForEdit}
+              selectedLayer={this.state.selectedLayer}
             />
+          )}
+          {this.state.layerEditor && (
+            <DraggableWindow
+              title={`Layer Editor - ${this.state.selectedLayer?.name ?? 'unselected'}`}
+              startPos={{ x: 350, y: 0 }}
+              close={() => this.setState({ layerEditor: false })}
+            >
+              <LayerEditor
+                layer={this.state.selectedLayer}
+                skin={this.layers.image}
+                updateLayer={this.updateSkin}
+                slim={this.state.slim}
+              />
+            </DraggableWindow>
           )}
           {this.state.paperDoll && (
             <PaperDoll

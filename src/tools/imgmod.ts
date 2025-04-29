@@ -162,9 +162,7 @@ export const applyHslaOffset = (from: Hsla, offset: Hsla) => {
 export const colorAsHex = (color: string) => {
   if (color.startsWith('#')) return color;
 
-  const canvas = document.createElement('canvas');
-  canvas.width = 1;
-  canvas.height = 1;
+  const canvas = new OffscreenCanvas(1, 1);
   const ctx = canvas.getContext('2d')!;
   ctx.fillStyle = color;
   ctx.fillRect(0, 0, 1, 1);
@@ -235,14 +233,10 @@ export class Img extends AbstractLayer {
   loadImage = async (image: ImageBitmapSource) => {
     const result = await createImageBitmap(image);
 
-    const canvas = document.createElement('canvas');
-    canvas.width = this.size[0];
-    canvas.height = this.size[1];
+    const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
     const ctx = canvas.getContext('2d')!;
 
-    const copyCanvas = document.createElement('canvas');
-    copyCanvas.width = this.size[0];
-    copyCanvas.height = this.size[1];
+    const copyCanvas = new OffscreenCanvas(this.size[0], this.size[1]);
     const copyCtx = copyCanvas.getContext('2d')!;
     copyCtx.filter = this.filter;
 
@@ -261,7 +255,8 @@ export class Img extends AbstractLayer {
       ctx.drawImage(result, 0, 20, 12, 12, 36, 52, 12, 12); // Leg front/sides
       ctx.drawImage(result, 12, 20, 4, 12, 32, 52, 4, 12); // Leg back
 
-      this.image = await createImageBitmap(canvas);
+      this.rawSrc = URL.createObjectURL(await canvas.convertToBlob());
+      this.image = canvas.transferToImageBitmap();
     } else if (
       result.width === 16 &&
       this.size[0] === 64 &&
@@ -275,12 +270,15 @@ export class Img extends AbstractLayer {
         ctx.fillRect(0, 0, 64, 64);
       }
 
-      this.image = await createImageBitmap(canvas);
-    } else this.image = result;
+      this.rawSrc = URL.createObjectURL(await canvas.convertToBlob());
+      this.image = canvas.transferToImageBitmap();
+    } else {
+      this.rawSrc = URL.createObjectURL(await canvas.convertToBlob());
+      this.image = result;
+    }
 
-    this.rawSrc = canvas.toDataURL();
-    copyCtx.drawImage(canvas, 0, 0);
-    this.src = copyCanvas.toDataURL();
+    copyCtx.drawImage(this.image, 0, 0);
+    this.src = URL.createObjectURL(await canvas.convertToBlob());
   };
 
   render = (url?: string) => {
@@ -315,9 +313,7 @@ export class Img extends AbstractLayer {
   color = async (color: string) => {
     if (!this.image) return Promise.reject(new Error('No image to color'));
 
-    const canvas = document.createElement('canvas');
-    canvas.width = this.size[0];
-    canvas.height = this.size[1];
+    const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
     const ctx = canvas.getContext('2d')!;
 
     ctx.drawImage(this.image, 0, 0);
@@ -325,10 +321,8 @@ export class Img extends AbstractLayer {
     ctx.fillStyle = color;
     ctx.fillRect(0, 0, this.size[0], this.size[1]);
 
-    await createImageBitmap(canvas).then(result => {
-      this.src = canvas.toDataURL();
-      this.image = result;
-    });
+    this.src = URL.createObjectURL(await canvas.convertToBlob());
+    this.image = canvas.transferToImageBitmap();
 
     return Promise.resolve();
   };
@@ -336,9 +330,7 @@ export class Img extends AbstractLayer {
   convertGrayscaleMask = async () => {
     if (!this.image) return Promise.reject(new Error('No mask to convert'));
 
-    const canvas = document.createElement('canvas');
-    canvas.width = this.size[0];
-    canvas.height = this.size[1];
+    const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
     const ctx = canvas.getContext('2d')!;
 
     ctx.drawImage(this.image, 0, 0);
@@ -354,19 +346,15 @@ export class Img extends AbstractLayer {
 
     ctx.putImageData(imageData, 0, 0);
 
-    await createImageBitmap(canvas).then(result => {
-      this.src = canvas.toDataURL();
-      this.rawSrc = this.src;
-      this.image = result;
-    });
+    this.src = URL.createObjectURL(await canvas.convertToBlob());
+    this.rawSrc = this.src;
+    this.image = canvas.transferToImageBitmap();
   };
 
   gradientMask = async (peak: number, length: number) => {
     if (!this.image) return Promise.reject(new Error('No image to mask'));
 
-    const canvas = document.createElement('canvas');
-    canvas.width = this.size[0];
-    canvas.height = this.size[1];
+    const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
     const ctx = canvas.getContext('2d')!;
 
     ctx.drawImage(this.image, 0, 0);
@@ -381,20 +369,16 @@ export class Img extends AbstractLayer {
 
     ctx.putImageData(imageData, 0, 0);
 
-    await createImageBitmap(canvas).then(result => {
-      this.src = canvas.toDataURL();
-      this.rawSrc = this.src;
-      this.image = result;
-    });
+    this.src = URL.createObjectURL(await canvas.convertToBlob());
+    this.rawSrc = this.src;
+    this.image = canvas.transferToImageBitmap();
   };
 
   applyForm = async () => {
     if (!this.image) return Promise.reject(new Error('No image to form'));
     if (this.form === 'universal') return this.image;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = this.size[0];
-    canvas.height = this.size[1];
+    const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
 
     if (this.form === 'full-only' || this.form === 'slim-only') {
       if (
@@ -403,6 +387,8 @@ export class Img extends AbstractLayer {
       ) {
         const ctx = canvas.getContext('2d')!;
         ctx.drawImage(this.image, 0, 0);
+
+        return canvas.transferToImageBitmap();
       }
 
       return await createImageBitmap(canvas);
@@ -462,16 +448,14 @@ export class Img extends AbstractLayer {
       }
     }
 
-    return await createImageBitmap(canvas);
+    return canvas.transferToImageBitmap();
   };
 
   getImageData = (image?: ImageBitmap) => {
     image = image ?? this.image;
     if (!image) return;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = this.size[0];
-    canvas.height = this.size[1];
+    const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
     const ctx = canvas.getContext('2d')!;
 
     ctx.drawImage(image, 0, 0);
@@ -485,19 +469,18 @@ export class Img extends AbstractLayer {
   detectSlimModel = () => {
     if (!this.image) return false;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = this.size[0];
-    canvas.height = this.size[1];
+    const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
     const ctx = canvas.getContext('2d')!;
 
     ctx.drawImage(this.image, 0, 0);
     return !ctx.getImageData(46, 63, 1, 1).data[3];
   };
 
-  flattenWithRespect = (ctx: CanvasRenderingContext2D, reverse?: boolean) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = this.size[0];
-    canvas.height = this.size[1];
+  flattenWithRespect = (
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    reverse?: boolean
+  ) => {
+    const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
     const context = canvas.getContext('2d')!;
 
     context.drawImage(ctx.canvas, 0, 0);
@@ -808,17 +791,15 @@ export class Layer extends AbstractLayer {
     return this.filter;
   };
 
-  render = async (ctx?: CanvasRenderingContext2D) => {
+  render = async (ctx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D) => {
     const dom = !ctx;
 
     if (!ctx) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 64;
-      canvas.height = 64;
+      const canvas = new OffscreenCanvas(64, 64);
       ctx = canvas.getContext('2d')!;
     }
 
-    let loCtx: CanvasRenderingContext2D | undefined = undefined;
+    let loCtx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | undefined = undefined;
     let loIndex: number | undefined = undefined;
 
     for (let i = 0; i < this.sublayers.length; i++) {
@@ -874,9 +855,7 @@ export class Layer extends AbstractLayer {
         const subData = subImageData.data;
 
         if (!loCtx) {
-          const loCanvas = document.createElement('canvas');
-          loCanvas.width = 64;
-          loCanvas.height = 64;
+          const loCanvas = new OffscreenCanvas(64, 64);
           loCtx = loCanvas.getContext('2d')!;
 
           const color: Color = this.colors[i];
@@ -915,11 +894,15 @@ export class Layer extends AbstractLayer {
 
     if (loCtx) ctx.drawImage(loCtx.canvas, 0, 0);
 
-    if (dom)
-      return createImageBitmap(ctx.canvas).then(result => {
+    if (dom) {
+      if (ctx.canvas instanceof OffscreenCanvas) {
+        this.src = URL.createObjectURL(await ctx.canvas.convertToBlob());
+        this.image = ctx.canvas.transferToImageBitmap();
+      } else {
         this.src = ctx.canvas.toDataURL();
-        this.image = result;
-      });
+        this.image = await createImageBitmap(ctx.canvas);
+      }
+    }
   };
 
   copy = () => {

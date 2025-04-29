@@ -13,6 +13,7 @@
   --input-text: var(--highlight);
 
   --curvature: 8px;
+  --half-curvature: calc(var(--curvature) * 0.5);
 
   --accent: rgb(79, 195, 255);
   --no-accent: rgb(255, 255, 255, 0.25);
@@ -64,7 +65,7 @@ label:has(> img) {
   background-color: var(--input);
   box-shadow: var(--box-shadow);
   color: var(--input-text);
-  border-radius: calc(var(--curvature) * 0.5);
+  border-radius: var(--half-curvature);
   margin: 3px;
   font-family: var(--main-font);
 }
@@ -89,7 +90,7 @@ input[type='checkbox']:checked::before {
   width: 16px;
   height: 16px;
   background-color: var(--accent);
-  border-radius: calc(var(--curvature) * 0.5);
+  border-radius: var(--half-curvature);
 }
 
 input[type='checkbox']:checked::after {
@@ -99,7 +100,7 @@ input[type='checkbox']:checked::after {
   width: 14px;
   height: 14px;
   background-color: var(--input-text);
-  border-radius: calc(var(--curvature) * 0.5);
+  border-radius: var(--half-curvature);
   clip-path: polygon(11% 43%, 45% 73%, 85% 2%, 100% 13%, 49% 97%, 0 58%);
 }
 
@@ -221,8 +222,8 @@ label:has(+ input:checked) > img {
   display: flex;
   flex-direction: column;
   outline: 2px solid var(--outline);
-  border-bottom-left-radius: calc(var(--curvature) * 0.5);
-  border-bottom-right-radius: calc(var(--curvature) * 0.5);
+  border-bottom-left-radius: var(--half-curvature);
+  border-bottom-right-radius: var(--half-curvature);
 }
 
 .MenuBar button {
@@ -236,7 +237,7 @@ label:has(+ input:checked) > img {
 
 .Preview img {
   margin-bottom: -4px;
-  border-radius: calc(var(--curvature) * 0.5);
+  border-radius: var(--half-curvature);
 }
 
 img {
@@ -456,16 +457,14 @@ hr {
   height: 512px;
   width: 512px;
   image-rendering: pixelated;
+  cursor: crosshair;
 }
 
 .LayerManager {
   height: 100%;
   display: flex;
   flex-direction: column;
-}
-
-.LayerManager > span {
-  margin-top: 7px;
+  gap: 8px;
 }
 
 .LayerManager > span > * {
@@ -522,12 +521,21 @@ hr {
   padding: 3px;
   padding-top: 0;
   margin-top: 2px;
-  pointer-events: none;
+  pointer-events: all;
   user-select: none;
   z-index: 1;
+  cursor: grab;
 }
 
-.manager-layer:has(span.layerTitle:hover):not(:has(.sublayers span.layerTitle:hover))::after {
+.manager-layer > * {
+  pointer-events: none;
+}
+
+.manager-layer.selected {
+  background-color: var(--container-alt);
+}
+
+.manager-layer:hover:not(:has(.manager-layer:hover))::after {
   content: '';
   position: absolute;
   display: block;
@@ -538,6 +546,7 @@ hr {
   border-radius: inherit;
   outline: 2px solid var(--highlight);
   outline-offset: -2px;
+  pointer-events: none;
 }
 
 .manager-layer.dragging {
@@ -572,10 +581,14 @@ hr {
   pointer-events: initial;
 }
 
+.manager-layer > span > img {
+  pointer-events: none;
+  border-radius: var(--half-curvature);
+}
+
 .manager-layer > hr {
   margin-bottom: 4px;
 }
-
 .manager-layer .properties-list {
   pointer-events: initial;
 }
@@ -601,14 +614,14 @@ span.layerTitle {
   height: auto;
   flex-wrap: nowrap;
   margin-bottom: 4px;
-  cursor: grab;
+  pointer-events: none;
   border-radius: calc(var(--curvature) * 1);
-  pointer-events: initial;
 }
 
 span.layerTitle input,
 span.layerTitle p {
   margin-right: 6px;
+  cursor: text;
 }
 
 span.layerTitle input[type='text'],
@@ -920,7 +933,7 @@ h3 {
 }
 
 .dropdown {
-  border-radius: calc(var(--curvature) * 0.5);
+  border-radius: var(--half-curvature);
 }
 
 .dropdown > div > hr:first-of-type {
@@ -1009,7 +1022,7 @@ h3 {
   cursor: pointer;
   background: none;
   background-color: var(--light-shadow);
-  border-radius: calc(var(--curvature) * 0.5);
+  border-radius: var(--half-curvature);
 }
 
 .grid-select > .highlighted::before {
@@ -1134,4 +1147,8 @@ label:has(+ input:disabled) {
 .stretch > * {
   flex: 1;
   margin: 0 0 6px;
+}
+
+.not-allowed {
+  cursor: not-allowed;
 }

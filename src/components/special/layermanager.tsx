@@ -1,23 +1,19 @@
 import React, { Component, ReactNode, RefObject } from 'react';
 import * as ImgMod from '../../tools/imgmod';
 import * as PrefMan from '../../tools/prefman';
-import LayerEditor from './layereditor';
 import ColorPicker from '../basic/colorpicker';
-import DraggableWindow from '../basic/draggablewindow';
 import PropertiesList, { Property } from '../basic/propertieslist';
 
 type AProps = {
   layers: ImgMod.Layer;
-  updateLayers: (slim?: boolean) => void;
+  updateSkin: (slim?: boolean) => void;
   slim: boolean;
   manager: PrefMan.Manager;
+  selectForEdit: (layer: ImgMod.AbstractLayer) => void;
+  selectedLayer?: ImgMod.AbstractLayer;
 };
 
-type AState = {
-  selectedLayer?: ImgMod.Img;
-};
-
-class LayerManager extends Component<AProps, AState> {
+class LayerManager extends Component<AProps> {
   constructor(props: AProps) {
     super(props);
 
@@ -26,17 +22,13 @@ class LayerManager extends Component<AProps, AState> {
     };
   }
 
-  selectForEdit = (layer: ImgMod.Img) => {
-    this.setState({ selectedLayer: layer });
-  };
-
   updateLayer = (index: number, newLayer: ImgMod.AbstractLayer) => {
     const oldLayer = this.props.layers.getLayers()[index];
     this.props.layers.replaceLayer(index, newLayer);
 
     if (oldLayer !== newLayer) oldLayer.cleanup();
 
-    this.props.updateLayers();
+    this.props.updateSkin();
   };
 
   addLayer = () => {
@@ -44,7 +36,7 @@ class LayerManager extends Component<AProps, AState> {
     layer.name = 'New Layer';
 
     this.props.layers.addLayer(layer);
-    this.props.updateLayers();
+    this.props.updateSkin();
   };
 
   addGroup = () => {
@@ -52,7 +44,7 @@ class LayerManager extends Component<AProps, AState> {
     layer.name = 'New Group';
 
     this.props.layers.addLayer(layer);
-    this.props.updateLayers();
+    this.props.updateSkin();
   };
 
   render() {
@@ -63,27 +55,15 @@ class LayerManager extends Component<AProps, AState> {
             layers={this.props.layers}
             root={this.props.layers}
             manager={this.props.manager}
-            updateLayers={this.props.updateLayers}
-            selectForEdit={this.selectForEdit}
+            updateSkin={this.props.updateSkin}
+            selectForEdit={this.props.selectForEdit}
+            selectedLayer={this.props.selectedLayer}
           />
           <span className="stretch">
             <button onClick={this.addLayer}>New Layer</button>
             <button onClick={this.addGroup}>New Group</button>
           </span>
         </div>
-        {this.state.selectedLayer && (
-          <DraggableWindow
-            title={this.state.selectedLayer.name ?? ''}
-            startPos={{ x: 350, y: 0 }}
-            close={() => this.setState({ selectedLayer: undefined })}
-          >
-            <LayerEditor
-              layer={this.state.selectedLayer}
-              updateLayer={this.props.updateLayers}
-              slim={this.props.slim}
-            />
-          </DraggableWindow>
-        )}
       </div>
     );
   }
@@ -93,8 +73,9 @@ type BProps = {
   layers: ImgMod.Layer;
   root: ImgMod.Layer;
   manager: PrefMan.Manager;
-  updateLayers: () => void;
-  selectForEdit: (layer: ImgMod.Img) => void;
+  updateSkin: () => void;
+  selectForEdit: (layer: ImgMod.AbstractLayer) => void;
+  selectedLayer?: ImgMod.AbstractLayer;
   path?: string;
 };
 
@@ -119,27 +100,27 @@ class LayerList extends Component<BProps, BState> {
 
     if (oldLayer !== newLayer) oldLayer.cleanup();
 
-    this.props.updateLayers();
+    this.props.updateSkin();
   };
 
   moveLayer = (index: number, change: number) => {
     this.props.layers.moveLayer(index, change);
-    this.props.updateLayers();
+    this.props.updateSkin();
   };
 
   duplicateLayer = (index: number) => {
     this.props.layers.duplicateLayer(index);
-    this.props.updateLayers();
+    this.props.updateSkin();
   };
 
   removeLayer = (index: number) => {
     this.props.layers.removeLayer(index);
-    this.props.updateLayers();
+    this.props.updateSkin();
   };
 
   flattenLayer: (index: number) => void = async index => {
     await this.props.layers.flattenLayer(index);
-    this.props.updateLayers();
+    this.props.updateSkin();
   };
 
   mergeLayerDown = (index: number) => {
@@ -148,12 +129,12 @@ class LayerList extends Component<BProps, BState> {
     const mergedLayer = this.props.layers.mergeLayers(index, index - 1);
     if (!mergedLayer) return;
 
-    this.props.updateLayers();
+    this.props.updateSkin();
   };
 
   ungroup = (index: number) => {
     const changed = this.props.layers.separateLayer(index);
-    if (changed) this.props.updateLayers();
+    if (changed) this.props.updateSkin();
   };
 
   onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -218,8 +199,6 @@ class LayerList extends Component<BProps, BState> {
       if (thisPath.length === fromPath.length - 1) {
         const fromIndex = parseInt(fromPath[fromPath.length - 1]);
 
-        console.log(thisPath, fromPath);
-
         if (
           Number.isNaN(fromIndex) ||
           fromIndex < 0 ||
@@ -268,7 +247,7 @@ class LayerList extends Component<BProps, BState> {
         image.form = slim ? 'slim-stretch' : 'full-squish-inner';
 
       this.props.layers.insertLayer(insertingIndex, image);
-      this.props.updateLayers();
+      this.props.updateSkin();
 
       return;
     }
@@ -289,7 +268,7 @@ class LayerList extends Component<BProps, BState> {
     //   image.form = slim ? 'slim-stretch' : 'full-squish-inner';
 
     this.props.layers.insertLayer(insertingIndex, layer);
-    this.props.updateLayers();
+    this.props.updateSkin();
   };
 
   onDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -323,6 +302,7 @@ class LayerList extends Component<BProps, BState> {
           flattenLayer={this.flattenLayer}
           mergeLayerDown={this.mergeLayerDown}
           selectForEdit={this.props.selectForEdit}
+          selectedLayer={this.props.selectedLayer}
           ungroup={this.ungroup}
         />
       ));
@@ -357,7 +337,8 @@ type CProps = {
   removeLayer: (index: number) => void;
   flattenLayer: (index: number) => void;
   mergeLayerDown: (index: number) => void;
-  selectForEdit: (layer: ImgMod.Img) => void;
+  selectForEdit: (layer: ImgMod.AbstractLayer) => void;
+  selectedLayer?: ImgMod.AbstractLayer;
   ungroup: (index: number) => void;
 };
 
@@ -629,10 +610,14 @@ class Layer extends Component<CProps, CState> {
 
     return (
       <div
-        className="manager-layer container"
+        className={`manager-layer container${this.props.selectedLayer === this.props.asset ? ' selected' : ''}`}
         draggable={true}
         onDragStart={this.onDragStart}
         onDragEnd={this.onDragEnd}
+        onClick={e => {
+          this.props.selectForEdit(this.props.asset);
+          e.stopPropagation();
+        }}
         ref={this.layerRef}
       >
         <span className="layerTitle">
@@ -641,9 +626,13 @@ class Layer extends Component<CProps, CState> {
             title="Toggle Layer Visibility"
             checked={this.props.asset.active}
             onChange={() => this.toggleActive()}
+            onClick={e => e.stopPropagation()}
           />
           {!this.state.editingName && (
-            <p onDoubleClick={() => this.setState({ editingName: true })}>
+            <p
+              onClick={e => e.stopPropagation()}
+              onDoubleClick={() => this.setState({ editingName: true })}
+            >
               {this.props.asset.name ?? ''}
             </p>
           )}
@@ -655,25 +644,31 @@ class Layer extends Component<CProps, CState> {
               onChange={e => this.renameLayer(e.target.value)}
               onFocus={e => e.target.select()}
               onBlur={() => this.setState({ editingName: false })}
+              onClick={e => e.stopPropagation()}
               onKeyDown={e => {
                 if (e.key === 'Enter') this.setState({ editingName: false });
               }}
             />
           )}
-          {this.props.asset instanceof ImgMod.Img && !this.props.asset.dynamic && (
-            <button onClick={() => this.props.selectForEdit(this.props.asset as ImgMod.Img)}>
-              Edit
-            </button>
-          )}
           {this.props.asset instanceof ImgMod.Img && this.props.asset.dynamic && (
             <button disabled>Edit in external editor</button>
           )}
           {this.props.asset instanceof ImgMod.Layer && (
-            <button onClick={() => this.setState({ layersOpen: !this.state.layersOpen })}>
+            <button
+              onClick={e => {
+                this.setState({ layersOpen: !this.state.layersOpen });
+                e.stopPropagation();
+              }}
+            >
               {this.state.layersOpen ? '📂' : '📁'}
             </button>
           )}
-          <button onClick={() => this.setState({ fxOpen: !this.state.fxOpen })}>
+          <button
+            onClick={e => {
+              this.setState({ fxOpen: !this.state.fxOpen });
+              e.stopPropagation();
+            }}
+          >
             {this.state.fxOpen ? '/\\' : '\\/'}
           </button>
         </span>
@@ -709,8 +704,9 @@ class Layer extends Component<CProps, CState> {
             <LayerList
               layers={this.props.asset}
               root={this.props.root}
-              updateLayers={this.updateLayer}
+              updateSkin={this.updateLayer}
               selectForEdit={this.props.selectForEdit}
+              selectedLayer={this.props.selectedLayer}
               manager={this.props.manager}
               path={
                 this.props.path ? `${this.props.path}-${this.props.index}` : `${this.props.index}`
