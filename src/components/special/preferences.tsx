@@ -44,6 +44,8 @@ class Preferences extends Component<AProps> {
                 this.props.manager.setPrefs({ useFallbackSkinSource: value });
               if (id === 'autosetImageForm')
                 this.props.manager.setPrefs({ autosetImageForm: value });
+              if (id === 'addDefaultLayer')
+                this.props.manager.setPrefs({ addDefaultLayer: value });
               this.props.updatePrefs(this.props.manager);
             }}
             properties={[
@@ -84,6 +86,12 @@ class Preferences extends Component<AProps> {
                     value: values['--icon-invert']
                   }
                 ])
+              },
+              {
+                name: 'Add Default Layer',
+                id: 'addDefaultLayer',
+                type: 'checkbox',
+                value: values.addDefaultLayer
               },
               {
                 name: 'Autoset Image Form',

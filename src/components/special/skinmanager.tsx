@@ -68,7 +68,7 @@ class SkinManager extends Component<AProps, AState> {
 
   componentDidMount() {
     document.addEventListener('keydown', this.onKeyDown);
-    void this.setDefaultLayers();
+    if (this.state.prefMan.get().addDefaultLayer) void this.setDefaultLayers();
   }
 
   componentWillUnmount() {

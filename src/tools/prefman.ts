@@ -36,6 +36,7 @@ export type Prefs = {
     curvature: number;
     autosetImageForm: boolean;
     useFallbackSkinSource: boolean;
+    addDefaultLayer: boolean;
   };
 
 export const defaultPrefs: Prefs = {
@@ -58,7 +59,8 @@ export const defaultPrefs: Prefs = {
   '--icon-invert': false,
   curvature: 8,
   autosetImageForm: false,
-  useFallbackSkinSource: false
+  useFallbackSkinSource: false,
+  addDefaultLayer: true
 } as const;
 
 export class Manager {
