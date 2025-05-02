@@ -14,6 +14,7 @@ export const SELECT_PREFS = {
 export const USER_THEME_COLOR_VARS = {
   '--main-bg': 'Background',
   '--container': 'Container',
+  '--container-selected': 'Container - Selected',
   '--container-alt': 'Container Alt.',
   '--container-alt-text': 'Container Alt. Text',
   '--panel': 'Panel',
@@ -43,6 +44,7 @@ export const defaultPrefs: Prefs = {
   theme: 'default',
   '--main-bg': '#202633',
   '--container': '#434664',
+  '--container-selected': '#515d9d',
   '--container-alt': '#282a3c',
   '--container-alt-text': '#ffffff',
   '--panel': '#181924',
@@ -108,6 +110,7 @@ export class Manager {
       case 'user':
         root.style.setProperty('--main-bg', this.prefs['--main-bg']);
         root.style.setProperty('--container', this.prefs['--container']);
+        root.style.setProperty('--container-selected', this.prefs['--container-selected']);
         root.style.setProperty('--container-alt', this.prefs['--container-alt']);
         root.style.setProperty('--container-alt-text', this.prefs['--container-alt-text']);
         root.style.setProperty('--panel', this.prefs['--panel']);
@@ -140,6 +143,7 @@ export class Manager {
       case 'light':
         root.style.setProperty('--main-bg', 'rgb(196, 205, 233)');
         root.style.setProperty('--container', 'rgb(216, 225, 244)');
+        root.style.setProperty('--container-selected', 'rgb(158, 194, 240)');
         root.style.setProperty('--container-alt', 'rgb(188, 199, 217)');
         root.style.setProperty('--panel', 'var(--container)');
         root.style.setProperty('--empty-area', 'rgb(163, 177, 207)');
@@ -169,6 +173,7 @@ export class Manager {
       case 'cave':
         root.style.setProperty('--main-bg', '#575757');
         root.style.setProperty('--container', '#2a2b2c');
+        root.style.setProperty('--container-selected', '#376690');
         root.style.setProperty('--container-alt', '#919191');
         root.style.setProperty('--container-alt-text', 'black');
         root.style.setProperty('--panel', '#181a25');
@@ -183,6 +188,7 @@ export class Manager {
       case 'cherry':
         root.style.setProperty('--main-bg', '#33202c');
         root.style.setProperty('--container', '#6a3d65');
+        root.style.setProperty('--container-selected', '#795597');
         root.style.setProperty('--container-alt', '#92b2e4');
         root.style.setProperty('--container-alt-text', 'black');
         root.style.setProperty('--panel', 'var(--container)');
