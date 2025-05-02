@@ -267,7 +267,8 @@ class AssetPack extends Component<BProps, BState> {
     }
   };
 
-  addLayer = (index: number) => this.props.addLayer(this.state.assets[index].copy());
+  addLayer: (index: number) => void = async (index: number) =>
+    this.props.addLayer(await this.state.assets[index].copy());
 
   render() {
     return (

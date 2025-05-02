@@ -163,7 +163,7 @@ class AssetLayer extends Component<BProps, BState> {
     const asset = this.state.asset;
     asset.name = e.target.files[0].name.slice(0, -4).replaceAll(' ', '_').toLowerCase();
 
-    await asset.render(URL.createObjectURL(e.target.files[0]));
+    await asset.loadUrl(URL.createObjectURL(e.target.files[0]));
 
     e.target.value = '';
     this.updateAsset(asset);
@@ -171,7 +171,7 @@ class AssetLayer extends Component<BProps, BState> {
 
   changeType = (type: string) => {
     const asset = this.state.asset;
-    asset.type = type as ImgMod.LayerType;
+    asset.type(type as ImgMod.LayerType);
     this.updateAsset(asset);
     this.props.setColor(this.props.index, type);
     this.props.setAdvanced(this.props.index, type !== 'normal');
@@ -201,7 +201,7 @@ class AssetLayer extends Component<BProps, BState> {
                 <option value="null">No Color</option>
               </select>
             </span>
-            {this.state.asset.type === 'normal' && (
+            {this.state.asset.type() === 'normal' && (
               <div>
                 <span>
                   <label>Default Color:</label>
@@ -218,7 +218,7 @@ class AssetLayer extends Component<BProps, BState> {
             )}
           </div>
           <div>
-            <img alt={''} src={this.state.asset.rawSrc}></img>
+            <img alt={''} src={this.state.asset.rawImage}></img>
             <span>
               <button onClick={() => this.props.moveLayer(this.props.index, 1)}>&#9650;</button>
               <button onClick={() => this.props.moveLayer(this.props.index, -1)}>&#9660;</button>

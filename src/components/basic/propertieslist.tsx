@@ -185,7 +185,14 @@ class PropertiesList extends Component<AProps> {
 
   render() {
     return (
-      <table className="properties-list">
+      <table
+        className="properties-list"
+        draggable={true}
+        onDragStart={e => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+      >
         <tbody>{this.props.properties.map(this.addProperty)}</tbody>
       </table>
     );

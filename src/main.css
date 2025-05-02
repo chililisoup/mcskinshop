@@ -306,7 +306,7 @@ hr {
 .paperdoll-settings label,
 .paperdoll-settings select,
 .paperdoll-settings option {
-  pointer-events: all;
+  pointer-events: initial;
 }
 
 .paperdoll-settings button > img,
@@ -323,7 +323,7 @@ hr {
 
 .paperdoll-settings > span {
   flex-wrap: nowrap;
-  pointer-events: all;
+  pointer-events: initial;
   overflow: auto hidden;
   height: 48px;
 }
@@ -389,7 +389,7 @@ hr {
   border-bottom-left-radius: var(--curvature);
   max-height: calc(100% - 104px);
   overflow-y: auto;
-  pointer-events: all;
+  pointer-events: initial;
 }
 
 .paperdoll-canvas-container {
@@ -478,10 +478,14 @@ hr {
   overflow: hidden auto;
   background: var(--empty-area);
   box-shadow: inset var(--box-shadow);
-  padding: 0;
+  outline-offset: -2px;
+  padding: 2px;
   margin: 0;
   position: relative;
-  /* justify-content: start; */
+}
+
+.layer-list > *:first-child {
+  margin-bottom: auto !important;
 }
 
 .layer-list > hr {
@@ -497,7 +501,7 @@ hr {
 }
 
 .dragover {
-  pointer-events: all;
+  pointer-events: initial;
 }
 
 .dragover * {
@@ -519,9 +523,8 @@ hr {
   position: relative;
   flex-direction: column;
   padding: 3px;
-  padding-top: 0;
-  margin-top: 2px;
-  pointer-events: all;
+  margin-bottom: 6px;
+  pointer-events: initial;
   user-select: none;
   z-index: 1;
   cursor: grab;
@@ -589,12 +592,18 @@ hr {
 .manager-layer > hr {
   margin-bottom: 4px;
 }
+
 .manager-layer .properties-list {
-  pointer-events: initial;
+  pointer-events: all;
+  cursor: initial;
+}
+
+.manager-layer .color-picker {
+  cursor: initial;
 }
 
 .manager-layer > .sublayers {
-  margin: 8px 0 8px 16px;
+  margin: 8px 4px 8px 12px;
 }
 
 .sublayers .layer-list {
@@ -607,7 +616,7 @@ hr {
 .sublayers .layer-list:not(:has(.manager-layer)) {
   background: var(--empty-area);
   min-height: 32px;
-  pointer-events: all;
+  pointer-events: initial;
 }
 
 span.layerTitle {
@@ -955,7 +964,7 @@ h3 {
 
 .dropdown-bar > * {
   flex-grow: 1;
-  pointer-events: all;
+  pointer-events: initial;
 }
 
 .dropdown-bar > span {

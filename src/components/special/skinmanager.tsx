@@ -38,6 +38,7 @@ type AState = {
   preferences: boolean;
   prefMan: PrefMan.Manager;
   selectedLayer?: ImgMod.AbstractLayer;
+  selectedLayerPreview?: ImgMod.ImgPreview;
 };
 
 class SkinManager extends Component<AProps, AState> {
@@ -68,7 +69,8 @@ class SkinManager extends Component<AProps, AState> {
       modelFeaturesWindow: false,
       preferences: false,
       prefMan: new PrefMan.Manager(),
-      selectedLayer: undefined
+      selectedLayer: undefined,
+      selectedLayerPreview: undefined
     };
   }
 
@@ -90,11 +92,11 @@ class SkinManager extends Component<AProps, AState> {
 
     const steveImg = new ImgMod.Img('normal', 'full-only');
     steveImg.name = 'Steve';
-    await steveImg.render(steve);
+    await steveImg.loadUrl(steve);
 
     const alexImg = new ImgMod.Img('normal', 'slim-only');
     alexImg.name = 'Alex';
-    await alexImg.render(alex);
+    await alexImg.loadUrl(alex);
 
     const layer = new ImgMod.Layer([steveImg, alexImg]);
     layer.name = 'Steve & Alex';
@@ -161,7 +163,7 @@ class SkinManager extends Component<AProps, AState> {
     slim ??= this.state.slim;
     Util.setSlim(slim);
 
-    await this.layers.render();
+    await this.layers.render(slim !== this.state.slim);
     this.setState({ skin: this.layers.src, slim: slim });
   };
 
@@ -244,7 +246,7 @@ class SkinManager extends Component<AProps, AState> {
     this.addLayer(image);
     const slim = image.detectSlimModel();
     if (this.state.prefMan.get().autosetImageForm)
-      image.form = slim ? 'slim-stretch' : 'full-squish-inner';
+      image.form(slim ? 'slim-stretch' : 'full-squish-inner');
     this.updateSkin(slim);
   };
 
@@ -254,7 +256,7 @@ class SkinManager extends Component<AProps, AState> {
     const image = new ImgMod.Img();
     image.name = name;
 
-    await image.render(url);
+    await image.loadUrl(url);
     this.processSkinUpload(image);
   };
 
@@ -278,7 +280,7 @@ class SkinManager extends Component<AProps, AState> {
     image.internalUpdateCallback = () => this.updateSkin();
     image.observeDynamic(fileHandle);
 
-    await image.render(URL.createObjectURL(file));
+    await image.loadUrl(URL.createObjectURL(file));
     this.processSkinUpload(image);
   };
 
@@ -290,8 +292,29 @@ class SkinManager extends Component<AProps, AState> {
     this.setState({ [setting]: value } as Pick<AState, KKey>);
   };
 
-  selectForEdit = (layer: ImgMod.AbstractLayer) => {
-    this.setState({ selectedLayer: layer });
+  selectForEdit = (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => {
+    const oldPrev = this.state.selectedLayerPreview;
+    if (oldPrev) {
+      oldPrev.cleanup();
+      if (oldPrev.parent) {
+        const index = oldPrev.parent.getLayers().indexOf(oldPrev);
+        if (index) oldPrev.parent.removeLayer(index, false);
+      }
+    }
+
+    const index = parent.getLayers().indexOf(layer);
+    if (index < 0)
+      return this.setState({ selectedLayer: undefined, selectedLayerPreview: undefined });
+
+    if (layer instanceof ImgMod.Layer)
+      return this.setState({ selectedLayer: layer, selectedLayerPreview: undefined });
+
+    if (!(layer instanceof ImgMod.Img))
+      return this.setState({ selectedLayer: undefined, selectedLayerPreview: undefined });
+
+    const preview = new ImgMod.ImgPreview(layer, parent);
+    parent.insertLayer(index + 1, preview);
+    this.setState({ selectedLayer: layer, selectedLayerPreview: preview });
   };
 
   render() {
@@ -357,7 +380,7 @@ class SkinManager extends Component<AProps, AState> {
               close={() => this.setState({ layerEditor: false })}
             >
               <LayerEditor
-                layer={this.state.selectedLayer}
+                layer={this.state.selectedLayerPreview ?? this.state.selectedLayer}
                 skin={this.layers.image}
                 updateLayer={this.updateSkin}
                 slim={this.state.slim}

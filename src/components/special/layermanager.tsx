@@ -9,7 +9,7 @@ type AProps = {
   updateSkin: (slim?: boolean) => void;
   slim: boolean;
   manager: PrefMan.Manager;
-  selectForEdit: (layer: ImgMod.AbstractLayer) => void;
+  selectForEdit: (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => void;
   selectedLayer?: ImgMod.AbstractLayer;
 };
 
@@ -21,15 +21,6 @@ class LayerManager extends Component<AProps> {
       selectedLayer: undefined
     };
   }
-
-  updateLayer = (index: number, newLayer: ImgMod.AbstractLayer) => {
-    const oldLayer = this.props.layers.getLayers()[index];
-    this.props.layers.replaceLayer(index, newLayer);
-
-    if (oldLayer !== newLayer) oldLayer.cleanup();
-
-    this.props.updateSkin();
-  };
 
   addLayer = () => {
     const layer = new ImgMod.Img();
@@ -49,21 +40,19 @@ class LayerManager extends Component<AProps> {
 
   render() {
     return (
-      <div>
-        <div className="LayerManager">
-          <LayerList
-            layers={this.props.layers}
-            root={this.props.layers}
-            manager={this.props.manager}
-            updateSkin={this.props.updateSkin}
-            selectForEdit={this.props.selectForEdit}
-            selectedLayer={this.props.selectedLayer}
-          />
-          <span className="stretch">
-            <button onClick={this.addLayer}>New Layer</button>
-            <button onClick={this.addGroup}>New Group</button>
-          </span>
-        </div>
+      <div className="LayerManager">
+        <LayerList
+          layers={this.props.layers}
+          root={this.props.layers}
+          manager={this.props.manager}
+          updateSkin={this.props.updateSkin}
+          selectForEdit={this.props.selectForEdit}
+          selectedLayer={this.props.selectedLayer}
+        />
+        <span className="stretch">
+          <button onClick={this.addLayer}>New Layer</button>
+          <button onClick={this.addGroup}>New Group</button>
+        </span>
       </div>
     );
   }
@@ -74,7 +63,7 @@ type BProps = {
   root: ImgMod.Layer;
   manager: PrefMan.Manager;
   updateSkin: () => void;
-  selectForEdit: (layer: ImgMod.AbstractLayer) => void;
+  selectForEdit: (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => void;
   selectedLayer?: ImgMod.AbstractLayer;
   path?: string;
 };
@@ -94,22 +83,13 @@ class LayerList extends Component<BProps, BState> {
     };
   }
 
-  updateLayer = (index: number, newLayer: ImgMod.AbstractLayer) => {
-    const oldLayer = this.props.layers.getLayers()[index];
-    this.props.layers.replaceLayer(index, newLayer);
-
-    if (oldLayer !== newLayer) oldLayer.cleanup();
-
-    this.props.updateSkin();
-  };
-
   moveLayer = (index: number, change: number) => {
     this.props.layers.moveLayer(index, change);
     this.props.updateSkin();
   };
 
-  duplicateLayer = (index: number) => {
-    this.props.layers.duplicateLayer(index);
+  duplicateLayer: (index: number) => void = async index => {
+    await this.props.layers.duplicateLayer(index);
     this.props.updateSkin();
   };
 
@@ -130,11 +110,6 @@ class LayerList extends Component<BProps, BState> {
     if (!mergedLayer) return;
 
     this.props.updateSkin();
-  };
-
-  ungroup = (index: number) => {
-    const changed = this.props.layers.separateLayer(index);
-    if (changed) this.props.updateSkin();
   };
 
   onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -235,7 +210,7 @@ class LayerList extends Component<BProps, BState> {
       const image = new ImgMod.Img();
       image.name = file.name.replace(/\.[^/.]+$/, '');
 
-      await image.render(URL.createObjectURL(file));
+      await image.loadUrl(URL.createObjectURL(file));
 
       if (files.length > 1) {
         layers.push(image);
@@ -244,7 +219,7 @@ class LayerList extends Component<BProps, BState> {
 
       const slim = image.detectSlimModel();
       if (this.props.manager.get().autosetImageForm)
-        image.form = slim ? 'slim-stretch' : 'full-squish-inner';
+        image.form(slim ? 'slim-stretch' : 'full-squish-inner');
 
       this.props.layers.insertLayer(insertingIndex, image);
       this.props.updateSkin();
@@ -285,25 +260,29 @@ class LayerList extends Component<BProps, BState> {
     e.preventDefault();
   };
 
+  selectForEdit = (layer: ImgMod.AbstractLayer, parent?: ImgMod.Layer) => {
+    this.props.selectForEdit(layer, parent ?? this.props.layers);
+  };
+
   render() {
     const layers = this.props.layers
       .getLayers()
-      .map((asset, i) => (
+      .filter(layer => !(layer instanceof ImgMod.ImgPreview))
+      .map((layer, i) => (
         <Layer
-          key={asset.id}
-          asset={asset}
+          key={layer.id}
+          layer={layer}
           index={i}
           root={this.props.root}
           path={this.props.path}
           manager={this.props.manager}
-          updateLayer={this.updateLayer}
+          updateLayer={this.props.updateSkin}
           duplicateLayer={this.duplicateLayer}
           removeLayer={this.removeLayer}
           flattenLayer={this.flattenLayer}
           mergeLayerDown={this.mergeLayerDown}
-          selectForEdit={this.props.selectForEdit}
+          selectForEdit={this.selectForEdit}
           selectedLayer={this.props.selectedLayer}
-          ungroup={this.ungroup}
         />
       ));
 
@@ -327,19 +306,18 @@ class LayerList extends Component<BProps, BState> {
 }
 
 type CProps = {
-  asset: ImgMod.AbstractLayer;
+  layer: ImgMod.AbstractLayer;
   root: ImgMod.Layer;
   index: number;
   path?: string;
   manager: PrefMan.Manager;
-  updateLayer: (index: number, newLayer: ImgMod.AbstractLayer) => void;
+  updateLayer: () => void;
   duplicateLayer: (index: number) => void;
   removeLayer: (index: number) => void;
   flattenLayer: (index: number) => void;
   mergeLayerDown: (index: number) => void;
-  selectForEdit: (layer: ImgMod.AbstractLayer) => void;
+  selectForEdit: (layer: ImgMod.AbstractLayer, parent?: ImgMod.Layer) => void;
   selectedLayer?: ImgMod.AbstractLayer;
-  ungroup: (index: number) => void;
 };
 
 type CState = {
@@ -376,21 +354,22 @@ class Layer extends Component<CProps, CState> {
   }
 
   changeColor: (colorIndex: number, color: string) => void = async (colorIndex, color) => {
-    if (!(this.props.asset instanceof ImgMod.Layer)) return;
+    if (!(this.props.layer instanceof ImgMod.Layer)) return;
 
-    this.props.asset.setColor(colorIndex, color);
-    await this.props.asset.color();
-    this.updateLayer();
+    this.props.layer.setColor(colorIndex, color);
+    await this.props.layer.color();
+    this.props.updateLayer();
   };
 
   toggleActive = () => {
-    this.props.asset.active = !this.props.asset.active;
-    this.updateLayer();
+    this.props.layer.active = !this.props.layer.active;
+    this.props.layer.markChanged();
+    this.props.updateLayer();
   };
 
   changeBlendMode = (blend: GlobalCompositeOperation) => {
-    this.props.asset.propagateBlendMode(blend);
-    this.updateLayer();
+    this.props.layer.blend(blend);
+    this.props.updateLayer();
   };
 
   updateFilter = <KKey extends keyof CState>(filter: KKey, value: number) => {
@@ -418,17 +397,15 @@ class Layer extends Component<CProps, CState> {
         this.state.sepia +
         '%)';
 
-      this.props.asset.propagateFilter(filterString);
-      this.updateLayer();
+      this.props.layer.filter(filterString);
+      this.props.updateLayer();
     });
   };
 
   renameLayer = (name: string) => {
-    this.props.asset.name = name;
-    this.updateLayer();
+    this.props.layer.name = name;
+    this.props.updateLayer();
   };
-
-  updateLayer = () => this.props.updateLayer(this.props.index, this.props.asset);
 
   onDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.stopPropagation();
@@ -448,8 +425,8 @@ class Layer extends Component<CProps, CState> {
 
   render() {
     const colors: ReactNode[] = [];
-    if (this.props.asset instanceof ImgMod.Layer) {
-      const layer = this.props.asset;
+    if (this.props.layer instanceof ImgMod.Layer) {
+      const layer = this.props.layer;
 
       layer.getColors().forEach((color, i) => {
         if (!layer.advanced || !layer.advanced[i] || this.state.fxOpen) {
@@ -459,6 +436,7 @@ class Layer extends Component<CProps, CState> {
                 key={i + (layer.id ?? '')}
                 default={color}
                 update={color => this.changeColor(i, color)}
+                alpha={true}
               />
             );
           else if (typeof color === 'object' && !('copy' in color))
@@ -469,7 +447,7 @@ class Layer extends Component<CProps, CState> {
                 linked={true}
                 unlink={() => {
                   layer.setColor(i, layer.getTrueColor(i));
-                  this.updateLayer();
+                  this.props.updateLayer();
                 }}
               />
             );
@@ -482,7 +460,7 @@ class Layer extends Component<CProps, CState> {
         name: 'Blend Mode',
         id: 'blend',
         type: 'select',
-        value: this.props.asset.blend,
+        value: this.props.layer.blend(),
         options: [
           ['source-over', 'Source Over'],
           ['source-in', 'Source In'],
@@ -577,13 +555,13 @@ class Layer extends Component<CProps, CState> {
       }
     ];
 
-    if (this.props.asset instanceof ImgMod.Img)
+    if (this.props.layer instanceof ImgMod.Img)
       properties.push(
         {
           name: 'Type',
           id: 'type',
           type: 'select',
-          value: this.props.asset.type,
+          value: this.props.layer.type(),
           options: [
             ['normal', 'Normal'],
             ['erase', 'Erase'],
@@ -595,7 +573,7 @@ class Layer extends Component<CProps, CState> {
           name: 'Form',
           id: 'form',
           type: 'select',
-          value: this.props.asset.form,
+          value: this.props.layer.form(),
           options: [
             ['universal', 'Universal'],
             ['full-squish-inner', 'Full Squish - Inner'],
@@ -610,12 +588,12 @@ class Layer extends Component<CProps, CState> {
 
     return (
       <div
-        className={`manager-layer container${this.props.selectedLayer === this.props.asset ? ' selected' : ''}`}
+        className={`manager-layer container${this.props.selectedLayer === this.props.layer ? ' selected' : ''}`}
         draggable={true}
         onDragStart={this.onDragStart}
         onDragEnd={this.onDragEnd}
         onClick={e => {
-          this.props.selectForEdit(this.props.asset);
+          this.props.selectForEdit(this.props.layer);
           e.stopPropagation();
         }}
         ref={this.layerRef}
@@ -624,23 +602,20 @@ class Layer extends Component<CProps, CState> {
           <input
             type="checkbox"
             title="Toggle Layer Visibility"
-            checked={this.props.asset.active}
+            checked={this.props.layer.active}
             onChange={() => this.toggleActive()}
             onClick={e => e.stopPropagation()}
           />
           {!this.state.editingName && (
-            <p
-              onClick={e => e.stopPropagation()}
-              onDoubleClick={() => this.setState({ editingName: true })}
-            >
-              {this.props.asset.name ?? ''}
+            <p onDoubleClick={() => this.setState({ editingName: true })}>
+              {this.props.layer.name ?? ''}
             </p>
           )}
           {this.state.editingName && (
             <input
               type="text"
               autoFocus={true}
-              value={this.props.asset.name ?? ''}
+              value={this.props.layer.name ?? ''}
               onChange={e => this.renameLayer(e.target.value)}
               onFocus={e => e.target.select()}
               onBlur={() => this.setState({ editingName: false })}
@@ -650,10 +625,10 @@ class Layer extends Component<CProps, CState> {
               }}
             />
           )}
-          {this.props.asset instanceof ImgMod.Img && this.props.asset.dynamic && (
+          {this.props.layer instanceof ImgMod.Img && this.props.layer.dynamic && (
             <button disabled>Edit in external editor</button>
           )}
-          {this.props.asset instanceof ImgMod.Layer && (
+          {this.props.layer instanceof ImgMod.Layer && (
             <button
               onClick={e => {
                 this.setState({ layersOpen: !this.state.layersOpen });
@@ -674,7 +649,7 @@ class Layer extends Component<CProps, CState> {
         </span>
         <hr />
         <span>
-          <LayerPreview asset={this.props.asset} />
+          <LayerPreview asset={this.props.layer} />
           <div className="manager-layer-buttons">
             <button
               onClick={() => this.props.duplicateLayer(this.props.index)}
@@ -699,12 +674,12 @@ class Layer extends Component<CProps, CState> {
           </div>
           <div className="manager-layer-colors">{colors}</div>
         </span>
-        {this.state.layersOpen && this.props.asset instanceof ImgMod.Layer && (
+        {this.state.layersOpen && this.props.layer instanceof ImgMod.Layer && (
           <div className="sublayers">
             <LayerList
-              layers={this.props.asset}
+              layers={this.props.layer}
               root={this.props.root}
-              updateSkin={this.updateLayer}
+              updateSkin={this.props.updateLayer}
               selectForEdit={this.props.selectForEdit}
               selectedLayer={this.props.selectedLayer}
               manager={this.props.manager}
@@ -721,13 +696,13 @@ class Layer extends Component<CProps, CState> {
             }}
             stringCallback={(id, value) => {
               if (id === 'blend') this.changeBlendMode(value as GlobalCompositeOperation);
-              if (id === 'type' && this.props.asset instanceof ImgMod.Img) {
-                this.props.asset.type = value as ImgMod.LayerType;
-                this.updateLayer();
+              if (id === 'type' && this.props.layer instanceof ImgMod.Img) {
+                this.props.layer.type(value as ImgMod.LayerType);
+                this.props.updateLayer();
               }
-              if (id === 'form' && this.props.asset instanceof ImgMod.Img) {
-                this.props.asset.form = value as ImgMod.LayerForm;
-                this.updateLayer();
+              if (id === 'form' && this.props.layer instanceof ImgMod.Img) {
+                this.props.layer.form(value as ImgMod.LayerForm);
+                this.props.updateLayer();
               }
             }}
             properties={properties}
@@ -765,9 +740,7 @@ class LayerPreview extends Component<DProps, DState> {
     if (prevProps !== this.props) this.updatePreview();
   }
 
-  updatePreview: () => void = async () => {
-    await this.props.asset.render();
-
+  updatePreview = () => {
     this.setState({ src: this.props.asset.src, alt: this.props.asset.name ?? '' });
   };
 

@@ -128,6 +128,11 @@ class ColorPicker extends Component<AProps, AState> {
                 display: this.state.open ? 'block' : 'none',
                 left: `${this.pickerRef.current ? this.pickerRef.current.clientWidth / 2 - 100 : -90}px`
               }}
+              draggable={true}
+              onDragStart={e => {
+                e.stopPropagation();
+                e.preventDefault();
+              }}
             >
               <div className="container">
                 <input

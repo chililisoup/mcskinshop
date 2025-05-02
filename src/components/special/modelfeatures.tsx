@@ -78,7 +78,7 @@ class ModelFeatures extends Component<AProps, AState> {
     image.size = this.uploadFeature[1];
     image.name = e.target.files[0].name;
 
-    await image.render(URL.createObjectURL(e.target.files[0]));
+    await image.loadUrl(URL.createObjectURL(e.target.files[0]));
 
     e.target.value = '';
 

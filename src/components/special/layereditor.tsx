@@ -25,7 +25,9 @@ class LayerEditor extends Component<AProps, AState> {
   color = '#000000';
   mousePos = { x: 0, y: 0 };
   layerCanvas = new OffscreenCanvas(64, 64);
+  previewCanvas = new OffscreenCanvas(64, 64);
   layerCtx;
+  previewCtx;
   canvasRef: RefObject<HTMLCanvasElement | null> = React.createRef();
 
   constructor(props: AProps) {
@@ -39,6 +41,7 @@ class LayerEditor extends Component<AProps, AState> {
     };
 
     this.layerCtx = this.layerCanvas.getContext('2d')!;
+    this.previewCtx = this.previewCanvas.getContext('2d')!;
   }
 
   componentDidMount() {
@@ -47,7 +50,11 @@ class LayerEditor extends Component<AProps, AState> {
   }
 
   componentDidUpdate(prevProps: Readonly<AProps>, prevState: Readonly<AState>) {
-    if (prevState.focusLayer !== this.state.focusLayer || prevProps.skin !== this.props.skin)
+    if (
+      prevState.focusLayer !== this.state.focusLayer ||
+      prevProps.skin !== this.props.skin ||
+      prevProps.layer !== this.props.layer
+    )
       this.updateSkin();
     if (prevProps.layer !== this.props.layer) this.loadLayer();
   }
@@ -56,13 +63,12 @@ class LayerEditor extends Component<AProps, AState> {
     if (!this.canvasRef.current) return;
     const ctx = this.canvasRef.current.getContext('2d')!;
 
-    if (!this.props.layer) {
-      ctx.clearRect(0, 0, 64, 64);
-      return;
-    }
+    ctx.clearRect(0, 0, 64, 64);
+    if (!this.props.layer) return;
 
-    if (this.props.layer?.image) {
-      ctx.clearRect(0, 0, 64, 64);
+    if (this.props.layer instanceof ImgMod.ImgPreview && this.props.layer.base.image)
+      ctx.drawImage(this.props.layer.base.image, 0, 0);
+    else if (this.props.layer.image) {
       ctx.drawImage(this.props.layer.image, 0, 0);
     }
   };
@@ -83,15 +89,19 @@ class LayerEditor extends Component<AProps, AState> {
       return;
     }
 
-    if (this.props.layer?.image) {
+    const image =
+      this.props.layer instanceof ImgMod.ImgPreview
+        ? this.props.layer.base.image
+        : this.props.layer.image;
+    if (image) {
       this.layerCtx.clearRect(0, 0, 64, 64);
-      this.layerCtx.drawImage(this.props.layer.image, 0, 0);
+      this.layerCtx.drawImage(image, 0, 0);
     }
   };
 
   setColor = (color: string) => (this.color = color);
 
-  onMouseMove: (e: React.MouseEvent) => void = async e => {
+  onMouseMove = (e: React.MouseEvent) => {
     if (!this.canvasRef.current) return;
 
     const rect = this.canvasRef.current.getBoundingClientRect();
@@ -104,62 +114,66 @@ class LayerEditor extends Component<AProps, AState> {
       )
     };
 
-    await this.drawPixel();
-    if (this.mouseActive) this.updateRawSrc();
-    else this.updateSrc();
+    this.drawPixel();
   };
 
-  onMouseDown: (e: React.MouseEvent) => void = async e => {
+  onMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0 && e.button !== 2) return;
 
     this.mouseActive = true;
     if (e.button === 2) this.mouseActive = 'erase';
 
-    await this.drawPixel();
-    this.updateRawSrc();
+    this.drawPixel();
+    this.updatePreview();
   };
 
-  onMouseQuit: () => void = async () => {
+  onMouseQuit = () => {
     this.mouseActive = false;
-    await this.reloadLayer();
-    this.updateSrc();
+    this.previewCtx.clearRect(0, 0, 64, 64);
+    this.updatePreview();
   };
 
-  updateRawSrc: () => void = async () => {
-    if (!(this.props.layer instanceof ImgMod.Img && !this.props.layer.dynamic)) return;
+  updateImg: () => void = async () => {
+    if (!(this.props.layer instanceof ImgMod.ImgPreview && !this.props.layer.dynamic)) return;
 
-    await this.props.layer.loadImage(this.layerCanvas);
+    await this.props.layer.base.loadImage(this.layerCanvas);
+    this.props.layer.base.markChanged();
     this.props.updateLayer();
   };
 
-  updateSrc = () => {
-    if (!(this.props.layer instanceof ImgMod.Img && !this.props.layer.dynamic)) return;
+  updatePreview = () => {
+    if (!(this.props.layer instanceof ImgMod.ImgPreview && !this.props.layer.dynamic)) return;
 
-    this.props.layer.image = this.layerCanvas.transferToImageBitmap();
+    if (this.state.focusLayer && this.canvasRef.current) {
+      const ctx = this.canvasRef.current.getContext('2d')!;
+      ctx.drawImage(this.previewCanvas, 0, 0);
+    }
+
+    this.props.layer.image = this.previewCanvas.transferToImageBitmap();
+    this.props.layer.markChanged();
     this.props.updateLayer();
   };
 
-  reloadLayer = async () => {
-    if (!(this.props.layer instanceof ImgMod.Img && !this.props.layer.dynamic)) return;
+  drawPixel = () => {
+    if (!(this.props.layer instanceof ImgMod.ImgPreview && !this.props.layer.dynamic)) return;
 
-    this.layerCtx.clearRect(0, 0, 64, 64);
-    this.layerCtx.drawImage(
-      await createImageBitmap(await Util.getBlob(this.props.layer.rawSrc)),
-      0,
-      0
-    );
-  };
+    this.previewCtx.clearRect(0, 0, 64, 64);
 
-  drawPixel = async () => {
-    if (!(this.props.layer instanceof ImgMod.Img && !this.props.layer.dynamic)) return;
-    if (!this.canvasRef.current) return;
+    if (this.mouseActive) {
+      this.layerCtx.fillStyle = this.color;
 
-    await this.reloadLayer();
-    this.layerCtx.fillStyle = this.color;
+      if (this.mouseActive === 'erase') {
+        this.layerCtx.clearRect(this.mousePos.x, this.mousePos.y, 1, 1);
+      } else this.layerCtx.fillRect(this.mousePos.x, this.mousePos.y, 1, 1);
 
-    if (this.mouseActive === 'erase') {
-      this.layerCtx.clearRect(this.mousePos.x, this.mousePos.y, 1, 1);
-    } else this.layerCtx.fillRect(this.mousePos.x, this.mousePos.y, 1, 1);
+      this.updateImg();
+    } else {
+      this.previewCtx.fillStyle = this.color;
+
+      this.previewCtx.fillRect(this.mousePos.x, this.mousePos.y, 1, 1);
+
+      this.updatePreview();
+    }
   };
 
   resizeGrid = (mult: number) => {
@@ -196,7 +210,7 @@ class LayerEditor extends Component<AProps, AState> {
           />
         </span>
         <canvas
-          className={`layereditor-canvas${this.props.layer instanceof ImgMod.Img && !this.props.layer.dynamic ? '' : ' not-allowed'}`}
+          className={`layereditor-canvas${this.props.layer instanceof ImgMod.ImgPreview && !this.props.layer.dynamic ? '' : ' not-allowed'}`}
           ref={this.canvasRef}
           onMouseMove={this.onMouseMove}
           onMouseDown={this.onMouseDown}
