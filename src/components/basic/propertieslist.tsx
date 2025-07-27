@@ -39,6 +39,7 @@ type ColorProperty = BaseProperty & {
   type: 'color';
   value: string;
   alpha?: boolean;
+  controlled?: boolean;
 };
 
 type SectionProperty = BaseProperty & {
@@ -144,6 +145,7 @@ class PropertiesList extends Component<AProps> {
             id={id}
             default={property.value}
             alpha={property.alpha}
+            controlled={property.controlled}
             update={value =>
               this.props.stringCallback && this.props.stringCallback(property.id, value)
             }

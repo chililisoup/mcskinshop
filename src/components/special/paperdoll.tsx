@@ -54,6 +54,10 @@ type AState = {
   shade: boolean;
   lightAngle: number;
   lightFocus: number;
+  ambientLightColor: string;
+  ambientLightIntensity: number;
+  directionalLightColor: string;
+  directionalLightIntensity: number;
   pose: boolean;
   poseSettings: {
     mode: 'Simple' | 'Controlled';
@@ -94,7 +98,11 @@ type AState = {
 
 const defaultLighting = {
   lightAngle: Math.PI / 4,
-  lightFocus: Math.SQRT2
+  lightFocus: Math.SQRT2,
+  ambientLightColor: '#ffffff',
+  ambientLightIntensity: 1,
+  directionalLightColor: '#ffffff',
+  directionalLightIntensity: 2.5
 };
 
 class PaperDoll extends Component<AProps, AState> {
@@ -132,6 +140,7 @@ class PaperDoll extends Component<AProps, AState> {
   textureLoader = new THREE.TextureLoader();
   matcapMap = this.textureLoader.load(matcap, matcapMap => matcapMap);
   requestID = 0;
+  ambientLight = new THREE.AmbientLight(0xffffff, 1);
   directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
   grid = new THREE.GridHelper(16, 16);
 
@@ -159,6 +168,10 @@ class PaperDoll extends Component<AProps, AState> {
       shade: true,
       lightAngle: defaultLighting.lightAngle,
       lightFocus: defaultLighting.lightFocus,
+      ambientLightColor: defaultLighting.ambientLightColor,
+      ambientLightIntensity: defaultLighting.ambientLightIntensity,
+      directionalLightColor: defaultLighting.directionalLightColor,
+      directionalLightIntensity: defaultLighting.directionalLightIntensity,
       pose: false,
       poseSettings: {
         mode: 'Simple',
@@ -254,7 +267,11 @@ class PaperDoll extends Component<AProps, AState> {
 
     if (
       this.state.lightAngle !== prevState.lightAngle ||
-      this.state.lightFocus !== prevState.lightFocus
+      this.state.lightFocus !== prevState.lightFocus ||
+      this.state.ambientLightColor !== prevState.ambientLightColor ||
+      this.state.ambientLightIntensity !== prevState.ambientLightIntensity ||
+      this.state.directionalLightColor !== prevState.directionalLightColor ||
+      this.state.directionalLightIntensity !== prevState.directionalLightIntensity
     )
       this.updateLighting();
 
@@ -381,9 +398,7 @@ class PaperDoll extends Component<AProps, AState> {
     this.SMAAPass = new SMAAPass(width, height);
     this.composer.addPass(this.SMAAPass);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-    this.scene.add(ambientLight);
-
+    this.scene.add(this.ambientLight);
     this.perspCam.add(this.directionalLight);
 
     this.matcapMap = this.textureLoader.load(matcap, matcapMap => matcapMap);
@@ -609,6 +624,11 @@ class PaperDoll extends Component<AProps, AState> {
       0,
       Math.cos(this.state.lightAngle) * this.state.lightFocus
     );
+
+    this.ambientLight.color = new THREE.Color(this.state.ambientLightColor);
+    this.ambientLight.intensity = this.state.ambientLightIntensity;
+    this.directionalLight.color = new THREE.Color(this.state.directionalLightColor);
+    this.directionalLight.intensity = this.state.directionalLightIntensity;
   };
 
   createCuboidUVQuad = (x: number, y: number, w: number, h: number, mirrored: boolean) => {
@@ -1708,6 +1728,10 @@ class PaperDoll extends Component<AProps, AState> {
             shade: this.state.shade,
             lightAngle: this.state.lightAngle,
             lightFocus: this.state.lightFocus,
+            ambientLightColor: this.state.ambientLightColor,
+            ambientLightIntensity: this.state.ambientLightIntensity,
+            directionalLightColor: this.state.directionalLightColor,
+            directionalLightIntensity: this.state.directionalLightIntensity,
             pose: this.state.pose,
             poseSettings: this.state.poseSettings,
             partToggles: this.state.partToggles,
@@ -1752,6 +1776,10 @@ type BProps = {
     shade: boolean;
     lightAngle: number;
     lightFocus: number;
+    ambientLightColor: string;
+    ambientLightIntensity: number;
+    directionalLightColor: string;
+    directionalLightIntensity: number;
     pose: boolean;
     poseSettings: AState['poseSettings'];
     partToggles: AState['partToggles'];
@@ -1990,9 +2018,15 @@ class PaperDollSettings extends Component<BProps, BState> {
                   numberCallback={(id, value) => {
                     if (id === 'lightFocus') this.updateSetting('lightFocus', (value / 10) ** 2);
                     else if (id === 'lightAngle') this.updateSetting('lightAngle', value);
+                    else if (id === 'ambientLightIntensity') this.updateSetting('ambientLightIntensity', value);
+                    else if (id === 'directionalLightIntensity') this.updateSetting('directionalLightIntensity', value);
                   }}
                   buttonCallback={id => {
                     if (id === 'resetLighting') this.resetLighting();
+                  }}
+                  stringCallback={(id, value) => {
+                    if (id === 'ambientLightColor') this.updateSetting('ambientLightColor', value);
+                    else if (id === 'directionalLightColor') this.updateSetting('directionalLightColor', value);
                   }}
                   properties={[
                     {
@@ -2002,25 +2036,75 @@ class PaperDollSettings extends Component<BProps, BState> {
                       value: this.props.settings.shade
                     },
                     {
-                      name: 'Light Focus',
-                      id: 'lightFocus',
-                      type: 'range',
-                      value: Math.sqrt(this.props.settings.lightFocus) * 10,
-                      min: 0,
-                      max: 100,
-                      subtype: 'percent',
-                      disabled: !this.props.settings.shade
+                      name: 'Directional Light',
+                      id: 'directionalLightSettings',
+                      type: 'section',
+                      properties: [
+                        {
+                          name: 'Focus',
+                          id: 'lightFocus',
+                          type: 'range',
+                          value: Math.sqrt(this.props.settings.lightFocus) * 10,
+                          min: 0,
+                          max: 100,
+                          subtype: 'percent',
+                          disabled: !this.props.settings.shade
+                        },
+                        {
+                          name: 'Angle',
+                          id: 'lightAngle',
+                          type: 'range',
+                          value: this.props.settings.lightAngle,
+                          min: 0,
+                          max: 2 * Math.PI,
+                          step: 0.01,
+                          subtype: 'radiansAsDegrees',
+                          disabled: !this.props.settings.shade
+                        },
+                        {
+                          name: 'Color',
+                          id: 'directionalLightColor',
+                          type: 'color',
+                          value: this.props.settings.directionalLightColor,
+                          controlled: true,
+                          disabled: !this.props.settings.shade
+                        },
+                        {
+                          name: 'Intensity',
+                          id: 'directionalLightIntensity',
+                          type: 'range',
+                          value: this.props.settings.directionalLightIntensity,
+                          min: 0,
+                          max: 5,
+                          step: 0.1,
+                          disabled: !this.props.settings.shade
+                        }
+                      ]
                     },
                     {
-                      name: 'Light Angle',
-                      id: 'lightAngle',
-                      type: 'range',
-                      value: this.props.settings.lightAngle,
-                      min: 0,
-                      max: 2 * Math.PI,
-                      step: 0.01,
-                      subtype: 'radiansAsDegrees',
-                      disabled: !this.props.settings.shade
+                      name: 'Ambient Light',
+                      id: 'ambientLightSettings',
+                      type: 'section',
+                      properties: [
+                        {
+                          name: 'Color',
+                          id: 'ambientLightColor',
+                          type: 'color',
+                          value: this.props.settings.ambientLightColor,
+                          controlled: true,
+                          disabled: !this.props.settings.shade
+                        },
+                        {
+                          name: 'Intensity',
+                          id: 'ambientLightIntensity',
+                          type: 'range',
+                          value: this.props.settings.ambientLightIntensity,
+                          min: 0,
+                          max: 5,
+                          step: 0.1,
+                          disabled: !this.props.settings.shade
+                        }
+                      ]
                     },
                     {
                       name: 'Reset Lighting',

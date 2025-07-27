@@ -7,6 +7,7 @@ type AProps = {
   alpha?: boolean;
   default?: string;
   id?: string;
+  controlled?: boolean;
   linked?: boolean;
   unlink?: () => void;
   update?: (color: string) => void;
@@ -39,7 +40,12 @@ class ColorPicker extends Component<AProps, AState> {
   }
 
   componentDidUpdate = (prevProps: Readonly<AProps>) => {
-    if (this.props.linked && this.props.default && prevProps.default !== this.props.default) {
+    if (
+      this.props.default &&
+      prevProps.default !== this.props.default &&
+      this.props.default !== this.state.color &&
+      (this.props.controlled || this.props.linked)
+    ) {
       const hsla = ImgMod.hexToHsla(ImgMod.colorAsHex(this.props.default));
       this.setState({
         hsla: hsla,
