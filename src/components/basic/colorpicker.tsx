@@ -7,6 +7,7 @@ type AProps = {
   alpha?: boolean;
   default?: string;
   id?: string;
+  disabled?: boolean;
   controlled?: boolean;
   linked?: boolean;
   unlink?: () => void;
@@ -122,6 +123,7 @@ class ColorPicker extends Component<AProps, AState> {
               `),url(${checker})`
           }}
           id={this.props.id}
+          disabled={this.props.disabled}
           onMouseDown={this.togglePicker}
         />
         {this.state.open && (

@@ -143,6 +143,7 @@ class PropertiesList extends Component<AProps> {
         return (
           <ColorPicker
             id={id}
+            disabled={property.disabled}
             default={property.value}
             alpha={property.alpha}
             controlled={property.controlled}
