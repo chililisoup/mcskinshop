@@ -35,7 +35,7 @@ export const getRemoteJson = async (path: string) => {
 
     const json: unknown = await response.json();
     if (json && typeof json === 'object') return json;
-    
+
     throw new Error(`Could not load JSON at ${path}`);
   } catch (error) {
     console.error(error);
@@ -53,6 +53,13 @@ export const b64ToUtf8 = (b64: string) =>
       .join('')
   );
 
+// https://stackoverflow.com/a/70811091
+export const isKeyOfObject = <T extends object>(key: unknown, obj: T): key is keyof T => {
+  return (
+    (typeof key === 'string' || typeof key === 'number' || typeof key === 'symbol') && key in obj
+  );
+};
+
 export const randomKey = () => Math.random().toString(16).slice(2);
 
 export const clamp = (value: number, min: number, max: number) =>
@@ -65,5 +72,5 @@ const r2d = 180 / Math.PI;
 export const radToDeg = (rad: number) => rad * r2d;
 
 let slim = false;
-export const setSlim = (set: boolean) => slim = set;
+export const setSlim = (set: boolean) => (slim = set);
 export const getSlim = () => slim;

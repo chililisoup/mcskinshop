@@ -1,10 +1,12 @@
+import * as Util from './util';
+
 export const SELECT_PREFS = {
   theme: {
-    default: 'Purple (default)',
     user: 'User',
-    dark: 'Dark',
+    dark: 'Dark (default)',
     darker: 'Darker',
     light: 'Light',
+    purple: 'Purple',
     taiga: 'Taiga',
     cave: 'Cave',
     cherry: 'Cherry Blossom'
@@ -38,10 +40,17 @@ export type Prefs = {
     autosetImageForm: boolean;
     useFallbackSkinSource: boolean;
     addDefaultLayer: boolean;
+    showLayerManagerOnStart: boolean;
+    showLayerEditorOnStart: boolean;
+    showPaperDollOnStart: boolean;
+    showPreviewOnStart: boolean;
+    showAssetCreatorOnStart: boolean;
+    showLayerAdderOnStart: boolean;
+    showModelFeaturesOnStart: boolean;
   };
 
 export const defaultPrefs: Prefs = {
-  theme: 'default',
+  theme: 'dark',
   '--main-bg': '#202633',
   '--container': '#434664',
   '--container-selected': '#515d9d',
@@ -62,7 +71,14 @@ export const defaultPrefs: Prefs = {
   curvature: 8,
   autosetImageForm: false,
   useFallbackSkinSource: false,
-  addDefaultLayer: true
+  addDefaultLayer: true,
+  showLayerManagerOnStart: true,
+  showLayerEditorOnStart: true,
+  showPaperDollOnStart: true,
+  showPreviewOnStart: true,
+  showAssetCreatorOnStart: false,
+  showLayerAdderOnStart: false,
+  showModelFeaturesOnStart: false
 } as const;
 
 export class Manager {
@@ -70,13 +86,23 @@ export class Manager {
 
   constructor() {
     this.prefs = JSON.parse(JSON.stringify(defaultPrefs)) as Prefs;
-    this.combine(JSON.parse(localStorage.getItem('preferences') ?? '{}') as Partial<Prefs>);
+    this.combine(JSON.parse(localStorage.getItem('preferences') ?? '{}'));
 
     this.applyPrefs();
   }
 
-  private combine = <TPrefs = Partial<Prefs>>(overrides: TPrefs) => {
-    for (const pref in overrides) (this.prefs as TPrefs)[pref] = overrides[pref];
+  private combine = <TPrefs = Partial<Prefs>>(overrides: TPrefs & object) => {
+    let override: keyof typeof overrides;
+    for (override in overrides)
+      if (override in this.prefs) (this.prefs as TPrefs)[override] = overrides[override];
+
+    let selectPref: keyof typeof SELECT_PREFS;
+    for (selectPref in SELECT_PREFS)
+      if (
+        Util.isKeyOfObject(selectPref, overrides) &&
+        !Util.isKeyOfObject(overrides[selectPref], SELECT_PREFS[selectPref])
+      )
+        this.prefs[selectPref] = defaultPrefs[selectPref];
   };
 
   private trimPrefs = <KKey extends keyof Prefs>(prefs: Pick<Prefs, KKey>) => {
@@ -105,7 +131,7 @@ export class Manager {
     root.style.setProperty('--curvature', this.prefs.curvature + 'px');
 
     switch (this.prefs.theme) {
-      case 'default':
+      case 'purple':
         break;
       case 'user':
         root.style.setProperty('--main-bg', this.prefs['--main-bg']);
@@ -126,12 +152,6 @@ export class Manager {
         root.style.setProperty('--box-shadow', `0 0 2px 2px ${this.prefs['--shadow']}`);
         root.style.setProperty('--drop-shadow', `0 0 4px ${this.prefs['--shadow']}`);
         root.style.setProperty('--icon-invert', this.prefs['--icon-invert'] ? '100%' : '0%');
-        break;
-      case 'dark':
-        root.style.setProperty('--container', 'var(--main-bg)');
-        root.style.setProperty('--menu-bar', 'var(--main-bg)');
-        root.style.setProperty('--outline', 'rgb(63, 69, 91)');
-        root.style.setProperty('--input', 'var(--outline)');
         break;
       case 'darker':
         root.style.setProperty('--main-bg', 'rgb(23, 26, 32)');
@@ -198,6 +218,12 @@ export class Manager {
         root.style.setProperty('--outline', '#ffc9e5');
         root.style.setProperty('--accent', '#ff91ca');
         break;
+      case 'dark':
+      default:
+        root.style.setProperty('--container', 'var(--main-bg)');
+        root.style.setProperty('--menu-bar', 'var(--main-bg)');
+        root.style.setProperty('--outline', 'rgb(63, 69, 91)');
+        root.style.setProperty('--input', 'var(--outline)');
     }
   };
 }

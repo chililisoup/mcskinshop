@@ -39,13 +39,19 @@ class Preferences extends Component<AProps> {
               this.props.updatePrefs(this.props.manager);
             }}
             booleanCallback={(id, value) => {
-              if (id === '--icon-invert') this.props.manager.setPrefs({ '--icon-invert': value });
-              if (id === 'useFallbackSkinSource')
-                this.props.manager.setPrefs({ useFallbackSkinSource: value });
-              if (id === 'autosetImageForm')
-                this.props.manager.setPrefs({ autosetImageForm: value });
-              if (id === 'addDefaultLayer')
-                this.props.manager.setPrefs({ addDefaultLayer: value });
+              if (id === '--icon-invert') this.props.manager.setPrefs({ [id]: value });
+              if (id === 'useFallbackSkinSource') this.props.manager.setPrefs({ [id]: value });
+              if (id === 'autosetImageForm') this.props.manager.setPrefs({ [id]: value });
+
+              if (id === 'addDefaultLayer') this.props.manager.setPrefs({ [id]: value });
+              if (id === 'showLayerManagerOnStart') this.props.manager.setPrefs({ [id]: value });
+              if (id === 'showLayerEditorOnStart') this.props.manager.setPrefs({ [id]: value });
+              if (id === 'showPaperDollOnStart') this.props.manager.setPrefs({ [id]: value });
+              if (id === 'showPreviewOnStart') this.props.manager.setPrefs({ [id]: value });
+              if (id === 'showAssetCreatorOnStart') this.props.manager.setPrefs({ [id]: value });
+              if (id === 'showLayerAdderOnStart') this.props.manager.setPrefs({ [id]: value });
+              if (id === 'showModelFeaturesOnStart') this.props.manager.setPrefs({ [id]: value });
+
               this.props.updatePrefs(this.props.manager);
             }}
             properties={[
@@ -88,12 +94,6 @@ class Preferences extends Component<AProps> {
                 ])
               },
               {
-                name: 'Add Default Layer',
-                id: 'addDefaultLayer',
-                type: 'checkbox',
-                value: values.addDefaultLayer
-              },
-              {
                 name: 'Autoset Image Form',
                 id: 'autosetImageForm',
                 type: 'checkbox',
@@ -104,6 +104,61 @@ class Preferences extends Component<AProps> {
                 id: 'useFallbackSkinSource',
                 type: 'checkbox',
                 value: values.useFallbackSkinSource
+              },
+              {
+                name: 'Startup',
+                id: 'startupPreferences',
+                type: 'section',
+                properties: [
+                  {
+                    name: 'Add Default Layer',
+                    id: 'addDefaultLayer',
+                    type: 'checkbox',
+                    value: values.addDefaultLayer
+                  },
+                  {
+                    name: 'Show Layer Manager',
+                    id: 'showLayerManagerOnStart',
+                    type: 'checkbox',
+                    value: values.showLayerManagerOnStart
+                  },
+                  {
+                    name: 'Show Layer Editor',
+                    id: 'showLayerEditorOnStart',
+                    type: 'checkbox',
+                    value: values.showLayerEditorOnStart
+                  },
+                  {
+                    name: 'Show Paper Doll',
+                    id: 'showPaperDollOnStart',
+                    type: 'checkbox',
+                    value: values.showPaperDollOnStart
+                  },
+                  {
+                    name: 'Show Preview',
+                    id: 'showPreviewOnStart',
+                    type: 'checkbox',
+                    value: values.showPreviewOnStart
+                  },
+                  {
+                    name: 'Show Asset Creator',
+                    id: 'showAssetCreatorOnStart',
+                    type: 'checkbox',
+                    value: values.showAssetCreatorOnStart
+                  },
+                  {
+                    name: 'Show Layer Adder',
+                    id: 'showLayerAdderOnStart',
+                    type: 'checkbox',
+                    value: values.showLayerAdderOnStart
+                  },
+                  {
+                    name: 'Show Model Features',
+                    id: 'showModelFeaturesOnStart',
+                    type: 'checkbox',
+                    value: values.showModelFeaturesOnStart
+                  }
+                ]
               }
             ]}
           />

@@ -28,6 +28,7 @@ type AState = {
   slim: boolean;
   editHints: [string, string];
   modelFeatures: Features;
+  prefMan: PrefMan.Manager;
   layerManager: boolean;
   layerEditor: boolean;
   paperDoll: boolean;
@@ -36,7 +37,6 @@ type AState = {
   layerAdder: boolean;
   modelFeaturesWindow: boolean;
   preferences: boolean;
-  prefMan: PrefMan.Manager;
   selectedLayer?: ImgMod.AbstractLayer;
   selectedLayerPreview?: ImgMod.ImgPreview;
 };
@@ -49,6 +49,9 @@ class SkinManager extends Component<AProps, AState> {
   constructor(props: AProps) {
     super(props);
 
+    const prefMan = new PrefMan.Manager();
+    const prefs = prefMan.get();
+
     this.state = {
       skin: steve,
       slim: false,
@@ -60,15 +63,15 @@ class SkinManager extends Component<AProps, AState> {
         leggings: false,
         boots: false
       },
-      layerManager: true,
-      layerEditor: true,
-      paperDoll: true,
-      preview: true,
-      assetCreator: false,
-      layerAdder: false,
-      modelFeaturesWindow: false,
+      prefMan: prefMan,
+      layerManager: prefs.showLayerManagerOnStart,
+      layerEditor: prefs.showLayerEditorOnStart,
+      paperDoll: prefs.showPaperDollOnStart,
+      preview: prefs.showPreviewOnStart,
+      assetCreator: prefs.showAssetCreatorOnStart,
+      layerAdder: prefs.showLayerAdderOnStart,
+      modelFeaturesWindow: prefs.showModelFeaturesOnStart,
       preferences: false,
-      prefMan: new PrefMan.Manager(),
       selectedLayer: undefined,
       selectedLayerPreview: undefined
     };
