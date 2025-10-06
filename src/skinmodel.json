@@ -242,7 +242,7 @@
             },
             "leftElytraWing": {
                 "poseable": true,
-                "position": [1, 0, -2],
+                "position": [0.5, 0, -2],
                 "children": {
                     "base": {
                         "renderType": "cutout",
@@ -257,7 +257,7 @@
             },
             "rightElytraWing": {
                 "poseable": true,
-                "position": [-1, 0, -2],
+                "position": [-0.5, 0, -2],
                 "children": {
                     "base": {
                         "renderType": "cutout",
