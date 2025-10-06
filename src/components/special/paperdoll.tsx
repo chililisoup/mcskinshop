@@ -24,6 +24,7 @@ type ModelPart = {
   position: number[];
   rotation?: number[];
   renderType?: 'cutout';
+  forceOutline?: boolean;
   shape?: number[];
   uniqueMaterial?: boolean;
   textureSize?: number[];
@@ -221,6 +222,7 @@ class PaperDoll extends Component<AProps, AState> {
     this.modelSetup();
     this.updateSlim();
     this.updateCape();
+    this.updateElytra();
     this.updateHelmet();
     this.updateChestplate();
     this.updateLeggings();
@@ -291,6 +293,10 @@ class PaperDoll extends Component<AProps, AState> {
 
     if (this.props.modelFeatures.cape !== prevProps.modelFeatures.cape) {
       this.updateCape();
+    }
+
+    if (this.props.modelFeatures.elytra !== prevProps.modelFeatures.elytra) {
+      this.updateElytra();
     }
 
     if (this.props.modelFeatures.helmet !== prevProps.modelFeatures.helmet) {
@@ -763,6 +769,8 @@ class PaperDoll extends Component<AProps, AState> {
         });
       }
 
+      if (child.forceOutline) part.userData.forceOutline = true;
+
       part.userData.materialIndex = this.materials.shaded.push(shadedMat) - 1;
       this.materials.flat.push(flatMat);
 
@@ -779,9 +787,7 @@ class PaperDoll extends Component<AProps, AState> {
 
     if (child.rotation) {
       const rotation = child.rotation.map(degrees => (degrees * Math.PI) / 180);
-      part.setRotationFromEuler(
-        new THREE.Euler().fromArray([rotation[0], rotation[1], rotation[2]])
-      );
+      part.setRotationFromEuler(new THREE.Euler(rotation[0], rotation[1], rotation[2]));
     }
 
     if (child.poseable) {
@@ -869,6 +875,14 @@ class PaperDoll extends Component<AProps, AState> {
     this.updateFeature('cape', [this.pivots.cape.children[0]], true);
   };
 
+  updateElytra = () => {
+    this.updateFeature(
+      'elytra',
+      [this.pivots.leftElytraWing.children[0], this.pivots.rightElytraWing.children[0]],
+      true
+    );
+  };
+
   updateHelmet = () => {
     this.updateFeature('helmet', [this.pivots.head.children[2]]);
   };
@@ -912,6 +926,10 @@ class PaperDoll extends Component<AProps, AState> {
     this.pivots.rightArm.position.x = skinmodel.torso.children.rightArm.position[0] - mod;
 
     this.pivots.cape.position.z = skinmodel.torso.children.cape.position[2] - mod * 5;
+    this.pivots.leftElytraWing.position.z =
+      skinmodel.torso.children.leftElytraWing.position[2] - mod * 5;
+    this.pivots.rightElytraWing.position.z =
+      skinmodel.torso.children.rightElytraWing.position[2] - mod * 5;
   };
 
   resetPose = () => {
@@ -1097,6 +1115,12 @@ class PaperDoll extends Component<AProps, AState> {
     this.pivots.rightLeg.position.copy(
       this.pivots.rightLeg.userData.defaultPosition as THREE.Vector3Like
     );
+    this.pivots.leftElytraWing.position.copy(
+      this.pivots.leftElytraWing.userData.defaultPosition as THREE.Vector3Like
+    );
+    this.pivots.rightElytraWing.position.copy(
+      this.pivots.rightElytraWing.userData.defaultPosition as THREE.Vector3Like
+    );
 
     this.updateExplode();
 
@@ -1112,6 +1136,9 @@ class PaperDoll extends Component<AProps, AState> {
 
     this.pivots.cape.rotation.x =
       Math.sin(this.idleTime * 0.1) * 0.05 + 0.75 * this.state.animSpeed + 0.1;
+
+    const oldWingRotation = this.pivots.leftElytraWing.rotation.clone();
+    let newWingRotation = new THREE.Euler(Math.PI / 12, Math.PI / 36, Math.PI / 12);
 
     switch (this.state.animation) {
       case 'Walk':
@@ -1142,8 +1169,26 @@ class PaperDoll extends Component<AProps, AState> {
         this.pivots.leftLeg.position.z += 0.8;
         this.pivots.rightLeg.position.z += 0.8;
 
+        this.pivots.leftElytraWing.position.y -= 3.0;
+
+        this.pivots.rightElytraWing.position.y -= 3.0;
+
+        newWingRotation = new THREE.Euler((Math.PI * 2) / 9, Math.PI / 36, Math.PI / 4);
+
         break;
     }
+
+    const wingDelta = Math.min(delta * 6, 1);
+    const wingRotation = new THREE.Euler(
+      newWingRotation.x * wingDelta + oldWingRotation.x * (1 - wingDelta),
+      newWingRotation.y * wingDelta + oldWingRotation.y * (1 - wingDelta),
+      newWingRotation.z * wingDelta + oldWingRotation.z * (1 - wingDelta)
+    );
+
+    this.pivots.leftElytraWing.setRotationFromEuler(wingRotation);
+    this.pivots.rightElytraWing.setRotationFromEuler(
+      new THREE.Euler(wingRotation.x, -wingRotation.y, -wingRotation.z)
+    );
   };
 
   findPosableAncestor: (part: THREE.Object3D) => THREE.Object3D | false = part => {
@@ -1158,7 +1203,7 @@ class PaperDoll extends Component<AProps, AState> {
     if (part.children.length > 0) {
       part.children.forEach(child => children.push(...this.filterOutline(child)));
     } else if (
-      part.userData.renderType !== 'cutout' &&
+      (part.userData.renderType !== 'cutout' || part.userData.forceOutline) &&
       !part.userData.poseable &&
       part.visible &&
       !part.userData.noOutline
@@ -2018,15 +2063,18 @@ class PaperDollSettings extends Component<BProps, BState> {
                   numberCallback={(id, value) => {
                     if (id === 'lightFocus') this.updateSetting('lightFocus', (value / 10) ** 2);
                     else if (id === 'lightAngle') this.updateSetting('lightAngle', value);
-                    else if (id === 'ambientLightIntensity') this.updateSetting('ambientLightIntensity', value);
-                    else if (id === 'directionalLightIntensity') this.updateSetting('directionalLightIntensity', value);
+                    else if (id === 'ambientLightIntensity')
+                      this.updateSetting('ambientLightIntensity', value);
+                    else if (id === 'directionalLightIntensity')
+                      this.updateSetting('directionalLightIntensity', value);
                   }}
                   buttonCallback={id => {
                     if (id === 'resetLighting') this.resetLighting();
                   }}
                   stringCallback={(id, value) => {
                     if (id === 'ambientLightColor') this.updateSetting('ambientLightColor', value);
-                    else if (id === 'directionalLightColor') this.updateSetting('directionalLightColor', value);
+                    else if (id === 'directionalLightColor')
+                      this.updateSetting('directionalLightColor', value);
                   }}
                   properties={[
                     {

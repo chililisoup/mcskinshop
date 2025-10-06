@@ -73,7 +73,7 @@ export const defaultPrefs: Prefs = {
   useFallbackSkinSource: false,
   addDefaultLayer: true,
   showLayerManagerOnStart: true,
-  showLayerEditorOnStart: true,
+  showLayerEditorOnStart: false,
   showPaperDollOnStart: true,
   showPreviewOnStart: true,
   showAssetCreatorOnStart: false,

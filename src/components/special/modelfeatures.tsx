@@ -6,12 +6,13 @@ import GridSelect, { Crop, Option } from '../basic/gridselect';
 
 type AssetType = 'capes' | 'equipment' | 'leggings';
 
-type FeatureType = 'cape' | 'helmet' | 'chestplate' | 'leggings' | 'boots';
+type FeatureType = 'cape' | 'elytra' | 'helmet' | 'chestplate' | 'leggings' | 'boots';
 
 export type Features = Record<FeatureType, string | false>;
 
 type FeatureList =
   | 'availableCapes'
+  | 'availableElytras'
   | 'availableHelmets'
   | 'availableChestplates'
   | 'availableLeggings'
@@ -32,11 +33,13 @@ class ModelFeatures extends Component<AProps, AState> {
 
     this.state = {
       cape: false,
+      elytra: false,
       helmet: false,
       chestplate: false,
       leggings: false,
       boots: false,
-      availableCapes: this.getFeatureAssets('capes'),
+      availableCapes: this.getFeatureAssets('capes', ['elytra']),
+      availableElytras: this.getFeatureAssets('capes'),
       availableHelmets: this.getFeatureAssets('equipment'), // Helmets, chestplates, and boots share a texture file
       availableChestplates: this.getFeatureAssets('equipment', ['turtle_scute']),
       availableLeggings: this.getFeatureAssets('leggings'),
@@ -60,6 +63,7 @@ class ModelFeatures extends Component<AProps, AState> {
   changeFeature = (feature: FeatureType, value: string | false) => {
     const features: Features = {
       cape: this.state.cape,
+      elytra: this.state.elytra,
       helmet: this.state.helmet,
       chestplate: this.state.chestplate,
       leggings: this.state.leggings,
@@ -123,6 +127,19 @@ class ModelFeatures extends Component<AProps, AState> {
             y: 1.05 / 32,
             sx: 20.9 / 64,
             sy: 15.9 / 32
+          }}
+        />
+        <FeatureEntry
+          title="Elytras"
+          uploadCustom={() => this.uploadCustom(['availableElytras', [64, 32]])}
+          options={this.state.availableElytras}
+          changeFeature={option => this.changeFeature('elytra', option)}
+          crop={{
+            aspectRatio: 2.0,
+            x: 30.05 / 64,
+            y: 2.05 / 32,
+            sx: 19.9 / 64,
+            sy: 19.9 / 32
           }}
         />
         <FeatureEntry

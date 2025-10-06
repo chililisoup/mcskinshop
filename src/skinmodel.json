@@ -5,8 +5,9 @@
         "children": {
             "base": {
                 "position": [0, 4, 0],
-                "shape": [8, 8, 8],
-                "uv": [0, 0]
+                "shape": [8.01, 8.01, 8.01],
+                "uv": [0, 0],
+                "uvSize": [8, 8, 8]
             },
             "hat": {
                 "position": [0, 4, 0],
@@ -236,6 +237,37 @@
                         "uniqueMaterial": true,
                         "textureSize": [64, 32],
                         "uv": [0, 0]
+                    }
+                }
+            },
+            "leftElytraWing": {
+                "poseable": true,
+                "position": [1, 0, -2],
+                "children": {
+                    "base": {
+                        "renderType": "cutout",
+                        "forceOutline": true,
+                        "position": [-1, -10.5, -1],
+                        "shape": [10, 20, 2],
+                        "uniqueMaterial": true,
+                        "textureSize": [64, 32],
+                        "uv": [22, 0]
+                    }
+                }
+            },
+            "rightElytraWing": {
+                "poseable": true,
+                "position": [-1, 0, -2],
+                "children": {
+                    "base": {
+                        "renderType": "cutout",
+                        "forceOutline": true,
+                        "position": [1, -10.5, -1],
+                        "shape": [10, 20, 2],
+                        "uniqueMaterial": true,
+                        "textureSize": [64, 32],
+                        "uv": [22, 0],
+                        "uvMirrored": true
                     }
                 }
             }
