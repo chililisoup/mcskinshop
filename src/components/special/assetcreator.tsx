@@ -1,6 +1,6 @@
 import React, { ChangeEvent, Component, ReactNode } from 'react';
-import * as ImgMod from '../../tools/imgmod';
-import ColorPicker from '../basic/colorpicker';
+import * as ImgMod from '@tools/imgmod';
+import ColorPicker from '@components/basic/colorpicker';
 
 type AProps = {
   addLayer: (layer: ImgMod.AbstractLayer) => void;
@@ -218,7 +218,7 @@ class AssetLayer extends Component<BProps, BState> {
             )}
           </div>
           <div>
-            <img alt={''} src={this.state.asset.rawImage}></img>
+            <img alt={''} src={this.state.asset.src}></img>
             <span>
               <button onClick={() => this.props.moveLayer(this.props.index, 1)}>&#9650;</button>
               <button onClick={() => this.props.moveLayer(this.props.index, -1)}>&#9660;</button>

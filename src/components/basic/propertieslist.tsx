@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
-import * as Util from '../../tools/util';
-import Slider, { SubType } from './slider';
-import ColorPicker from './colorpicker';
-import Dropdown from './dropdown';
+import * as Util from '@tools/util';
+import Slider, { SubType } from '@components/basic/slider';
+import ColorPicker from '@components/basic/colorpicker';
+import Dropdown from '@components/basic/dropdown';
 
 type BaseProperty = {
   name: string;
@@ -75,9 +75,7 @@ class PropertiesList extends Component<AProps> {
       case 'range':
         return (
           <Slider
-            callback={value =>
-              this.props.numberCallback && this.props.numberCallback(property.id, value)
-            }
+            callback={value => this.props.numberCallback?.(property.id, value)}
             id={id}
             value={property.value}
             min={property.min}
@@ -95,10 +93,7 @@ class PropertiesList extends Component<AProps> {
               type="checkbox"
               checked={property.value}
               disabled={property.disabled}
-              onChange={e =>
-                this.props.booleanCallback &&
-                this.props.booleanCallback(property.id, e.target.checked)
-              }
+              onChange={e => this.props.booleanCallback?.(property.id, e.target.checked)}
             />
           </span>
         );
@@ -108,9 +103,7 @@ class PropertiesList extends Component<AProps> {
             id={id}
             value={property.value}
             disabled={property.disabled}
-            onChange={e =>
-              this.props.stringCallback && this.props.stringCallback(property.id, e.target.value)
-            }
+            onChange={e => this.props.stringCallback?.(property.id, e.target.value)}
           >
             {Array.isArray(property.options)
               ? property.options.map(option => {
@@ -134,7 +127,7 @@ class PropertiesList extends Component<AProps> {
           <button
             id={id}
             disabled={property.disabled}
-            onClick={() => this.props.buttonCallback && this.props.buttonCallback(property.id)}
+            onClick={() => this.props.buttonCallback?.(property.id)}
           >
             {property.label ?? property.name}
           </button>
@@ -147,9 +140,7 @@ class PropertiesList extends Component<AProps> {
             default={property.value}
             alpha={property.alpha}
             controlled={property.controlled}
-            update={value =>
-              this.props.stringCallback && this.props.stringCallback(property.id, value)
-            }
+            update={value => this.props.stringCallback?.(property.id, value)}
           />
         );
       case 'section':

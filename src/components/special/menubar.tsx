@@ -1,6 +1,6 @@
 import React, { ChangeEvent, Component, RefObject } from 'react';
-import PopUp from '../basic/popup';
-import * as Util from '../../tools/util';
+import PopUp from '@components/basic/popup';
+import * as Util from '@tools/util';
 
 type AProps = {
   uploadSkin: (name: string, url?: string) => void;
@@ -130,7 +130,7 @@ class MenuBar extends Component<AProps, AState> {
           <PopUp close={() => this.setState({ file: false })}>
             {' '}
             <div>
-              <button onClick={() => this.uploadRef.current && this.uploadRef.current.click()}>
+              <button onClick={() => this.uploadRef.current?.click()}>
                 Load from File...
               </button>
               <input

@@ -7,7 +7,7 @@ export default tseslint.config(
   tseslint.configs.recommendedTypeChecked,
   tseslint.configs.stylisticTypeChecked,
   {
-    ignores: ['eslint.config.mjs', '**/*.js', '**/*.d.ts']
+    ignores: ['eslint.config.mjs', 'rsbuild.config.mts', '**/*.js', '**/*.d.ts']
   },
   {
     plugins: {

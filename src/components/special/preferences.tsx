@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
-import * as PrefMan from '../../tools/prefman';
-import DraggableWindow from '../basic/draggablewindow';
-import PropertiesList, { Property } from '../basic/propertieslist';
+import * as PrefMan from '@tools/prefman';
+import DraggableWindow from '@components/basic/draggablewindow';
+import PropertiesList, { Property } from '@components/basic/propertieslist';
 
 type AProps = {
   manager: PrefMan.Manager;

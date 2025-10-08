@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import * as Util from '../../tools/util';
+import * as Util from '@tools/util';
 
 export type SubType = 'hidden' | 'number' | 'percent' | 'degrees' | 'radiansAsDegrees';
 
@@ -103,7 +103,7 @@ class Slider extends Component<AProps, AState> {
           step={this.props.step}
           disabled={this.props.disabled}
           onInput={e =>
-            this.props.callback && this.props.callback(Number((e.target as HTMLInputElement).value))
+            this.props.callback?.(Number((e.target as HTMLInputElement).value))
           }
           style={{
             background:

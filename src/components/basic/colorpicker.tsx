@@ -1,6 +1,6 @@
 import React, { Component, RefObject } from 'react';
-import * as ImgMod from '../../tools/imgmod';
-import PopUp from './popup';
+import * as ImgMod from '@tools/imgmod';
+import PopUp from '@components/basic/popup';
 import checker from '@assets/checkerboard.png';
 
 type AProps = {

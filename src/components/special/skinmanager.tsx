@@ -1,19 +1,19 @@
 import React, { Component } from 'react';
-import * as ImgMod from '../../tools/imgmod';
-import * as Util from '../../tools/util';
+import * as ImgMod from '@tools/imgmod';
+import * as Util from '@tools/util';
 import steve from '@assets/steve.png';
 import alex from '@assets/alex.png';
-import PaperDoll from './paperdoll';
-import LayerManager from './layermanager';
-import LayerAdder from './layeradder';
-import AssetCreator from './assetcreator';
-import MenuBar from './menubar';
-import Preview from './preview';
-import ModelFeatures, { Features } from './modelfeatures';
-import Preferences from './preferences';
-import * as PrefMan from '../../tools/prefman';
-import DraggableWindow from '../basic/draggablewindow';
-import LayerEditor from './layereditor';
+import PaperDoll from '@components/special/paperdoll/paperdoll';
+import LayerManager from '@components/special/layermanager';
+import LayerAdder from '@components/special/layeradder';
+import AssetCreator from '@components/special/assetcreator';
+import MenuBar from '@components/special/menubar';
+import Preview from '@components/special/preview';
+import ModelFeatures, { Features } from '@components/special/modelfeatures';
+import Preferences from '@components/special/preferences';
+import * as PrefMan from '@tools/prefman';
+import DraggableWindow from '@components/basic/draggablewindow';
+import LayerEditor from '@components/special/layereditor';
 
 export type UndoCallback = () => RedoCallback;
 export type RedoCallback = () => UndoCallback;
@@ -415,6 +415,7 @@ class SkinManager extends Component<AProps, AState> {
           )}
           {this.state.modelFeaturesWindow && (
             <ModelFeatures
+              features={this.state.modelFeatures}
               updateFeatures={features => this.updateState('modelFeatures', features)}
             />
           )}

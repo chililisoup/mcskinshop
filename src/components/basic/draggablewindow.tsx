@@ -1,5 +1,5 @@
 import React, { Component, ReactNode, RefObject } from 'react';
-import * as Util from '../../tools/util';
+import * as Util from '@tools/util';
 
 type AProps = {
   title: string;

@@ -1,8 +1,8 @@
 import React, { ChangeEvent, Component, RefObject } from 'react';
-import * as ImgMod from '../../tools/imgmod';
-import asset_map from '../../asset_map.json';
-import Dropdown from '../basic/dropdown';
-import GridSelect, { Crop, Option } from '../basic/gridselect';
+import * as ImgMod from '@tools/imgmod';
+import asset_map from '@/asset_map.json';
+import Dropdown from '@components/basic/dropdown';
+import GridSelect, { Crop, Option } from '@components/basic/gridselect';
 
 type AssetType = 'capes' | 'equipment' | 'leggings' | 'items';
 
@@ -33,10 +33,11 @@ type FeatureList =
   | 'availableItems';
 
 type AProps = {
+  features: Features;
   updateFeatures: (features: Features) => void;
 };
 
-type AState = Features & Record<FeatureList, Option[]>;
+type AState = Record<FeatureList, Option[]>;
 
 class ModelFeatures extends Component<AProps, AState> {
   uploadRef: RefObject<HTMLInputElement | null> = React.createRef();
@@ -48,14 +49,6 @@ class ModelFeatures extends Component<AProps, AState> {
     super(props);
 
     this.state = {
-      cape: { value: false },
-      elytra: { value: false },
-      helmet: { value: false },
-      chestplate: { value: false },
-      leggings: { value: false },
-      boots: { value: false },
-      rightItem: { value: false },
-      leftItem: { value: false },
       availableCapes: this.getFeatureAssets('capes', ['0_elytra']),
       availableElytras: this.getFeatureAssets('capes'),
       availableHelmets: this.getFeatureAssets('equipment'), // Helmets, chestplates, and boots share a texture file
@@ -81,14 +74,14 @@ class ModelFeatures extends Component<AProps, AState> {
 
   changeFeature = (featureType: FeatureType, feature: Feature) => {
     const features: Features = {
-      cape: this.state.cape,
-      elytra: this.state.elytra,
-      helmet: this.state.helmet,
-      chestplate: this.state.chestplate,
-      leggings: this.state.leggings,
-      boots: this.state.boots,
-      rightItem: this.state.rightItem,
-      leftItem: this.state.leftItem
+      cape: this.props.features.cape,
+      elytra: this.props.features.elytra,
+      helmet: this.props.features.helmet,
+      chestplate: this.props.features.chestplate,
+      leggings: this.props.features.leggings,
+      boots: this.props.features.boots,
+      rightItem: this.props.features.rightItem,
+      leftItem: this.props.features.leftItem
     };
 
     if (feature && featureType === 'elytra') features.cape = { value: false };
@@ -98,9 +91,18 @@ class ModelFeatures extends Component<AProps, AState> {
       feature.extra = feature.extra.split('/')[0];
 
     features[featureType] = feature;
-
-    this.setState(features);
     this.props.updateFeatures(features);
+  };
+
+  getFeatureOption = (featureType: FeatureType, featureList: FeatureList): Option | undefined => {
+    const feature = this.props.features[featureType];
+    const options = this.state[featureList];
+    if (!feature) return false;
+    for (const option of options) {
+      if (!option) continue;
+      if (option[1] === feature.value) return option;
+    }
+    return undefined;
   };
 
   onCustomUpload: (e: ChangeEvent<HTMLInputElement>) => void = async e => {
@@ -152,6 +154,7 @@ class ModelFeatures extends Component<AProps, AState> {
           title="Capes"
           uploadCustom={() => this.uploadCustom(['availableCapes', [64, 32]])}
           options={this.state.availableCapes}
+          default={this.getFeatureOption('cape', 'availableCapes')}
           changeFeature={option =>
             this.changeFeature('cape', { value: option ? option[1] : option })
           }
@@ -167,6 +170,7 @@ class ModelFeatures extends Component<AProps, AState> {
           title="Elytras"
           uploadCustom={() => this.uploadCustom(['availableElytras', [64, 32]])}
           options={this.state.availableElytras}
+          default={this.getFeatureOption('elytra', 'availableElytras')}
           changeFeature={option =>
             this.changeFeature('elytra', { value: option ? option[1] : option })
           }
@@ -182,6 +186,7 @@ class ModelFeatures extends Component<AProps, AState> {
           title="Helmets"
           uploadCustom={() => this.uploadCustom(['availableHelmets', [64, 32]])}
           options={this.state.availableHelmets}
+          default={this.getFeatureOption('helmet', 'availableHelmets')}
           changeFeature={option =>
             this.changeFeature('helmet', { value: option ? option[1] : option })
           }
@@ -197,6 +202,7 @@ class ModelFeatures extends Component<AProps, AState> {
           title="Chestplates"
           uploadCustom={() => this.uploadCustom(['availableChestplates', [64, 32]])}
           options={this.state.availableChestplates}
+          default={this.getFeatureOption('chestplate', 'availableChestplates')}
           changeFeature={option =>
             this.changeFeature('chestplate', { value: option ? option[1] : option })
           }
@@ -212,6 +218,7 @@ class ModelFeatures extends Component<AProps, AState> {
           title="Leggings"
           uploadCustom={() => this.uploadCustom(['availableLeggings', [64, 32]])}
           options={this.state.availableLeggings}
+          default={this.getFeatureOption('leggings', 'availableLeggings')}
           changeFeature={option =>
             this.changeFeature('leggings', { value: option ? option[1] : option })
           }
@@ -227,6 +234,7 @@ class ModelFeatures extends Component<AProps, AState> {
           title="Boots"
           uploadCustom={() => this.uploadCustom(['availableBoots', [64, 32]])}
           options={this.state.availableBoots}
+          default={this.getFeatureOption('boots', 'availableBoots')}
           changeFeature={option =>
             this.changeFeature('boots', { value: option ? option[1] : option })
           }
@@ -242,6 +250,7 @@ class ModelFeatures extends Component<AProps, AState> {
           <FeatureEntry
             title="Right Hand"
             options={this.state.availableItems}
+            default={this.getFeatureOption('rightItem', 'availableItems')}
             changeFeature={option =>
               this.changeFeature('rightItem', {
                 value: option ? option[1] : option,
@@ -269,6 +278,7 @@ class ModelFeatures extends Component<AProps, AState> {
           <FeatureEntry
             title="Left Hand"
             options={this.state.availableItems}
+            default={this.getFeatureOption('leftItem', 'availableItems')}
             changeFeature={option =>
               this.changeFeature('leftItem', {
                 value: option ? option[1] : option,
@@ -304,6 +314,7 @@ type BProps = {
   uploadCustom?: () => void;
   targetGridEntryWidth?: number;
   options: readonly Option[];
+  default?: Option;
   changeFeature: (option: Option) => void;
   crop?: Crop;
   buttons?: {
@@ -333,6 +344,7 @@ class FeatureEntry extends Component<BProps> {
             targetWidth={this.props.targetGridEntryWidth}
             crop={this.props.crop}
             options={[false, ...this.props.options]}
+            default={this.props.default}
             select={this.props.changeFeature}
           />
         </span>

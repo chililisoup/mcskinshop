@@ -1,8 +1,8 @@
 import React, { Component, ReactNode, RefObject } from 'react';
-import * as ImgMod from '../../tools/imgmod';
-import * as PrefMan from '../../tools/prefman';
-import ColorPicker from '../basic/colorpicker';
-import PropertiesList, { Property } from '../basic/propertieslist';
+import * as ImgMod from '@tools/imgmod';
+import * as PrefMan from '@tools/prefman';
+import ColorPicker from '@components/basic/colorpicker';
+import PropertiesList, { Property } from '@components/basic/propertieslist';
 
 type AProps = {
   layers: ImgMod.Layer;

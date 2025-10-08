@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
-import * as ImgMod from '../../tools/imgmod';
-import DraggableWindow from '../basic/draggablewindow';
+import * as ImgMod from '@tools/imgmod';
+import DraggableWindow from '@components/basic/draggablewindow';
 
 type AProps = {
   close: () => void;

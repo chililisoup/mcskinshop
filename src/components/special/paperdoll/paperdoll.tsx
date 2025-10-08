@@ -1,8 +1,8 @@
-import React, { ChangeEvent, Component, RefObject } from 'react';
+import React, { Component, RefObject } from 'react';
 import * as THREE from 'three';
-import * as ImgMod from '../../tools/imgmod';
-import * as Util from '../../tools/util';
-import * as PrefMan from '../../tools/prefman';
+import * as ModelTool from '@tools/modeltool';
+import * as Util from '@tools/util';
+import * as PrefMan from '@tools/prefman';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -10,31 +10,12 @@ import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
-import matcap from '@assets/matcap.png';
-import skinmodel from '../../skinmodel.json';
-import save_render from '@assets/save_render.png';
-import { Features } from './modelfeatures';
-import { UndoCallback } from './skinmanager';
-import Dropdown from '../basic/dropdown';
-import PropertiesList from '../basic/propertieslist';
-import Slider from '../basic/slider';
+import skinmodel from '@/skinmodel.json';
+import { Features } from '@components/special/modelfeatures';
+import { UndoCallback } from '@components/special/skinmanager';
+import PaperDollSettings from '@components/special/paperdoll/paperdollsettings';
 
-const ANIMATIONS = ['Walk', 'Crouch Walk'] as const;
-
-type ModelPart = {
-  poseable?: boolean;
-  position: number[];
-  rotation?: number[];
-  renderType?: 'cutout';
-  forceOutline?: boolean;
-  shape?: number[];
-  uniqueMaterial?: boolean;
-  textureSize?: number[];
-  uv?: number[];
-  uvSize?: number[];
-  uvMirrored?: boolean;
-  children?: Record<string, ModelPart>;
-};
+export const ANIMATIONS = ['Walk', 'Crouch Walk'] as const;
 
 type PoseEntry = {
   position?: THREE.Vector3Tuple;
@@ -50,7 +31,7 @@ type AProps = {
   manager: PrefMan.Manager;
 };
 
-type AState = {
+export type AState = {
   anim: boolean;
   animSpeed: number;
   animation: (typeof ANIMATIONS)[number];
@@ -118,15 +99,9 @@ class PaperDoll extends Component<AProps, AState> {
   mousePos = new THREE.Vector2(1, 1);
   oldMousePos?: THREE.Vector2;
   canDeselect = false;
-  doll = new THREE.Object3D();
-  materials: {
-    shaded: (THREE.MeshLambertMaterial | THREE.MeshMatcapMaterial)[];
-    flat: (THREE.MeshLambertMaterial | THREE.MeshMatcapMaterial)[];
-  } = {
-    shaded: [],
-    flat: []
-  };
-  pivots: Record<string, THREE.Object3D> = {};
+  doll = new ModelTool.Model('doll', skinmodel as ModelTool.ModelDefinition);
+  materials = this.doll.materials;
+  pivots = this.doll.pivots;
 
   rightItem = new THREE.Group();
   leftItem = new THREE.Group();
@@ -144,8 +119,6 @@ class PaperDoll extends Component<AProps, AState> {
 
   raycaster = new THREE.Raycaster();
   scene: THREE.Scene;
-  textureLoader = new THREE.TextureLoader();
-  matcapMap = this.textureLoader.load(matcap, matcapMap => matcapMap);
   requestID = 0;
   ambientLight = new THREE.AmbientLight(0xffffff, 1);
   directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
@@ -236,7 +209,7 @@ class PaperDoll extends Component<AProps, AState> {
     this.updateItems();
     this.updateExplode();
     this.updateLighting();
-    this.propagateShade(this.doll);
+    this.propagateShade(this.doll.root);
     this.textureSetup();
     this.startAnimationLoop();
 
@@ -333,7 +306,7 @@ class PaperDoll extends Component<AProps, AState> {
     }
 
     if (this.state.shade !== prevState.shade) {
-      this.propagateShade(this.doll);
+      this.propagateShade(this.doll.root);
       updateTextures = true;
     }
 
@@ -423,8 +396,6 @@ class PaperDoll extends Component<AProps, AState> {
 
     this.scene.add(this.ambientLight);
     this.perspCam.add(this.directionalLight);
-
-    this.matcapMap = this.textureLoader.load(matcap, matcapMap => matcapMap);
 
     this.grid.material = new THREE.LineBasicMaterial({
       color: 'black',
@@ -620,17 +591,7 @@ class PaperDoll extends Component<AProps, AState> {
     this.handles.add(positionHandles);
   };
 
-  textureSetup = () => {
-    this.textureLoader.load(this.props.skin, texture => {
-      texture.magFilter = THREE.NearestFilter;
-
-      this.materials[this.state.shade ? 'shaded' : 'flat'].forEach(mat => {
-        if (mat.userData.uniqueMaterial) return;
-        mat.map = texture;
-        mat.needsUpdate = true;
-      });
-    });
-  };
+  textureSetup = () => this.doll.setupTexture(this.props.skin, this.state.shade);
 
   propagateShade = (part: THREE.Object3D) => {
     if (part instanceof THREE.Mesh) {
@@ -654,211 +615,11 @@ class PaperDoll extends Component<AProps, AState> {
     this.directionalLight.intensity = this.state.directionalLightIntensity;
   };
 
-  createCuboidUVQuad = (x: number, y: number, w: number, h: number, mirrored: boolean) => {
-    const mod = (mirrored ? 1 : 0) * w;
-
-    return [
-      [x + mod, y],
-      [x + w - mod, y],
-      [x + mod, y + h],
-      [x + w - mod, y + h]
-    ];
-  };
-
-  createCuboidUVMap = (uv: number[], size: number[], textureHeight: number, mirrored: boolean) => {
-    const [width, height, depth] = size;
-
-    const right = this.createCuboidUVQuad(
-      // RIGHT
-      depth + width,
-      depth,
-      depth,
-      height,
-      mirrored
-    );
-
-    const left = this.createCuboidUVQuad(
-      // LEFT
-      0,
-      depth,
-      depth,
-      height,
-      mirrored
-    );
-
-    const faces = [
-      mirrored ? left : right,
-      mirrored ? right : left,
-      this.createCuboidUVQuad(
-        // TOP
-        depth,
-        0,
-        width,
-        depth,
-        mirrored
-      ),
-      this.createCuboidUVQuad(
-        // BOTTOM
-        depth + width,
-        depth,
-        width,
-        -depth,
-        mirrored
-      ),
-      this.createCuboidUVQuad(
-        // FRONT
-        depth,
-        depth,
-        width,
-        height,
-        mirrored
-      ),
-      this.createCuboidUVQuad(
-        // BACK
-        depth + width + depth,
-        depth,
-        width,
-        height,
-        mirrored
-      )
-    ];
-
-    const uvMap = [];
-    for (const face of Object.values(faces)) {
-      for (const vert of Object.values(face)) {
-        uvMap.push([vert[0] + uv[0], textureHeight - (vert[1] + uv[1])]);
-      }
-    }
-
-    return uvMap;
-  };
-
-  eatChild = (name: string, child: ModelPart) => {
-    let part;
-
-    if (child.shape) {
-      const geometry = new THREE.BoxGeometry(child.shape[0], child.shape[1], child.shape[2]);
-
-      if (child.uv) {
-        const uvAttribute = geometry.getAttribute('uv');
-        const textureSize = child.textureSize ?? [64, 64];
-
-        child.uv.length = 2;
-
-        const uv = this.createCuboidUVMap(
-          child.uv,
-          child.uvSize ?? child.shape,
-          textureSize[1],
-          child.uvMirrored ?? false
-        );
-
-        uv.forEach((v, i) => uvAttribute.setXY(i, v[0] / textureSize[0], v[1] / textureSize[1]));
-      }
-
-      let shadedMat, flatMat;
-
-      part = new THREE.Mesh(geometry);
-      if (child.renderType === 'cutout') {
-        part.userData.renderType = 'cutout';
-
-        shadedMat = new THREE.MeshLambertMaterial({
-          side: THREE.DoubleSide,
-          transparent: true,
-          flatShading: true,
-          alphaTest: 0.001
-        });
-
-        flatMat = new THREE.MeshMatcapMaterial({
-          side: THREE.DoubleSide,
-          transparent: true,
-          flatShading: true,
-          alphaTest: 0.001,
-          matcap: this.matcapMap
-        });
-      } else {
-        shadedMat = new THREE.MeshLambertMaterial({
-          flatShading: true
-        });
-
-        flatMat = new THREE.MeshMatcapMaterial({
-          flatShading: true,
-          matcap: this.matcapMap
-        });
-      }
-
-      if (child.forceOutline) part.userData.forceOutline = true;
-
-      part.userData.materialIndex = this.materials.shaded.push(shadedMat) - 1;
-      this.materials.flat.push(flatMat);
-
-      if (child.uniqueMaterial) {
-        shadedMat.userData.uniqueMaterial = true;
-        flatMat.userData.uniqueMaterial = true;
-      }
-    } else part = new THREE.Group();
-
-    if (child.children)
-      for (const [k, v] of Object.entries(child.children)) part.add(this.eatChild(k, v));
-
-    if (child.position) part.position.fromArray(child.position);
-
-    if (child.rotation) {
-      const rotation = child.rotation.map(degrees => (degrees * Math.PI) / 180);
-      part.setRotationFromEuler(new THREE.Euler(rotation[0], rotation[1], rotation[2]));
-    }
-
-    if (child.poseable) {
-      part.userData.poseable = true;
-      part.userData.defaultPosition = part.position.clone();
-      this.pivots[name] = part;
-    }
-
-    part.name = name;
-
-    return part;
-  };
-
-  setupItem = (item: THREE.Group) => {
-    item.userData.poseable = true;
-    item.userData.defaultPosition = item.position.clone();
-
-    const shadedMat = new THREE.MeshLambertMaterial({
-      side: THREE.DoubleSide,
-      transparent: true,
-      flatShading: true,
-      alphaTest: 0.001
-    });
-    shadedMat.userData.uniqueMaterial = true;
-
-    const flatMat = new THREE.MeshMatcapMaterial({
-      side: THREE.DoubleSide,
-      transparent: true,
-      flatShading: true,
-      alphaTest: 0.001,
-      matcap: this.matcapMap
-    });
-    flatMat.userData.uniqueMaterial = true;
-
-    item.userData.materialIndex = this.materials.shaded.push(shadedMat) - 1;
-    this.materials.flat.push(flatMat);
-
-    return item;
-  };
-
   modelSetup = () => {
-    this.doll.clear();
+    this.scene.add(this.doll.root);
 
-    this.materials.shaded = [];
-    this.materials.flat = [];
-    this.pivots = {};
-
-    this.doll.name = 'doll';
-    this.scene.add(this.doll);
-
-    for (const [k, v] of Object.entries(skinmodel)) this.doll.add(this.eatChild(k, v as ModelPart));
-
-    this.pivots.rightItem = this.setupItem(this.rightItem);
-    this.pivots.leftItem = this.setupItem(this.leftItem);
+    this.pivots.rightItem = this.doll.setupChildItem(this.rightItem);
+    this.pivots.leftItem = this.doll.setupChildItem(this.leftItem);
   };
 
   updateSlim = () => {
@@ -896,7 +657,7 @@ class PaperDoll extends Component<AProps, AState> {
       return;
     }
 
-    this.textureLoader.load(feature, texture => {
+    ModelTool.textureLoader.load(feature, texture => {
       texture.magFilter = THREE.NearestFilter;
 
       const mats = [
@@ -960,122 +721,11 @@ class PaperDoll extends Component<AProps, AState> {
     ]);
   };
 
-  // prettier-ignore
-  buildItemModel = async (item: THREE.Group, url: string, extra?: string) => {
-    const image = new ImgMod.Img();
-    image.size = [16, 16];
-    await image.loadUrl(url);
-    if (!image.image)
-      return Promise.reject(new Error('Item texture image does not exist! How did this happen?'));
-
-    const canvas = new OffscreenCanvas(image.size[0], image.size[1]);
-    const ctx = canvas.getContext('2d')!;
-
-    ctx.drawImage(image.image, 0, 0);
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-
-    const isClear = (index: number) => {
-      index *= 4;
-      return index < 0 || index >= data.length || data[index + 3] === 0;
-    };
-
-    const vertices: number[] = [];
-    const indices: number[] = [];
-    const uv: number[] = [];
-
-    let iter = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      const index = Math.floor(i / 4);
-      const x = (index % 16) - 8;
-      const y = Math.ceil(index / -16) + 8;
-
-      if (data[i + 3] === 0) continue;
-
-      vertices.push(
-        x,     y,     -0.5, // 0
-        x + 1, y,     -0.5, // 1
-        x + 1, y - 1, -0.5, // 2
-        x,     y - 1, -0.5, // 3
-
-        x,     y,     0.5,  // 4
-        x + 1, y,     0.5,  // 5
-        x + 1, y - 1, 0.5,  // 6
-        x,     y - 1, 0.5   // 7
-      );
-
-      const ind = iter * 8;
-      indices.push(
-        // LEFT
-        ind + 0, ind + 1, ind + 2,
-        ind + 2, ind + 3, ind + 0,
-        // RIGHT
-        ind + 4, ind + 6, ind + 5,
-        ind + 6, ind + 4, ind + 7,
-      );
-
-      if (isClear(index + 1)) indices.push(
-        // FRONT
-        ind + 1, ind + 5, ind + 6,
-        ind + 6, ind + 2, ind + 1
-      );
-
-      if (isClear(index - 1)) indices.push(
-        // BACK
-        ind + 0, ind + 7, ind + 4,
-        ind + 7, ind + 0, ind + 3,
-      );
-
-      if (isClear(index - 16)) indices.push(
-        // UP
-        ind + 0, ind + 4, ind + 5,
-        ind + 5, ind + 1, ind + 0
-      );
-
-      if (isClear(index + 16)) indices.push(
-        // DOWN
-        ind + 3, ind + 6, ind + 7,
-        ind + 6, ind + 3, ind + 2
-      );
-
-      const ux = (x + 8) / 16 + 0.005;
-      const uy = (y + 8) / 16 - 0.005;
-      const s = 1 / 16 - 0.01;
-      const pixel = [ux, uy, ux + s, uy, ux + s, uy - s, ux, uy - s];
-      uv.push(...pixel, ...pixel);
-
-      iter++;
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setIndex(indices);
-    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
-    geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
-
-    const part = new THREE.Mesh(geometry);
-
-    if (extra === 'handheld') {
-      part.setRotationFromEuler(new THREE.Euler(0, -Math.PI / 2, (55 * Math.PI) / 180));
-      part.scale.set(0.85, 0.85, 0.85);
-      part.position.set(0, 4, 0.5);
-    } else {
-      part.scale.set(0.55, 0.55, 0.55);
-      part.position.set(0, 3, 1);
-    }
-
-    part.userData.materialIndex = item.userData.materialIndex as number;
-    part.userData.renderType = 'cutout';
-    part.userData.forceOutline = true;
-
-    return part;
-  };
-
   updateItem = (name: keyof Features, item: THREE.Group) => {
     item.clear();
     const feature = this.props.modelFeatures[name];
     if (!feature.value) return;
-    void this.buildItemModel(item, feature.value, feature.extra).then(model => {
+    void ModelTool.buildItemModel(item, feature.value, feature.extra).then(model => {
       item.add(model);
       this.updateFeature(name, item.children);
       this.propagateShade(item);
@@ -1654,7 +1304,7 @@ class PaperDoll extends Component<AProps, AState> {
       !this.handle &&
       !(this.selectedObject && this.state.poseSettings.mode === 'Simple')
     ) {
-      const intersects = this.raycaster.intersectObject(this.doll, true);
+      const intersects = this.raycaster.intersectObject(this.doll.root, true);
       const poseable =
         intersects.length > 0 ? this.findPosableAncestor(intersects[0].object) : false;
 
@@ -1985,599 +1635,6 @@ class PaperDoll extends Component<AProps, AState> {
           <canvas className="paperdoll-canvas" ref={this.canvasRef} />
         </div>
       </div>
-    );
-  }
-}
-
-type BProps = {
-  settings: {
-    anim: boolean;
-    animSpeed: number;
-    animation: AState['animation'];
-    explode: boolean;
-    shade: boolean;
-    lightAngle: number;
-    lightFocus: number;
-    ambientLightColor: string;
-    ambientLightIntensity: number;
-    directionalLightColor: string;
-    directionalLightIntensity: number;
-    pose: boolean;
-    poseSettings: AState['poseSettings'];
-    partToggles: AState['partToggles'];
-    fov: number;
-    usePerspectiveCam: boolean;
-    grid: boolean;
-  };
-
-  slim: boolean;
-  updateSetting: <KKey extends keyof AState>(setting: KKey, value: AState[KKey]) => void;
-  updateSlim: (slim: boolean) => void;
-  saveRender: () => void;
-  resetCamera: () => void;
-  resetLighting: () => void;
-  addEdit: (name: string, undoCallback: UndoCallback) => void;
-  deselect: () => void;
-  resetPose: () => void;
-  savedPoses: string[];
-  savePose: () => void;
-  loadPose: (poseName: string) => void;
-  deletePose: (poseName: string) => void;
-  downloadPose: (poseName: string) => void;
-  uploadPose: (poseName: string, poseJsonString: string) => void;
-  capturePose: () => void;
-};
-
-type BState = {
-  selectedPose?: string;
-  panel: boolean;
-};
-
-class PaperDollSettings extends Component<BProps, BState> {
-  uploadRef: RefObject<HTMLInputElement | null> = React.createRef();
-
-  constructor(props: BProps) {
-    super(props);
-
-    this.state = {
-      selectedPose: this.props.savedPoses[0],
-      panel: true
-    };
-  }
-
-  componentDidUpdate = () => {
-    if (this.state.selectedPose === undefined) return;
-
-    if (this.props.savedPoses.length) {
-      if (!this.props.savedPoses.includes(this.state.selectedPose)) {
-        this.setState({ selectedPose: this.props.savedPoses[0] });
-      }
-    } else this.setState({ selectedPose: undefined });
-  };
-
-  updateSetting = <KKey extends keyof AState>(setting: KKey, value: AState[KKey]) => {
-    this.props.updateSetting(setting, value);
-  };
-
-  settingEdit = <KKey extends keyof AState>(
-    setting: KKey,
-    from: AState[KKey],
-    to: AState[KKey]
-  ) => {
-    this.props.updateSetting(setting, from);
-
-    return () => this.settingEdit(setting, to, from);
-  };
-
-  updateSettingFinish = (
-    setting: keyof BProps['settings'],
-    value: AState[keyof BProps['settings']]
-  ) => {
-    const from = this.props.settings[setting];
-
-    this.updateSetting(setting, value);
-
-    this.props.addEdit('change ' + setting, () => this.settingEdit(setting, from, value));
-  };
-
-  resetLighting = () => {
-    this.props.resetLighting();
-  };
-
-  toggleAnim = (anim: boolean) => {
-    this.props.updateSetting('anim', anim);
-  };
-
-  togglePose = (pose: boolean) => {
-    this.props.updateSetting('pose', pose);
-  };
-
-  changePoseSetting = <KKey extends keyof AState['poseSettings']>(setting: KKey) => {
-    const poseSettings: AState['poseSettings'] = {
-      mode: this.props.settings.poseSettings.mode,
-      type: this.props.settings.poseSettings.type,
-      space: this.props.settings.poseSettings.space
-    };
-
-    switch (setting) {
-      case 'mode':
-        poseSettings[setting] = (
-          poseSettings.mode === 'Simple' ? 'Controlled' : 'Simple'
-        ) as AState['poseSettings'][KKey];
-        break;
-      case 'type':
-        poseSettings[setting] = (
-          poseSettings.type === 'Rotation' ? 'Position' : 'Rotation'
-        ) as AState['poseSettings'][KKey];
-        break;
-      case 'space':
-        poseSettings[setting] = (
-          poseSettings.space === 'Local' ? 'Global' : 'Local'
-        ) as AState['poseSettings'][KKey];
-        break;
-      default:
-        return;
-    }
-
-    this.props.updateSetting('poseSettings', poseSettings);
-  };
-
-  uploadPose = (e: ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-
-    const name = e.target.files[0].name.replace(/\.[^/.]+$/, '');
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') this.props.uploadPose(name, reader.result);
-      e.target.value = '';
-    };
-    reader.readAsText(e.target.files[0]);
-  };
-
-  togglePart = (part: keyof AState['partToggles'], hat: boolean, value: boolean) => {
-    const toggles = JSON.parse(
-      JSON.stringify(this.props.settings.partToggles)
-    ) as AState['partToggles'];
-    toggles[part][hat ? 'hat' : 'base'] = value;
-    this.props.updateSetting('partToggles', toggles);
-  };
-
-  togglePartSet = (partSet: 'base' | 'hat' | 'all') => {
-    let on = 0;
-
-    if (partSet === 'all')
-      for (const part in this.props.settings.partToggles) {
-        if (this.props.settings.partToggles[part as keyof AState['partToggles']].base) on++;
-        if (this.props.settings.partToggles[part as keyof AState['partToggles']].hat) on++;
-      }
-    else
-      for (const part in this.props.settings.partToggles)
-        if (this.props.settings.partToggles[part as keyof AState['partToggles']][partSet]) on++;
-
-    const toggle = on <= (partSet === 'all' ? 6 : 3);
-    const toggles = JSON.parse(
-      JSON.stringify(this.props.settings.partToggles)
-    ) as AState['partToggles'];
-
-    if (partSet === 'all')
-      for (const part in this.props.settings.partToggles)
-        toggles[part as keyof AState['partToggles']] = { base: toggle, hat: toggle };
-    else
-      for (const part in this.props.settings.partToggles)
-        toggles[part as keyof AState['partToggles']][partSet] = toggle;
-
-    this.props.updateSetting('partToggles', toggles);
-  };
-
-  render() {
-    return (
-      <span className="paperdoll-settings">
-        <div className="top right panel">
-          <button onClick={() => this.setState({ panel: !this.state.panel })}>
-            {this.state.panel ? '>' : '<'}
-          </button>
-          {this.state.panel && (
-            <div className="panel-content">
-              <span>
-                <label htmlFor="slimToggle">Slim</label>
-                <input
-                  type="checkbox"
-                  id="slimToggle"
-                  checked={this.props.slim}
-                  onChange={e => this.props.updateSlim(e.target.checked)}
-                />
-                <label htmlFor="gridToggle">Grid</label>
-                <input
-                  type="checkbox"
-                  id="gridToggle"
-                  checked={this.props.settings.grid}
-                  onChange={e => this.updateSetting('grid', e.target.checked)}
-                />
-              </span>
-              <Dropdown title="Camera">
-                <PropertiesList
-                  buttonCallback={id => {
-                    if (id === 'cameraType')
-                      this.updateSettingFinish(
-                        'usePerspectiveCam',
-                        !this.props.settings.usePerspectiveCam
-                      );
-                    else if (id === 'resetCamera') this.props.resetCamera();
-                  }}
-                  numberCallback={(id, value) => {
-                    if (id === 'fov') this.updateSetting('fov', value);
-                  }}
-                  properties={[
-                    {
-                      name: 'Camera Type',
-                      id: 'cameraType',
-                      type: 'button',
-                      label: this.props.settings.usePerspectiveCam ? 'Perspective' : 'Orthographic'
-                    },
-                    {
-                      name: 'FOV',
-                      id: 'fov',
-                      type: 'range',
-                      value: this.props.settings.fov,
-                      min: 30,
-                      max: 120,
-                      subtype: 'degrees',
-                      disabled: !this.props.settings.usePerspectiveCam
-                    },
-                    {
-                      name: 'Reset Camera',
-                      id: 'resetCamera',
-                      type: 'button'
-                    }
-                  ]}
-                />
-              </Dropdown>
-              <Dropdown title="Lighting">
-                <PropertiesList
-                  booleanCallback={(id, value) => {
-                    if (id === 'shade') this.updateSettingFinish('shade', value);
-                  }}
-                  numberCallback={(id, value) => {
-                    if (id === 'lightFocus') this.updateSetting('lightFocus', (value / 10) ** 2);
-                    else if (id === 'lightAngle') this.updateSetting('lightAngle', value);
-                    else if (id === 'ambientLightIntensity')
-                      this.updateSetting('ambientLightIntensity', value);
-                    else if (id === 'directionalLightIntensity')
-                      this.updateSetting('directionalLightIntensity', value);
-                  }}
-                  buttonCallback={id => {
-                    if (id === 'resetLighting') this.resetLighting();
-                  }}
-                  stringCallback={(id, value) => {
-                    if (id === 'ambientLightColor') this.updateSetting('ambientLightColor', value);
-                    else if (id === 'directionalLightColor')
-                      this.updateSetting('directionalLightColor', value);
-                  }}
-                  properties={[
-                    {
-                      name: 'Shade',
-                      id: 'shade',
-                      type: 'checkbox',
-                      value: this.props.settings.shade
-                    },
-                    {
-                      name: 'Directional Light',
-                      id: 'directionalLightSettings',
-                      type: 'section',
-                      properties: [
-                        {
-                          name: 'Focus',
-                          id: 'lightFocus',
-                          type: 'range',
-                          value: Math.sqrt(this.props.settings.lightFocus) * 10,
-                          min: 0,
-                          max: 100,
-                          subtype: 'percent',
-                          disabled: !this.props.settings.shade
-                        },
-                        {
-                          name: 'Angle',
-                          id: 'lightAngle',
-                          type: 'range',
-                          value: this.props.settings.lightAngle,
-                          min: 0,
-                          max: 2 * Math.PI,
-                          step: 0.01,
-                          subtype: 'radiansAsDegrees',
-                          disabled: !this.props.settings.shade
-                        },
-                        {
-                          name: 'Color',
-                          id: 'directionalLightColor',
-                          type: 'color',
-                          value: this.props.settings.directionalLightColor,
-                          controlled: true,
-                          disabled: !this.props.settings.shade
-                        },
-                        {
-                          name: 'Intensity',
-                          id: 'directionalLightIntensity',
-                          type: 'range',
-                          value: this.props.settings.directionalLightIntensity,
-                          min: 0,
-                          max: 5,
-                          step: 0.1,
-                          disabled: !this.props.settings.shade
-                        }
-                      ]
-                    },
-                    {
-                      name: 'Ambient Light',
-                      id: 'ambientLightSettings',
-                      type: 'section',
-                      properties: [
-                        {
-                          name: 'Color',
-                          id: 'ambientLightColor',
-                          type: 'color',
-                          value: this.props.settings.ambientLightColor,
-                          controlled: true,
-                          disabled: !this.props.settings.shade
-                        },
-                        {
-                          name: 'Intensity',
-                          id: 'ambientLightIntensity',
-                          type: 'range',
-                          value: this.props.settings.ambientLightIntensity,
-                          min: 0,
-                          max: 5,
-                          step: 0.1,
-                          disabled: !this.props.settings.shade
-                        }
-                      ]
-                    },
-                    {
-                      name: 'Reset Lighting',
-                      id: 'resetLighting',
-                      type: 'button'
-                    }
-                  ]}
-                />
-              </Dropdown>
-              <Dropdown title="Model Visibility">
-                <table className="model-toggles">
-                  <tbody>
-                    <tr>
-                      <td />
-                      <td colSpan={2}>
-                        <div className="stack" style={{ width: '56px', height: '56px' }}>
-                          <input
-                            type="checkbox"
-                            checked={this.props.settings.partToggles.head.hat}
-                            onChange={e => this.togglePart('head', true, e.target.checked)}
-                          />
-                          <input
-                            className="inner"
-                            type="checkbox"
-                            checked={this.props.settings.partToggles.head.base}
-                            onChange={e => this.togglePart('head', false, e.target.checked)}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>
-                        <div
-                          className="stack"
-                          style={{ width: '32px', height: '72px', marginRight: '-8px' }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={this.props.settings.partToggles.rightArm.hat}
-                            onChange={e => this.togglePart('rightArm', true, e.target.checked)}
-                          />
-                          <input
-                            className="inner"
-                            type="checkbox"
-                            checked={this.props.settings.partToggles.rightArm.base}
-                            onChange={e => this.togglePart('rightArm', false, e.target.checked)}
-                          />
-                        </div>
-                      </td>
-                      <td colSpan={2}>
-                        <div className="stack" style={{ width: '56px', height: '72px' }}>
-                          <input
-                            type="checkbox"
-                            checked={this.props.settings.partToggles.torso.hat}
-                            onChange={e => this.togglePart('torso', true, e.target.checked)}
-                          />
-                          <input
-                            className="inner"
-                            type="checkbox"
-                            checked={this.props.settings.partToggles.torso.base}
-                            onChange={e => this.togglePart('torso', false, e.target.checked)}
-                          />
-                        </div>
-                      </td>
-                      <td>
-                        <div
-                          className="stack"
-                          style={{ width: '32px', height: '72px', marginLeft: '-8px' }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={this.props.settings.partToggles.leftArm.hat}
-                            onChange={e => this.togglePart('leftArm', true, e.target.checked)}
-                          />
-                          <input
-                            className="inner"
-                            type="checkbox"
-                            checked={this.props.settings.partToggles.leftArm.base}
-                            onChange={e => this.togglePart('leftArm', false, e.target.checked)}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td />
-                      <td>
-                        <div className="stack" style={{ width: '32px', height: '72px' }}>
-                          <input
-                            type="checkbox"
-                            checked={this.props.settings.partToggles.rightLeg.hat}
-                            onChange={e => this.togglePart('rightLeg', true, e.target.checked)}
-                          />
-                          <input
-                            className="inner"
-                            type="checkbox"
-                            checked={this.props.settings.partToggles.rightLeg.base}
-                            onChange={e => this.togglePart('rightLeg', false, e.target.checked)}
-                          />
-                        </div>
-                      </td>
-                      <td>
-                        <div className="stack" style={{ width: '32px', height: '72px' }}>
-                          <input
-                            type="checkbox"
-                            checked={this.props.settings.partToggles.leftLeg.hat}
-                            onChange={e => this.togglePart('leftLeg', true, e.target.checked)}
-                          />
-                          <input
-                            className="inner"
-                            type="checkbox"
-                            checked={this.props.settings.partToggles.leftLeg.base}
-                            onChange={e => this.togglePart('leftLeg', false, e.target.checked)}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <span className="spread">
-                  <button onClick={() => this.togglePartSet('hat')}>Toggle Hat</button>
-                  <button onClick={() => this.togglePartSet('base')}>Toggle Base</button>
-                  <button onClick={() => this.togglePartSet('all')}>Toggle All</button>
-                </span>
-              </Dropdown>
-            </div>
-          )}
-        </div>
-        <span className="top left">
-          <div>
-            <label htmlFor="editorMode">Editor Mode</label>
-            <button id="editorMode" onClick={() => this.togglePose(!this.props.settings.pose)}>
-              {this.props.settings.pose ? 'Pose' : 'Animate'}
-            </button>
-          </div>
-          {this.props.settings.pose && (
-            <span>
-              <span>
-                <label htmlFor="poseMode">Pose Mode</label>
-                <button id="poseMode" onClick={() => this.changePoseSetting('mode')}>
-                  {this.props.settings.poseSettings.mode}
-                </button>
-              </span>
-              <span>
-                <label htmlFor="poseType">Pose Type</label>
-                <button id="poseType" onClick={() => this.changePoseSetting('type')}>
-                  {this.props.settings.poseSettings.type}
-                </button>
-              </span>
-              <span>
-                <label htmlFor="poseSpace">Pose Space</label>
-                <button id="poseSpace" onClick={() => this.changePoseSetting('space')}>
-                  {this.props.settings.poseSettings.space}
-                </button>
-              </span>
-              <button onClick={this.props.deselect}>Deselect</button>
-              <button onClick={this.props.resetPose}>Reset Pose</button>
-              <select
-                value={this.state.selectedPose}
-                onChange={e => this.setState({ selectedPose: e.target.value })}
-              >
-                {this.props.savedPoses.map(poseName => (
-                  <option key={poseName}>{poseName}</option>
-                ))}
-              </select>
-              <button
-                onClick={() =>
-                  this.state.selectedPose && this.props.loadPose(this.state.selectedPose)
-                }
-              >
-                Load Pose
-              </button>
-              <button
-                onClick={() =>
-                  this.state.selectedPose && this.props.deletePose(this.state.selectedPose)
-                }
-              >
-                Delete Pose
-              </button>
-              <button onClick={this.props.savePose}>Save New Pose</button>
-              <button
-                onClick={() =>
-                  this.state.selectedPose && this.props.downloadPose(this.state.selectedPose)
-                }
-              >
-                Download Pose
-              </button>
-              <button onClick={() => this.uploadRef.current && this.uploadRef.current.click()}>
-                Upload Pose
-              </button>
-              <input
-                className="hidden"
-                ref={this.uploadRef}
-                type="file"
-                accept="application/json"
-                onChange={this.uploadPose}
-              />
-            </span>
-          )}
-          {!this.props.settings.pose && (
-            <span>
-              <span>
-                <label htmlFor="explodeToggle">Explode</label>
-                <input
-                  type="checkbox"
-                  id="explodeToggle"
-                  checked={this.props.settings.explode}
-                  onChange={e => this.updateSettingFinish('explode', e.target.checked)}
-                />
-              </span>
-              <span>
-                <label htmlFor="animToggle">Animate</label>
-                <input
-                  type="checkbox"
-                  id="animToggle"
-                  checked={this.props.settings.anim}
-                  onChange={e => this.toggleAnim(e.target.checked)}
-                />
-                <Slider
-                  id="animSpeed"
-                  min={0}
-                  max={2}
-                  step={0.01}
-                  value={this.props.settings.animSpeed}
-                  callback={value => this.updateSetting('animSpeed', value)}
-                />
-              </span>
-              <span>
-                <select
-                  value={this.props.settings.animation}
-                  onChange={e =>
-                    this.updateSettingFinish('animation', e.target.value as AState['animation'])
-                  }
-                >
-                  {ANIMATIONS.map(animation => (
-                    <option key={animation}>{animation}</option>
-                  ))}
-                </select>
-              </span>
-              <button onClick={this.props.capturePose}>Capture Pose</button>
-            </span>
-          )}
-        </span>
-        <div className="bottom left">
-          <button title="Save Render" onClick={this.props.saveRender}>
-            <img alt="Save Render" src={save_render} />
-          </button>
-        </div>
-      </span>
     );
   }
 }

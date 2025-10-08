@@ -1,10 +1,10 @@
 import React, { Component, RefObject } from 'react';
-import ColorPicker from '../basic/colorpicker';
+import ColorPicker from '@components/basic/colorpicker';
 import checkerboard from '@assets/checkerboard.png';
 import fullref from '@assets/fullref.png';
 import slimref from '@assets/slimref.png';
-import * as ImgMod from '../../tools/imgmod';
-import * as Util from '../../tools/util';
+import * as ImgMod from '@tools/imgmod';
+import * as Util from '@tools/util';
 
 type AProps = {
   layer?: ImgMod.AbstractLayer;

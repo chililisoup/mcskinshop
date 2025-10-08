@@ -1,9 +1,9 @@
 import React, { Component, ReactNode } from 'react';
-import * as ImgMod from '../../tools/imgmod';
-import * as Util from '../../tools/util';
+import * as ImgMod from '@tools/imgmod';
+import * as Util from '@tools/util';
 import steve from '@assets/steve.png';
 import JSZip from 'jszip';
-import Dropdown from '../basic/dropdown';
+import Dropdown from '@components/basic/dropdown';
 
 const fakedatabase = await Util.getRemoteJson('/assets/compressed/fake_database.json');
 

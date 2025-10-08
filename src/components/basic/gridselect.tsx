@@ -12,10 +12,10 @@ export type Crop = {
 };
 
 type AProps = {
-  default?: Option;
   targetWidth?: number;
   crop?: Crop;
   options: readonly Option[];
+  default?: Option;
   select: (option: Option) => void;
 };
 
