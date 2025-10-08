@@ -28,7 +28,7 @@ type AState = {
   fresh: boolean;
 };
 
-class DraggableWindow extends Component<AProps, AState> {
+export default class DraggableWindow extends Component<AProps, AState> {
   handleRef: RefObject<HTMLSpanElement | null> = React.createRef();
   windowRef: RefObject<HTMLDivElement | null> = React.createRef();
   resizeObserver;
@@ -187,5 +187,3 @@ class DraggableWindow extends Component<AProps, AState> {
     );
   }
 }
-
-export default DraggableWindow;

@@ -9,7 +9,7 @@ type AProps = {
   close: () => void;
 };
 
-class Preferences extends Component<AProps> {
+export default class Preferences extends Component<AProps> {
   constructor(props: AProps) {
     super(props);
   }
@@ -174,5 +174,3 @@ class Preferences extends Component<AProps> {
     );
   }
 }
-
-export default Preferences;

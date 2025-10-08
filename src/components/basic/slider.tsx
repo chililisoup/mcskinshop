@@ -9,6 +9,7 @@ type AProps = {
   min?: number;
   max?: number;
   step?: number;
+  snap?: number;
   id?: string;
   subtype?: SubType;
   disabled?: boolean;
@@ -20,9 +21,10 @@ type AState = {
   typing: boolean;
 };
 
-class Slider extends Component<AProps, AState> {
+export default class Slider extends Component<AProps, AState> {
   prevValues = [0, 0, 0];
   textVal = '0';
+  ctrlKey = false;
 
   constructor(props: AProps) {
     super(props);
@@ -33,6 +35,30 @@ class Slider extends Component<AProps, AState> {
 
     this.prevValues = [props.value, props.value, props.value];
   }
+
+  min = () => this.props.min ?? 0;
+
+  max = () => this.props.max ?? 100;
+
+  step = () => this.props.step ?? 1;
+
+  snap = () => {
+    if (this.props.snap) return this.props.snap;
+
+    const step = this.step();
+    const snap = step * 5;
+
+    const diff = this.max() - this.min();
+    return snap * 4 > diff ? step : snap;
+  };
+
+  clamp = (value: number) => Util.clamp(value, this.min(), this.max());
+
+  alignValue = (value: number, align: number) => {
+    const inv = 1 / align;
+    const min = this.min();
+    return Math.round((value - min) * inv) / inv + min;
+  };
 
   buildLabel = () => {
     const subtype = this.props.subtype ?? 'number';
@@ -61,21 +87,29 @@ class Slider extends Component<AProps, AState> {
     let value = Number(this.textVal);
 
     if (this.props.enforceStep) {
-      const step = this.props.step ?? 1;
+      const step = this.step();
       value += step / 2;
       value -= value % step;
     }
 
-    if (!this.props.allowExceed)
-      value = Util.clamp(value, this.props.min ?? 0, this.props.max ?? 100);
+    if (!this.props.allowExceed) value = this.clamp(value);
 
     this.prevValues = [value, value, value];
     this.props.callback(value);
   };
 
+  onInput = (e: React.FormEvent<HTMLInputElement>) => {
+    const value = Number((e.target as HTMLInputElement).value);
+    this.props.callback?.(
+      this.clamp(this.alignValue(value, this.ctrlKey ? this.snap() : this.step()))
+    );
+  };
+
   render() {
-    const min = this.props.min ?? 0;
-    const max = this.props.max ?? 100;
+    const min = this.min();
+    const max = this.max();
+    const step = this.step();
+    const buffer = (max - min) / 100;
     const stop = Util.clamp((this.props.value - min) / (max - min), 0, 1) * 100;
     const shadow = Math.min(stop + 6, 100);
 
@@ -98,13 +132,13 @@ class Slider extends Component<AProps, AState> {
           className="slider"
           id={this.props.id}
           value={this.props.value}
-          min={this.props.min}
-          max={this.props.max}
-          step={this.props.step}
+          min={min - buffer}
+          max={max + buffer}
+          step={step}
           disabled={this.props.disabled}
-          onInput={e =>
-            this.props.callback?.(Number((e.target as HTMLInputElement).value))
-          }
+          onInput={this.onInput}
+          onKeyDown={e => (this.ctrlKey = e.ctrlKey)}
+          onKeyUp={e => (this.ctrlKey = e.ctrlKey)}
           style={{
             background:
               'linear-gradient(to right,' +
@@ -120,9 +154,9 @@ class Slider extends Component<AProps, AState> {
               type="number"
               autoFocus={true}
               defaultValue={this.textVal}
-              min={this.props.min}
-              max={this.props.max}
-              step={this.props.step}
+              min={min - buffer}
+              max={max + buffer}
+              step={step}
               onChange={e => {
                 this.textVal = e.target.value;
               }}
@@ -136,5 +170,3 @@ class Slider extends Component<AProps, AState> {
     );
   }
 }
-
-export default Slider;

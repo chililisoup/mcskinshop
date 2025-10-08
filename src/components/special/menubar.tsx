@@ -1,6 +1,7 @@
-import React, { ChangeEvent, Component, RefObject } from 'react';
+import React, { Component } from 'react';
 import PopUp from '@components/basic/popup';
 import * as Util from '@tools/util';
+import FileInput from '@components/basic/fileinput';
 
 type AProps = {
   uploadSkin: (name: string, url?: string) => void;
@@ -21,9 +22,7 @@ type AState = {
   fullscreen: boolean;
 };
 
-class MenuBar extends Component<AProps, AState> {
-  uploadRef: RefObject<HTMLInputElement | null> = React.createRef();
-
+export default class MenuBar extends Component<AProps, AState> {
   constructor(props: AProps) {
     super(props);
 
@@ -44,17 +43,10 @@ class MenuBar extends Component<AProps, AState> {
     document.documentElement.removeEventListener('fullscreenchange', this.updateFullscreen);
   }
 
-  addLayerFromInput = (e: ChangeEvent<HTMLInputElement>) => {
+  addLayerFromInput = (file: File, name: string) => {
     this.setState({ file: false });
 
-    if (!e.target.files) return;
-
-    this.props.uploadSkin(
-      e.target.files[0].name.replace(/\.[^/.]+$/, ''),
-      URL.createObjectURL(e.target.files[0])
-    );
-
-    e.target.value = '';
+    this.props.uploadSkin(name, URL.createObjectURL(file));
   };
 
   addDynamicLayerFromInput = () => {
@@ -130,16 +122,9 @@ class MenuBar extends Component<AProps, AState> {
           <PopUp close={() => this.setState({ file: false })}>
             {' '}
             <div>
-              <button onClick={() => this.uploadRef.current?.click()}>
+              <FileInput callback={this.addLayerFromInput} accept="image/png">
                 Load from File...
-              </button>
-              <input
-                className="hidden"
-                ref={this.uploadRef}
-                type="file"
-                accept="image/png"
-                onChange={this.addLayerFromInput}
-              />
+              </FileInput>
               {Util.fileSystemAccess && (
                 <button onClick={this.addDynamicLayerFromInput}>
                   Dynamically Load from File...
@@ -208,5 +193,3 @@ class MenuBar extends Component<AProps, AState> {
     );
   }
 }
-
-export default MenuBar;

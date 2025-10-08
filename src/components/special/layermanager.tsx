@@ -13,7 +13,7 @@ type AProps = {
   selectedLayer?: ImgMod.AbstractLayer;
 };
 
-class LayerManager extends Component<AProps> {
+export default class LayerManager extends Component<AProps> {
   constructor(props: AProps) {
     super(props);
 
@@ -748,5 +748,3 @@ class LayerPreview extends Component<DProps, DState> {
     return <img src={this.state.src} alt={this.state.alt} title={this.state.alt} />;
   }
 }
-
-export default LayerManager;

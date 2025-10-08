@@ -14,7 +14,7 @@ type AState = {
 };
 
 // the asset testing needs to send unique asset ids but in order to do that you need to make deep copies of the assets ahhhhhhh
-class AssetCreator extends Component<AProps, AState> {
+export default class AssetCreator extends Component<AProps, AState> {
   constructor(props: AProps) {
     super(props);
 
@@ -230,5 +230,3 @@ class AssetLayer extends Component<BProps, BState> {
     );
   }
 }
-
-export default AssetCreator;

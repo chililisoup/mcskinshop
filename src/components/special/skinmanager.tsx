@@ -41,7 +41,7 @@ type AState = {
   selectedLayerPreview?: ImgMod.ImgPreview;
 };
 
-class SkinManager extends Component<AProps, AState> {
+export default class SkinManager extends Component<AProps, AState> {
   layers = new ImgMod.Layer();
   editHistory: UndoEdit[] = [];
   redoProphecy: RedoEdit[] = [];
@@ -431,5 +431,3 @@ class SkinManager extends Component<AProps, AState> {
     );
   }
 }
-
-export default SkinManager;

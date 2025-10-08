@@ -24,7 +24,7 @@ type AState = {
   width: number;
 };
 
-class GridSelect extends Component<AProps, AState> {
+export default class GridSelect extends Component<AProps, AState> {
   gridRef: RefObject<HTMLDivElement | null> = React.createRef();
 
   constructor(props: AProps) {
@@ -114,5 +114,3 @@ class GridSelect extends Component<AProps, AState> {
     );
   }
 }
-
-export default GridSelect;

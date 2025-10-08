@@ -10,7 +10,7 @@ type AState = {
   open: boolean;
 };
 
-class PopUp extends Component<AProps, AState> {
+export default class PopUp extends Component<AProps, AState> {
   wrapperRef: RefObject<HTMLDivElement | null> = React.createRef();
   first = false;
 
@@ -48,5 +48,3 @@ class PopUp extends Component<AProps, AState> {
     return <div ref={this.wrapperRef}>{this.props.children}</div>;
   }
 }
-
-export default PopUp;

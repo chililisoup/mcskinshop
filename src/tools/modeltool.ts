@@ -19,9 +19,8 @@ export type ModelPart = {
 
 export type ModelDefinition = Record<string, ModelPart>;
 
-export const textureLoader = new THREE.TextureLoader();
-
-export const MATCAP = textureLoader.load(matcap, matcapMap => matcapMap);
+const textureLoader = new THREE.TextureLoader();
+const matcapMap = textureLoader.load(matcap, matcapMap => matcapMap);
 
 export class Model {
   root = new THREE.Object3D();
@@ -34,9 +33,9 @@ export class Model {
   };
   pivots: Record<string, THREE.Object3D> = {};
 
-  constructor(name: string, model: ModelDefinition) {
+  constructor(name: string, definition: ModelDefinition) {
     this.root.name = name;
-    for (const [k, v] of Object.entries(model)) this.root.add(this.eatChild(k, v));
+    for (const [k, v] of Object.entries(definition)) this.root.add(this.eatChild(k, v));
   }
 
   eatChild = (name: string, child: ModelPart) => {
@@ -79,7 +78,7 @@ export class Model {
           transparent: true,
           flatShading: true,
           alphaTest: 0.001,
-          matcap: MATCAP
+          matcap: matcapMap
         });
       } else {
         shadedMat = new THREE.MeshLambertMaterial({
@@ -88,7 +87,7 @@ export class Model {
 
         flatMat = new THREE.MeshMatcapMaterial({
           flatShading: true,
-          matcap: MATCAP
+          matcap: matcapMap
         });
       }
 
@@ -115,7 +114,9 @@ export class Model {
 
     if (child.poseable) {
       part.userData.poseable = true;
+      part.userData.defaultRotation = part.rotation.clone();
       part.userData.defaultPosition = part.position.clone();
+      part.userData.defaultScale = part.scale.clone();
       this.pivots[name] = part;
     }
 
@@ -124,9 +125,12 @@ export class Model {
     return part;
   };
 
-  setupChildItem = (item: THREE.Group) => {
+  setupChildItem = (name: string) => {
+    const item = new THREE.Group();
     item.userData.poseable = true;
-    item.userData.defaultPosition = item.position.clone();
+    item.userData.defaultRotation = new THREE.Euler();
+    item.userData.defaultPosition = new THREE.Vector3();
+    item.userData.defaultScale = new THREE.Vector3();
 
     const shadedMat = new THREE.MeshLambertMaterial({
       side: THREE.DoubleSide,
@@ -141,14 +145,22 @@ export class Model {
       transparent: true,
       flatShading: true,
       alphaTest: 0.001,
-      matcap: MATCAP
+      matcap: matcapMap
     });
     flatMat.userData.uniqueMaterial = true;
 
     item.userData.materialIndex = this.materials.shaded.push(shadedMat) - 1;
     this.materials.flat.push(flatMat);
+    this.pivots[name] = item;
+  };
 
-    return item;
+  propagateShade = (part: THREE.Object3D, shade: boolean) => {
+    if (part instanceof THREE.Mesh) {
+      part.material =
+        this.materials[shade ? 'shaded' : 'flat'][part.userData.materialIndex as number];
+    }
+
+    part.children.forEach(part => this.propagateShade(part, shade));
   };
 
   setupTexture = (url: string, shade: boolean) => {
@@ -160,6 +172,24 @@ export class Model {
         mat.map = texture;
         mat.needsUpdate = true;
       });
+    });
+  };
+
+  updatePartTexture = (url: string, part: THREE.Object3D) => {
+    textureLoader.load(url, texture => {
+      texture.magFilter = THREE.NearestFilter;
+
+      const mats = [
+        this.materials.shaded[part.userData.materialIndex as number],
+        this.materials.flat[part.userData.materialIndex as number]
+      ];
+
+      mats.forEach(mat => {
+        mat.map = texture;
+        mat.needsUpdate = true;
+      });
+
+      part.layers.enable(0);
     });
   };
 
@@ -244,7 +274,7 @@ export class Model {
 }
 
 // prettier-ignore
-export const buildItemModel = async (item: THREE.Group, url: string, extra?: string) => {
+export const buildItemModel = async (item: THREE.Object3D, url: string, extra?: string) => {
   const image = new ImgMod.Img();
   image.size = [16, 16];
   await image.loadUrl(url);

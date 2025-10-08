@@ -38,7 +38,7 @@ type AState = {
   packs: string[];
 };
 
-class LayerAdder extends Component<AProps, AState> {
+export default class LayerAdder extends Component<AProps, AState> {
   constructor(props: AProps) {
     super(props);
 
@@ -288,5 +288,3 @@ class AssetPack extends Component<BProps, BState> {
     );
   }
 }
-
-export default LayerAdder;

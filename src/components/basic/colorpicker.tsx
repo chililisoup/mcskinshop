@@ -22,7 +22,7 @@ type AState = {
   bottom: boolean;
 };
 
-class ColorPicker extends Component<AProps, AState> {
+export default class ColorPicker extends Component<AProps, AState> {
   pickerRef: RefObject<HTMLButtonElement | null> = React.createRef();
 
   constructor(props: AProps) {
@@ -232,5 +232,3 @@ class ColorPicker extends Component<AProps, AState> {
     );
   }
 }
-
-export default ColorPicker;

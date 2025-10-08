@@ -11,7 +11,7 @@ type AState = {
   size: number;
 };
 
-class Preview extends Component<AProps, AState> {
+export default class Preview extends Component<AProps, AState> {
   constructor(props: AProps) {
     super(props);
 
@@ -44,5 +44,3 @@ class Preview extends Component<AProps, AState> {
     );
   }
 }
-
-export default Preview;

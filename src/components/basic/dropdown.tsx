@@ -10,7 +10,7 @@ type AState = {
   open: boolean;
 };
 
-class Dropdown extends Component<AProps, AState> {
+export default class Dropdown extends Component<AProps, AState> {
   constructor(props: AProps) {
     super(props);
 
@@ -38,5 +38,3 @@ class Dropdown extends Component<AProps, AState> {
     );
   }
 }
-
-export default Dropdown;

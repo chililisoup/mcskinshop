@@ -20,7 +20,7 @@ type AState = {
   focusLayer: boolean;
 };
 
-class LayerEditor extends Component<AProps, AState> {
+export default class LayerEditor extends Component<AProps, AState> {
   mouseActive: string | boolean = false;
   color = '#000000';
   mousePos = { x: 0, y: 0 };
@@ -230,5 +230,3 @@ class LayerEditor extends Component<AProps, AState> {
     );
   }
 }
-
-export default LayerEditor;
