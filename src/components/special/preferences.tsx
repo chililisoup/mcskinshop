@@ -44,6 +44,7 @@ class Preferences extends Component<AProps> {
               if (id === 'autosetImageForm') this.props.manager.setPrefs({ [id]: value });
 
               if (id === 'addDefaultLayer') this.props.manager.setPrefs({ [id]: value });
+              if (id === 'animatePlayerOnStart') this.props.manager.setPrefs({ [id]: value });
               if (id === 'showLayerManagerOnStart') this.props.manager.setPrefs({ [id]: value });
               if (id === 'showLayerEditorOnStart') this.props.manager.setPrefs({ [id]: value });
               if (id === 'showPaperDollOnStart') this.props.manager.setPrefs({ [id]: value });
@@ -115,6 +116,12 @@ class Preferences extends Component<AProps> {
                     id: 'addDefaultLayer',
                     type: 'checkbox',
                     value: values.addDefaultLayer
+                  },
+                  {
+                    name: 'Animate Player',
+                    id: 'animatePlayerOnStart',
+                    type: 'checkbox',
+                    value: values.animatePlayerOnStart
                   },
                   {
                     name: 'Show Layer Manager',

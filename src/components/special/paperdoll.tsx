@@ -1,6 +1,8 @@
 import React, { ChangeEvent, Component, RefObject } from 'react';
 import * as THREE from 'three';
+import * as ImgMod from '../../tools/imgmod';
 import * as Util from '../../tools/util';
+import * as PrefMan from '../../tools/prefman';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -45,6 +47,7 @@ type AProps = {
   updateSlim: (slim: boolean) => void;
   modelFeatures: Features;
   addEdit: (name: string, undoCallback: UndoCallback) => void;
+  manager: PrefMan.Manager;
 };
 
 type AState = {
@@ -125,6 +128,9 @@ class PaperDoll extends Component<AProps, AState> {
   };
   pivots: Record<string, THREE.Object3D> = {};
 
+  rightItem = new THREE.Group();
+  leftItem = new THREE.Group();
+
   handles = new THREE.Object3D();
   handle?: THREE.Mesh;
   hoveredHandle?: THREE.Mesh;
@@ -162,7 +168,7 @@ class PaperDoll extends Component<AProps, AState> {
     super(props);
 
     this.state = {
-      anim: true,
+      anim: this.props.manager.get().animatePlayerOnStart,
       animSpeed: 0.5,
       animation: 'Walk',
       explode: false,
@@ -227,6 +233,7 @@ class PaperDoll extends Component<AProps, AState> {
     this.updateChestplate();
     this.updateLeggings();
     this.updateBoots();
+    this.updateItems();
     this.updateExplode();
     this.updateLighting();
     this.propagateShade(this.doll);
@@ -313,6 +320,16 @@ class PaperDoll extends Component<AProps, AState> {
 
     if (this.props.modelFeatures.boots !== prevProps.modelFeatures.boots) {
       this.updateBoots();
+    }
+
+    if (
+      this.props.modelFeatures.rightItem !== prevProps.modelFeatures.rightItem ||
+      this.props.modelFeatures.leftItem !== prevProps.modelFeatures.leftItem
+    ) {
+      this.updateItems(
+        this.props.modelFeatures.rightItem !== prevProps.modelFeatures.rightItem,
+        this.props.modelFeatures.leftItem !== prevProps.modelFeatures.leftItem
+      );
     }
 
     if (this.state.shade !== prevState.shade) {
@@ -801,6 +818,33 @@ class PaperDoll extends Component<AProps, AState> {
     return part;
   };
 
+  setupItem = (item: THREE.Group) => {
+    item.userData.poseable = true;
+    item.userData.defaultPosition = item.position.clone();
+
+    const shadedMat = new THREE.MeshLambertMaterial({
+      side: THREE.DoubleSide,
+      transparent: true,
+      flatShading: true,
+      alphaTest: 0.001
+    });
+    shadedMat.userData.uniqueMaterial = true;
+
+    const flatMat = new THREE.MeshMatcapMaterial({
+      side: THREE.DoubleSide,
+      transparent: true,
+      flatShading: true,
+      alphaTest: 0.001,
+      matcap: this.matcapMap
+    });
+    flatMat.userData.uniqueMaterial = true;
+
+    item.userData.materialIndex = this.materials.shaded.push(shadedMat) - 1;
+    this.materials.flat.push(flatMat);
+
+    return item;
+  };
+
   modelSetup = () => {
     this.doll.clear();
 
@@ -812,6 +856,9 @@ class PaperDoll extends Component<AProps, AState> {
     this.scene.add(this.doll);
 
     for (const [k, v] of Object.entries(skinmodel)) this.doll.add(this.eatChild(k, v as ModelPart));
+
+    this.pivots.rightItem = this.setupItem(this.rightItem);
+    this.pivots.leftItem = this.setupItem(this.leftItem);
   };
 
   updateSlim = () => {
@@ -819,6 +866,9 @@ class PaperDoll extends Component<AProps, AState> {
     this.pivots.rightArm.children[1].visible = this.props.slim;
     this.pivots.leftArm.children[0].visible = !this.props.slim;
     this.pivots.leftArm.children[1].visible = this.props.slim;
+
+    this.pivots.rightArm.children[this.props.slim ? 1 : 0].children[2].add(this.rightItem);
+    this.pivots.leftArm.children[this.props.slim ? 1 : 0].children[2].add(this.leftItem);
   };
 
   updatePartToggles = () => {
@@ -867,7 +917,7 @@ class PaperDoll extends Component<AProps, AState> {
     const feature = this.props.modelFeatures[name];
 
     for (const part of Object.values(parts)) {
-      this.updateFeaturePart(feature, part, deselect);
+      this.updateFeaturePart(feature.value, part, deselect);
     }
   };
 
@@ -908,6 +958,133 @@ class PaperDoll extends Component<AProps, AState> {
       this.pivots.rightLeg.children[3],
       this.pivots.leftLeg.children[3]
     ]);
+  };
+
+  // prettier-ignore
+  buildItemModel = async (item: THREE.Group, url: string, extra?: string) => {
+    const image = new ImgMod.Img();
+    image.size = [16, 16];
+    await image.loadUrl(url);
+    if (!image.image)
+      return Promise.reject(new Error('Item texture image does not exist! How did this happen?'));
+
+    const canvas = new OffscreenCanvas(image.size[0], image.size[1]);
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.drawImage(image.image, 0, 0);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    const isClear = (index: number) => {
+      index *= 4;
+      return index < 0 || index >= data.length || data[index + 3] === 0;
+    };
+
+    const vertices: number[] = [];
+    const indices: number[] = [];
+    const uv: number[] = [];
+
+    let iter = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const index = Math.floor(i / 4);
+      const x = (index % 16) - 8;
+      const y = Math.ceil(index / -16) + 8;
+
+      if (data[i + 3] === 0) continue;
+
+      vertices.push(
+        x,     y,     -0.5, // 0
+        x + 1, y,     -0.5, // 1
+        x + 1, y - 1, -0.5, // 2
+        x,     y - 1, -0.5, // 3
+
+        x,     y,     0.5,  // 4
+        x + 1, y,     0.5,  // 5
+        x + 1, y - 1, 0.5,  // 6
+        x,     y - 1, 0.5   // 7
+      );
+
+      const ind = iter * 8;
+      indices.push(
+        // LEFT
+        ind + 0, ind + 1, ind + 2,
+        ind + 2, ind + 3, ind + 0,
+        // RIGHT
+        ind + 4, ind + 6, ind + 5,
+        ind + 6, ind + 4, ind + 7,
+      );
+
+      if (isClear(index + 1)) indices.push(
+        // FRONT
+        ind + 1, ind + 5, ind + 6,
+        ind + 6, ind + 2, ind + 1
+      );
+
+      if (isClear(index - 1)) indices.push(
+        // BACK
+        ind + 0, ind + 7, ind + 4,
+        ind + 7, ind + 0, ind + 3,
+      );
+
+      if (isClear(index - 16)) indices.push(
+        // UP
+        ind + 0, ind + 4, ind + 5,
+        ind + 5, ind + 1, ind + 0
+      );
+
+      if (isClear(index + 16)) indices.push(
+        // DOWN
+        ind + 3, ind + 6, ind + 7,
+        ind + 6, ind + 3, ind + 2
+      );
+
+      const ux = (x + 8) / 16 + 0.005;
+      const uy = (y + 8) / 16 - 0.005;
+      const s = 1 / 16 - 0.01;
+      const pixel = [ux, uy, ux + s, uy, ux + s, uy - s, ux, uy - s];
+      uv.push(...pixel, ...pixel);
+
+      iter++;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setIndex(indices);
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
+
+    const part = new THREE.Mesh(geometry);
+
+    if (extra === 'handheld') {
+      part.setRotationFromEuler(new THREE.Euler(0, -Math.PI / 2, (55 * Math.PI) / 180));
+      part.scale.set(0.85, 0.85, 0.85);
+      part.position.set(0, 4, 0.5);
+    } else {
+      part.scale.set(0.55, 0.55, 0.55);
+      part.position.set(0, 3, 1);
+    }
+
+    part.userData.materialIndex = item.userData.materialIndex as number;
+    part.userData.renderType = 'cutout';
+    part.userData.forceOutline = true;
+
+    return part;
+  };
+
+  updateItem = (name: keyof Features, item: THREE.Group) => {
+    item.clear();
+    const feature = this.props.modelFeatures[name];
+    if (!feature.value) return;
+    void this.buildItemModel(item, feature.value, feature.extra).then(model => {
+      item.add(model);
+      this.updateFeature(name, item.children);
+      this.propagateShade(item);
+    });
+  };
+
+  updateItems = (right?: boolean, left?: boolean) => {
+    if (right ?? true) this.updateItem('rightItem', this.rightItem);
+    if (left ?? true) this.updateItem('leftItem', this.leftItem);
   };
 
   updateExplode = () => {

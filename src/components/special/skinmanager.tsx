@@ -57,11 +57,14 @@ class SkinManager extends Component<AProps, AState> {
       slim: false,
       editHints: ['', ''],
       modelFeatures: {
-        cape: false,
-        helmet: false,
-        chestplate: false,
-        leggings: false,
-        boots: false
+        cape: { value: false },
+        elytra: { value: false },
+        helmet: { value: false },
+        chestplate: { value: false },
+        leggings: { value: false },
+        boots: { value: false },
+        rightItem: { value: false },
+        leftItem: { value: false }
       },
       prefMan: prefMan,
       layerManager: prefs.showLayerManagerOnStart,
@@ -397,6 +400,7 @@ class SkinManager extends Component<AProps, AState> {
               updateSlim={this.updateSkin}
               modelFeatures={this.state.modelFeatures}
               addEdit={this.addEdit}
+              manager={this.state.prefMan}
             />
           )}
           {this.state.preview && (

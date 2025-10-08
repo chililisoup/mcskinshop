@@ -40,6 +40,7 @@ export type Prefs = {
     autosetImageForm: boolean;
     useFallbackSkinSource: boolean;
     addDefaultLayer: boolean;
+    animatePlayerOnStart: boolean;
     showLayerManagerOnStart: boolean;
     showLayerEditorOnStart: boolean;
     showPaperDollOnStart: boolean;
@@ -72,6 +73,7 @@ export const defaultPrefs: Prefs = {
   autosetImageForm: false,
   useFallbackSkinSource: false,
   addDefaultLayer: true,
+  animatePlayerOnStart: true,
   showLayerManagerOnStart: true,
   showLayerEditorOnStart: false,
   showPaperDollOnStart: true,

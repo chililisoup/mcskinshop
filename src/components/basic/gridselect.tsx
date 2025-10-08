@@ -1,27 +1,26 @@
 import React, { Component, RefObject } from 'react';
 import no from '@assets/no.png';
 
-export type Option = [entry: string, imageSrc: string];
+export type Option = [entry: string, imageSrc: string] | false;
 
 export type Crop = {
-  aspectRatio: number,
-  x: number,
-  y: number,
-  sx: number,
-  sy: number
+  aspectRatio: number;
+  x: number;
+  y: number;
+  sx: number;
+  sy: number;
 };
 
 type AProps = {
-  default?: string;
-  emptyOption?: boolean;
+  default?: Option;
   targetWidth?: number;
   crop?: Crop;
   options: readonly Option[];
-  select: (option: string | false) => void;
+  select: (option: Option) => void;
 };
 
 type AState = {
-  selected: string | false;
+  selected: Option;
   width: number;
 };
 
@@ -56,37 +55,26 @@ class GridSelect extends Component<AProps, AState> {
     this.setState({ width: width / columns });
   };
 
-  select = (option: string | false) => {
+  select = (option: Option) => {
     this.props.select(option);
     this.setState({ selected: option });
-  };
-
-  addNoneOption = () => {
-    return (
-      <div
-        style={{
-          width: this.state.width - 6
-        }}
-        onClick={() => this.select(false)}
-        className={'none-option' + (!this.state.selected ? ' highlighted' : '')}
-      >
-        <img alt="None" src={no} />
-      </div>
-    );
   };
 
   addOption = (option: Option, divStyle: React.CSSProperties, imgStyle?: React.CSSProperties) => {
     return (
       <div
         style={divStyle}
-        onClick={() => this.select(option[1])} // Should use option[0] here and below but this is easier for now
-        className={'true-option' + (this.state.selected === option[1] ? ' highlighted' : '')}
+        onClick={() => this.select(option)}
+        className={
+          (option ? 'true-option' : 'none-option') +
+          (this.state.selected === option ? ' highlighted' : '')
+        }
       >
-        <img
-          alt={option[0]}
-          src={option[1]}
-          style={imgStyle}
-        />
+        {option ? (
+          <img alt={option[0]} src={option[1]} style={imgStyle} />
+        ) : (
+          <img alt="None" src={no} />
+        )}
       </div>
     );
   };
@@ -100,7 +88,8 @@ class GridSelect extends Component<AProps, AState> {
 
     if (this.props.crop) {
       const divWidth = this.state.width - 6;
-      const divHeight = (divWidth / this.props.crop.aspectRatio) * (this.props.crop.sy / this.props.crop.sx);
+      const divHeight =
+        (divWidth / this.props.crop.aspectRatio) * (this.props.crop.sy / this.props.crop.sx);
 
       divStyle = {
         width: divWidth,
@@ -109,7 +98,7 @@ class GridSelect extends Component<AProps, AState> {
 
       const imgWidth = divWidth / this.props.crop.sx;
       const imgHeight = divHeight / this.props.crop.sy;
-  
+
       imgStyle = {
         width: imgWidth,
         height: imgHeight,
@@ -120,7 +109,6 @@ class GridSelect extends Component<AProps, AState> {
 
     return (
       <div className="grid-select" ref={this.gridRef}>
-        {this.props.emptyOption && this.addNoneOption()}
         {this.props.options.map(option => this.addOption(option, divStyle, imgStyle))}
       </div>
     );
