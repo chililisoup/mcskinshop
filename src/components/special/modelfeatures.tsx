@@ -258,6 +258,13 @@ class ModelFeatures extends Component<AProps, AState> {
                 text: 'Upload custom... (Tool)'
               }
             ]}
+            crop={{
+              aspectRatio: 1.0,
+              x: -0.05,
+              y: -0.05,
+              sx: 1.1,
+              sy: 1.1
+            }}
           />
           <FeatureEntry
             title="Left Hand"
@@ -278,6 +285,13 @@ class ModelFeatures extends Component<AProps, AState> {
                 text: 'Upload custom... (Tool)'
               }
             ]}
+            crop={{
+              aspectRatio: 1.0,
+              x: -0.05,
+              y: -0.05,
+              sx: 1.1,
+              sy: 1.1
+            }}
           />
         </Dropdown>
       </div>
