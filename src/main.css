@@ -292,7 +292,7 @@ hr {
   overflow: hidden;
 }
 
-.paperdoll-settings {
+.viewport-ui {
   position: absolute;
   max-width: calc(100% - 10px);
   height: calc(100% - 10px);
@@ -302,34 +302,34 @@ hr {
   overflow: hidden;
 }
 
-.paperdoll-settings input,
-.paperdoll-settings button,
-.paperdoll-settings label,
-.paperdoll-settings select,
-.paperdoll-settings option {
+.viewport-ui input,
+.viewport-ui button,
+.viewport-ui label,
+.viewport-ui select,
+.viewport-ui option {
   pointer-events: initial;
 }
 
-.paperdoll-settings button > img,
-.paperdoll-settings label > img {
+.viewport-ui button > img,
+.viewport-ui label > img {
   width: 32px;
   height: 32px;
 }
 
-.paperdoll-settings button:has(> img),
-.paperdoll-settings label:has(> img) {
+.viewport-ui button:has(> img),
+.viewport-ui label:has(> img) {
   display: inline-flex;
   padding: 4px;
 }
 
-.paperdoll-settings > span {
+.viewport-ui > span {
   flex-wrap: nowrap;
   pointer-events: initial;
   overflow: auto hidden;
   height: 48px;
 }
 
-.paperdoll-settings > span > div:first-child {
+.viewport-ui > span > div:first-child {
   background-color: var(--container);
   border-bottom-right-radius: var(--curvature);
   box-shadow: var(--box-shadow);
@@ -337,24 +337,24 @@ hr {
   margin-right: 8px;
 }
 
-.paperdoll-settings > span > span {
+.viewport-ui > span > span {
   gap: 12px;
 }
 
-.paperdoll-settings > span > span label {
+.viewport-ui > span > span label {
   color: var(--container-alt-text);
 }
 
-.paperdoll-settings > span > span > span {
+.viewport-ui > span > span > span {
   width: min-content;
 }
 
-.paperdoll-settings > span > * {
+.viewport-ui > span > * {
   max-height: 28px;
   padding: 4px 0;
 }
 
-.paperdoll-settings > span * {
+.viewport-ui > span * {
   white-space: nowrap;
   min-width: max-content;
 }

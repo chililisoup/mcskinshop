@@ -1,13 +1,20 @@
 import React from 'react';
 import * as THREE from 'three';
 import skinmodel from '@/skinmodel.json';
-import AbstractMode from '@components/special/paperdoll/modes/abstractmode';
+import { BaseMode, ModeSetting } from '@components/special/viewport/modes/abstractmode';
 import SettingsRibbon from '@components/basic/settingsribbon';
-import PaperDoll from '@components/special/paperdoll/paperdoll';
+import PaperDoll from '@components/special/viewport/paperdoll';
 
 export const ANIMATIONS = ['Walk', 'Crouch Walk'] as const;
 
-export default class AnimateMode extends AbstractMode {
+type ASettings = {
+  explode: ModeSetting<boolean>;
+  animate: ModeSetting<boolean>;
+  speed: ModeSetting<number>;
+  animation: ModeSetting<(typeof ANIMATIONS)[number]>;
+};
+
+export default class AnimateMode extends BaseMode<ASettings> {
   time = 0;
   idleTime = 0;
 
@@ -15,14 +22,19 @@ export default class AnimateMode extends AbstractMode {
     super(instance, 'Animate');
   }
 
-  init = () => {
-    this.updateExplode();
+  settings: ASettings = {
+    explode: { value: false, update: () => this.updateExplode() },
+    animate: { value: this.instance.props.manager.get().animatePlayerOnStart },
+    speed: { value: 0.5 },
+    animation: { value: 'Walk' }
   };
 
-  dispose = () => undefined;
+  init = () => this.updateExplode();
+
+  dispose = () => this.updateExplode(false);
 
   updateExplode = (explode?: boolean) => {
-    const mod = (explode ?? this.instance.state.explode) ? 2.5 : 0;
+    const mod = (explode ?? this.settings.explode.value) ? 2.5 : 0;
     const pivots = this.instance.doll.pivots;
 
     pivots.head.position.y = skinmodel.head.position[1] + mod;
@@ -47,8 +59,8 @@ export default class AnimateMode extends AbstractMode {
   animate = (delta: number) => {
     const pivots = this.instance.doll.pivots;
 
-    if (this.instance.state.anim) {
-      this.time += delta * 8 * this.instance.state.animSpeed;
+    if (this.settings.animate.value) {
+      this.time += delta * 8 * this.settings.speed.value;
       this.idleTime += delta * 8;
       if (this.time > Math.PI * 20) this.time -= Math.PI * 20;
     }
@@ -68,7 +80,7 @@ export default class AnimateMode extends AbstractMode {
 
     this.updateExplode();
 
-    const rotation = Math.sin(this.time) * this.instance.state.animSpeed;
+    const rotation = Math.sin(this.time) * this.settings.speed.value;
 
     pivots.leftLeg.rotation.x = rotation;
     pivots.rightLeg.rotation.x = -rotation;
@@ -79,12 +91,12 @@ export default class AnimateMode extends AbstractMode {
     pivots.rightArm.rotation.z = -pivots.leftArm.rotation.z;
 
     pivots.cape.rotation.x =
-      Math.sin(this.idleTime * 0.1) * 0.05 + 0.75 * this.instance.state.animSpeed + 0.1;
+      Math.sin(this.idleTime * 0.1) * 0.05 + 0.75 * this.settings.speed.value + 0.1;
 
     const oldWingRotation = pivots.leftElytraWing.rotation.clone();
     let newWingRotation = new THREE.Euler(Math.PI / 12, Math.PI / 36, Math.PI / 12);
 
-    switch (this.instance.state.animation) {
+    switch (this.settings.animation.value) {
       case 'Walk':
         pivots.torso.rotation.x = 0;
 
@@ -135,57 +147,59 @@ export default class AnimateMode extends AbstractMode {
     );
   };
 
-  settingsRibbon = (
-    <SettingsRibbon
-      booleanCallback={(id, value) => {
-        if (id === 'explode') this.instance.updateSettingFinish(id, value);
-        if (id === 'animate') this.instance.updateSetting('anim', value);
-      }}
-      numberCallback={(id, value) => {
-        if (id === 'animSpeed') this.instance.updateSetting(id, value);
-      }}
-      stringCallback={(id, value) => {
-        if (id === 'animation') this.instance.updateSettingFinish(id, value);
-      }}
-      properties={[
-        {
-          name: 'Explode',
-          id: 'explode',
-          type: 'checkbox',
-          value: this.instance.state.explode
-        },
-        {
-          name: 'Animate',
-          id: 'animate',
-          type: 'checkbox',
-          value: this.instance.state.anim,
-          siblings: [
-            {
-              name: 'Animation Speed',
-              id: 'animSpeed',
-              type: 'range',
-              value: this.instance.state.animSpeed,
-              min: 0,
-              max: 2,
-              step: 0.01
-            }
-          ]
-        },
-        {
-          name: 'Animation',
-          id: 'animation',
-          unlabeled: true,
-          type: 'select',
-          value: this.instance.state.animation,
-          options: ANIMATIONS
-        },
-        {
-          name: 'Capture Pose',
-          id: 'capturePose',
-          type: 'button',
-          onClick: this.instance.capturePose
-        }
-      ]}
-    />
-  );
+  renderRibbon = () => {
+    return (
+      <SettingsRibbon
+        booleanCallback={(id, value) => {
+          if (id === 'explode') this.updateSettingWithEdit(id, value);
+          if (id === 'animate') this.updateSetting('animate', value);
+        }}
+        numberCallback={(id, value) => {
+          if (id === 'speed') this.updateSetting(id, value);
+        }}
+        stringCallback={(id, value) => {
+          if (id === 'animation') this.updateSettingWithEdit(id, value);
+        }}
+        properties={[
+          {
+            name: 'Explode',
+            id: 'explode',
+            type: 'checkbox',
+            value: this.settings.explode.value
+          },
+          {
+            name: 'Animate',
+            id: 'animate',
+            type: 'checkbox',
+            value: this.settings.animate.value,
+            siblings: [
+              {
+                name: 'Speed',
+                id: 'speed',
+                type: 'range',
+                value: this.settings.speed.value,
+                min: 0,
+                max: 2,
+                step: 0.01
+              }
+            ]
+          },
+          {
+            name: 'Animation',
+            id: 'animation',
+            unlabeled: true,
+            type: 'select',
+            value: this.settings.animation.value,
+            options: ANIMATIONS
+          },
+          {
+            name: 'Capture Pose',
+            id: 'capturePose',
+            type: 'button',
+            onClick: this.instance.capturePose
+          }
+        ]}
+      />
+    );
+  };
 }

@@ -1,9 +1,9 @@
 import React from 'react';
 import * as THREE from 'three';
 import * as Util from '@tools/util';
-import * as Handles from '@components/special/paperdoll/handles';
-import PaperDoll, { AState } from '@components/special/paperdoll/paperdoll';
-import AbstractMode from '@components/special/paperdoll/modes/abstractmode';
+import * as Handles from '@components/special/viewport/handles';
+import PaperDoll from '@components/special/viewport/paperdoll';
+import { BaseMode, ModeSetting } from '@components/special/viewport/modes/abstractmode';
 import SettingsRibbon from '@components/basic/settingsribbon';
 
 export const POSE_MODES = ['Rotation', 'Position', 'Scale'] as const;
@@ -14,7 +14,14 @@ export type PoseEntry = {
   scale?: THREE.Vector3Tuple;
 };
 
-export default class PoseMode extends AbstractMode {
+type ASettings = {
+  control: ModeSetting<'Simple' | 'Controlled'>;
+  mode: ModeSetting<(typeof POSE_MODES)[number]>;
+  space: ModeSetting<'Local' | 'Global'>;
+  savedPoses: ModeSetting<string[]>;
+};
+
+export default class PoseMode extends BaseMode<ASettings> {
   activeKeys: Record<string, true> = {};
   mousePos = new THREE.Vector2(1, 1);
   oldMousePos?: THREE.Vector2;
@@ -37,49 +44,54 @@ export default class PoseMode extends AbstractMode {
     super(instance, 'Pose');
   }
 
+  settings: ASettings = {
+    control: { value: 'Simple' },
+    mode: { value: 'Rotation' },
+    space: { value: 'Local' },
+    savedPoses: { value: this.getSavedPoses() }
+  };
+
   init = (canvas: HTMLCanvasElement) => {
     this.createHandles();
     this.addEvents(canvas);
   };
 
   dispose = (canvas: HTMLCanvasElement) => {
+    if (this.instance.hoveredOutlinePass) this.instance.hoveredOutlinePass.selectedObjects = [];
+    if (this.instance.selectedOutlinePass) this.instance.selectedOutlinePass.selectedObjects = [];
+    this.handles.removeFromParent();
+    this.resetPose();
     this.removeEvents(canvas);
   };
 
-  changePoseSetting = <KKey extends keyof AState['poseSettings']>(setting: KKey) => {
-    const poseSettings: AState['poseSettings'] = {
-      control: this.instance.state.poseSettings.control,
-      mode: this.instance.state.poseSettings.mode,
-      space: this.instance.state.poseSettings.space
-    };
+  changePoseSetting = <KKey extends keyof ASettings>(name: KKey) => {
+    const value = this.settings[name].value;
 
-    switch (setting) {
+    let changed: typeof value;
+    switch (name) {
       case 'control':
-        poseSettings[setting] = (
-          poseSettings.control === 'Simple' ? 'Controlled' : 'Simple'
-        ) as AState['poseSettings'][KKey];
+        changed = value === 'Simple' ? 'Controlled' : 'Simple';
+        this.selectedObject = undefined;
         break;
       case 'mode': {
-        const typeIndex = POSE_MODES.indexOf(poseSettings.mode);
+        const typeIndex = POSE_MODES.indexOf(value as ASettings['mode']['value']);
         const next = typeIndex + 1 >= POSE_MODES.length ? 0 : typeIndex + 1;
 
-        poseSettings[setting] = POSE_MODES[next] as AState['poseSettings'][KKey];
+        changed = POSE_MODES[next];
         break;
       }
       case 'space':
-        poseSettings[setting] = (
-          poseSettings.space === 'Local' ? 'Global' : 'Local'
-        ) as AState['poseSettings'][KKey];
+        changed = value === 'Local' ? 'Global' : 'Local';
         break;
       default:
         return;
     }
 
-    this.instance.updateSetting('poseSettings', poseSettings);
+    this.updateSetting(name, changed);
   };
 
   onSavedPosesUpdated = (savedPoses: string[]) => {
-    this.instance.setState({ savedPoses: savedPoses });
+    this.updateSetting('savedPoses', savedPoses);
   };
 
   addEvents = (canvas: HTMLCanvasElement) => {
@@ -111,13 +123,13 @@ export default class PoseMode extends AbstractMode {
   poseRotation = () => {
     if (!this.oldMousePos || !this.selectedObject?.parent) return;
 
-    if (this.instance.state.poseSettings.control === 'Controlled') {
+    if (this.settings.control.value === 'Controlled') {
       if (!this.handle) return;
 
       const localRotation = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
       const worldPivotPos = this.selectedObject.getWorldPosition(new THREE.Vector3());
       const norm = (this.handle.userData.normal as THREE.Vector3).clone();
-      if (this.instance.state.poseSettings.space === 'Local') norm.applyQuaternion(localRotation);
+      if (this.settings.space.value === 'Local') norm.applyQuaternion(localRotation);
 
       const camMult = this.instance.activeCam instanceof THREE.OrthographicCamera ? -1 : 1;
       const start = this.clipToWorldSpace(this.mousePos, 0.5 * camMult);
@@ -162,7 +174,7 @@ export default class PoseMode extends AbstractMode {
       }
 
       const rotation = new THREE.Quaternion().setFromAxisAngle(
-        this.instance.state.poseSettings.space === 'Global'
+        this.settings.space.value === 'Global'
           ? norm.applyQuaternion(localRotation.invert())
           : (this.handle.userData.normal as THREE.Vector3),
         angle
@@ -195,7 +207,7 @@ export default class PoseMode extends AbstractMode {
     const clipZ = this.getClipZ(this.selectedObject);
     const camMult = Math.sign(clipZ);
 
-    if (this.instance.state.poseSettings.control === 'Controlled') {
+    if (this.settings.control.value === 'Controlled') {
       if (!this.handle) return;
 
       this.selectedStartMatrix ??= this.selectedObject.matrix.clone();
@@ -203,7 +215,7 @@ export default class PoseMode extends AbstractMode {
 
       const worldQuat = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
       const norm = (this.handle.userData.normal as THREE.Vector3).clone();
-      if (this.instance.state.poseSettings.space === 'Local') norm.applyQuaternion(worldQuat);
+      if (this.settings.space.value === 'Local') norm.applyQuaternion(worldQuat);
 
       let movement;
 
@@ -262,7 +274,7 @@ export default class PoseMode extends AbstractMode {
         movement = intersect.sub(this.oldHandlePos);
 
         if (this.activeKeys.Control) {
-          if (this.instance.state.poseSettings.space === 'Local') {
+          if (this.settings.space.value === 'Local') {
             movement.applyQuaternion(worldQuat.clone().invert());
             movement.round();
             movement.applyQuaternion(worldQuat);
@@ -292,7 +304,7 @@ export default class PoseMode extends AbstractMode {
     const clipZ = this.getClipZ(this.selectedObject);
     const camMult = Math.sign(clipZ);
 
-    if (this.instance.state.poseSettings.control === 'Controlled') {
+    if (this.settings.control.value === 'Controlled') {
       if (!this.handle) return;
 
       this.selectedStartMatrix ??= this.selectedObject.matrix.clone();
@@ -300,7 +312,7 @@ export default class PoseMode extends AbstractMode {
 
       const worldQuat = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
       const norm = (this.handle.userData.normal as THREE.Vector3).clone();
-      if (this.instance.state.poseSettings.space === 'Local') norm.applyQuaternion(worldQuat);
+      if (this.settings.space.value === 'Local') norm.applyQuaternion(worldQuat);
 
       let change;
 
@@ -359,7 +371,7 @@ export default class PoseMode extends AbstractMode {
         change = intersect.sub(this.oldHandlePos);
 
         if (this.activeKeys.Control) {
-          if (this.instance.state.poseSettings.space === 'Local') {
+          if (this.settings.space.value === 'Local') {
             change.applyQuaternion(worldQuat.clone().invert());
             change.round();
             change.applyQuaternion(worldQuat);
@@ -397,7 +409,7 @@ export default class PoseMode extends AbstractMode {
     this.hoveredHandle = undefined;
 
     if (this.selectedObject) {
-      if (this.instance.state.poseSettings.control === 'Controlled') {
+      if (this.settings.control.value === 'Controlled') {
         if (!this.handles) return;
 
         const rotationHandles = this.handles.getObjectByName('rotationHandles');
@@ -410,7 +422,7 @@ export default class PoseMode extends AbstractMode {
         scaleHandles.visible = false;
 
         let activeHandles: THREE.Object3D;
-        switch (this.instance.state.poseSettings.mode) {
+        switch (this.settings.mode.value) {
           case 'Rotation':
             activeHandles = rotationHandles;
             break;
@@ -420,10 +432,12 @@ export default class PoseMode extends AbstractMode {
           case 'Scale':
             activeHandles = scaleHandles;
             break;
+          default:
+            return;
         }
         activeHandles.visible = true;
 
-        if (this.instance.state.poseSettings.space === 'Global') {
+        if (this.settings.space.value === 'Global') {
           this.handles.position.copy(this.selectedObject.getWorldPosition(new THREE.Vector3()));
           this.instance.scene.add(this.handles);
         } else {
@@ -462,7 +476,7 @@ export default class PoseMode extends AbstractMode {
       if (this.oldMousePos) {
         if (this.mousePos.equals(this.oldMousePos)) return;
 
-        switch (this.instance.state.poseSettings.mode) {
+        switch (this.settings.mode.value) {
           case 'Rotation':
             this.poseRotation();
             break;
@@ -489,7 +503,7 @@ export default class PoseMode extends AbstractMode {
     if (
       !this.hoveredHandle &&
       !this.handle &&
-      !(this.selectedObject && this.instance.state.poseSettings.control === 'Simple')
+      !(this.selectedObject && this.settings.control.value === 'Simple')
     ) {
       const intersects = this.instance.raycaster.intersectObject(this.instance.doll.root, true);
       const poseable =
@@ -592,9 +606,9 @@ export default class PoseMode extends AbstractMode {
     }
   };
 
-  getSavedPoses = () => {
+  getSavedPoses() {
     return JSON.parse(localStorage.getItem('poses') ?? '[]') as string[];
-  };
+  }
 
   getSavedPose = (poseName: string) => {
     return JSON.parse(localStorage.getItem('pose-' + poseName) ?? '{}') as Record<
@@ -775,7 +789,7 @@ export default class PoseMode extends AbstractMode {
     if (this.instance.state.mode !== this) return;
     if (e.button === 2) return;
 
-    if (this.instance.state.poseSettings.control === 'Controlled') {
+    if (this.settings.control.value === 'Controlled') {
       if (this.hoveredObject) {
         this.selectedObject = this.hoveredObject;
         return;
@@ -803,7 +817,7 @@ export default class PoseMode extends AbstractMode {
     if (this.canDeselect) this.deselect();
     this.canDeselect = false;
 
-    if (this.instance.state.poseSettings.control === 'Simple') {
+    if (this.settings.control.value === 'Simple') {
       this.selectedObject = undefined;
     }
 
@@ -821,18 +835,18 @@ export default class PoseMode extends AbstractMode {
     if (this.instance.state.mode !== this) return;
     if (!this.hoveredObject) return;
 
-    if (this.instance.state.poseSettings.control === 'Controlled') {
+    if (this.settings.control.value === 'Controlled') {
       if (this.selectedObject !== this.hoveredObject) return;
     }
 
     this.selectedObject = this.hoveredObject;
     if (this.instance.controls) this.instance.controls.enabled = false;
 
-    this.addPoseEdit('reset', this.instance.state.poseSettings.mode.toLowerCase());
+    this.addPoseEdit('reset', this.settings.mode.value.toLowerCase());
 
     const obj = this.selectedObject;
 
-    switch (this.instance.state.poseSettings.mode) {
+    switch (this.settings.mode.value) {
       case 'Rotation':
         obj.setRotationFromEuler(obj.userData.defaultRotation as THREE.Euler);
         break;
@@ -866,92 +880,94 @@ export default class PoseMode extends AbstractMode {
       this.deselect();
   };
 
-  settingsRibbon = (
-    <SettingsRibbon
-      buttonFallback={id => {
-        switch (id) {
-          case 'control':
-          case 'mode':
-          case 'space':
-            this.changePoseSetting(id);
-        }
-      }}
-      stringCallback={(id, value) => {
-        if (id === 'selectedPose') this.selectedPose = value;
-      }}
-      fileCallback={(id, value, name) => {
-        if (id === 'uploadPose') this.uploadPose(value, name);
-      }}
-      properties={[
-        {
-          name: 'Pose Control',
-          label: this.instance.state.poseSettings.control,
-          id: 'control',
-          type: 'button'
-        },
-        {
-          name: 'Pose Mode',
-          label: this.instance.state.poseSettings.mode,
-          id: 'mode',
-          type: 'button'
-        },
-        {
-          name: 'Pose Space',
-          label: this.instance.state.poseSettings.space,
-          id: 'space',
-          type: 'button'
-        },
-        {
-          name: 'Deselect',
-          id: 'deselect',
-          type: 'button',
-          onClick: this.deselect
-        },
-        {
-          name: 'Reset Pose',
-          id: 'resetPose',
-          type: 'button',
-          onClick: this.resetPose
-        },
-        {
-          name: 'Selected Pose',
-          id: 'selectedPose',
-          unlabeled: true,
-          type: 'select',
-          value: this.selectedPose,
-          options: this.instance.state.savedPoses
-        },
-        {
-          name: 'Load Pose',
-          id: 'loadPose',
-          type: 'button',
-          onClick: () => this.selectedPose && this.loadPoseByName(this.selectedPose)
-        },
-        {
-          name: 'Delete Pose',
-          id: 'deletePose',
-          type: 'button',
-          onClick: () => this.selectedPose && this.deletePoseByName(this.selectedPose)
-        },
-        {
-          name: 'Save New Pose',
-          id: 'savePose',
-          type: 'button',
-          onClick: this.savePose
-        },
-        {
-          name: 'Download Pose',
-          id: 'downloadPose',
-          type: 'button',
-          onClick: () => this.selectedPose && this.downloadPoseJson(this.selectedPose)
-        },
-        {
-          name: 'Upload Pose',
-          id: 'uploadPose',
-          type: 'file',
-          accept: 'application/json'
-        }
-      ]}
-    />
-  );
+  renderRibbon = () => {
+    return (
+      <SettingsRibbon
+        buttonFallback={id => {
+          switch (id) {
+            case 'control':
+            case 'mode':
+            case 'space':
+              this.changePoseSetting(id);
+          }
+        }}
+        stringCallback={(id, value) => {
+          if (id === 'selectedPose') this.selectedPose = value;
+        }}
+        fileCallback={(id, value, name) => {
+          if (id === 'uploadPose') this.uploadPose(value, name);
+        }}
+        properties={[
+          {
+            name: 'Pose Control',
+            label: this.settings.control.value,
+            id: 'control',
+            type: 'button'
+          },
+          {
+            name: 'Pose Mode',
+            label: this.settings.mode.value,
+            id: 'mode',
+            type: 'button'
+          },
+          {
+            name: 'Pose Space',
+            label: this.settings.space.value,
+            id: 'space',
+            type: 'button'
+          },
+          {
+            name: 'Deselect',
+            id: 'deselect',
+            type: 'button',
+            onClick: this.deselect
+          },
+          {
+            name: 'Reset Pose',
+            id: 'resetPose',
+            type: 'button',
+            onClick: this.resetPose
+          },
+          {
+            name: 'Selected Pose',
+            id: 'selectedPose',
+            unlabeled: true,
+            type: 'select',
+            value: this.selectedPose,
+            options: this.settings.savedPoses.value
+          },
+          {
+            name: 'Load Pose',
+            id: 'loadPose',
+            type: 'button',
+            onClick: () => this.selectedPose && this.loadPoseByName(this.selectedPose)
+          },
+          {
+            name: 'Delete Pose',
+            id: 'deletePose',
+            type: 'button',
+            onClick: () => this.selectedPose && this.deletePoseByName(this.selectedPose)
+          },
+          {
+            name: 'Save New Pose',
+            id: 'savePose',
+            type: 'button',
+            onClick: this.savePose
+          },
+          {
+            name: 'Download Pose',
+            id: 'downloadPose',
+            type: 'button',
+            onClick: () => this.selectedPose && this.downloadPoseJson(this.selectedPose)
+          },
+          {
+            name: 'Upload Pose',
+            id: 'uploadPose',
+            type: 'file',
+            accept: 'application/json'
+          }
+        ]}
+      />
+    );
+  };
 }

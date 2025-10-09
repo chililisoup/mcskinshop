@@ -3,7 +3,7 @@ import * as ImgMod from '@tools/imgmod';
 import * as Util from '@tools/util';
 import steve from '@assets/steve.png';
 import alex from '@assets/alex.png';
-import PaperDoll from '@components/special/paperdoll/paperdoll';
+import PaperDoll from '@components/special/viewport/paperdoll';
 import LayerManager from '@components/special/layermanager';
 import LayerAdder from '@components/special/layeradder';
 import AssetCreator from '@components/special/assetcreator';

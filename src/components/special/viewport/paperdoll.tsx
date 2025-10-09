@@ -9,11 +9,12 @@ import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import skinmodel from '@/skinmodel.json';
+import save_render from '@assets/save_render.png';
 import { Features } from '@components/special/modelfeatures';
 import { UndoCallback } from '@components/special/skinmanager';
-import AnimateMode, { ANIMATIONS } from '@components/special/paperdoll/modes/animatemode';
-import PoseMode, { POSE_MODES } from '@components/special/paperdoll/modes/posemode';
-import PaperDollSettings from '@components/special/paperdoll/paperdollsettings';
+import AnimateMode from '@components/special/viewport/modes/animatemode';
+import PoseMode from '@components/special/viewport/modes/posemode';
+import ViewportPanel from '@components/special/viewport/viewportpanel';
 import AbstractMode from './modes/abstractmode';
 
 type AProps = {
@@ -26,10 +27,6 @@ type AProps = {
 };
 
 export type AState = {
-  anim: boolean;
-  animSpeed: number;
-  animation: (typeof ANIMATIONS)[number];
-  explode: boolean;
   shade: boolean;
   lightAngle: number;
   lightFocus: number;
@@ -38,11 +35,7 @@ export type AState = {
   directionalLightColor: string;
   directionalLightIntensity: number;
   mode: AbstractMode;
-  poseSettings: {
-    control: 'Simple' | 'Controlled';
-    mode: (typeof POSE_MODES)[number];
-    space: 'Local' | 'Global';
-  };
+  ribbon: React.JSX.Element;
   partToggles: {
     head: {
       base: boolean;
@@ -72,7 +65,6 @@ export type AState = {
   fov: number;
   usePerspectiveCam: boolean;
   grid: boolean;
-  savedPoses: string[];
 };
 
 const defaultLighting = {
@@ -118,10 +110,6 @@ export default class PaperDoll extends Component<AProps, AState> {
     super(props);
 
     this.state = {
-      anim: this.props.manager.get().animatePlayerOnStart,
-      animSpeed: 0.5,
-      animation: 'Walk',
-      explode: false,
       shade: true,
       lightAngle: defaultLighting.lightAngle,
       lightFocus: defaultLighting.lightFocus,
@@ -130,11 +118,7 @@ export default class PaperDoll extends Component<AProps, AState> {
       directionalLightColor: defaultLighting.directionalLightColor,
       directionalLightIntensity: defaultLighting.directionalLightIntensity,
       mode: this.modes.animate,
-      poseSettings: {
-        control: 'Simple',
-        mode: 'Rotation',
-        space: 'Local'
-      },
+      ribbon: this.modes.animate.renderRibbon(),
       partToggles: {
         head: {
           base: true,
@@ -163,8 +147,7 @@ export default class PaperDoll extends Component<AProps, AState> {
       },
       fov: 80,
       usePerspectiveCam: true,
-      grid: true,
-      savedPoses: this.modes.pose.getSavedPoses()
+      grid: true
     };
 
     this.scene = new THREE.Scene();
@@ -188,7 +171,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.textureSetup();
     this.startAnimationLoop();
 
-    for (const mode of Object.values(this.modes)) mode.init(this.canvasRef.current);
+    this.state.mode.init(this.canvasRef.current);
 
     window.addEventListener('resize', this.handleWindowResize);
   }
@@ -196,7 +179,7 @@ export default class PaperDoll extends Component<AProps, AState> {
   componentWillUnmount() {
     if (!this.canvasRef.current) return;
 
-    for (const mode of Object.values(this.modes)) mode.dispose(this.canvasRef.current);
+    this.state.mode.dispose(this.canvasRef.current);
 
     window.removeEventListener('resize', this.handleWindowResize);
     window.cancelAnimationFrame(this.requestID);
@@ -205,8 +188,6 @@ export default class PaperDoll extends Component<AProps, AState> {
   }
 
   componentDidUpdate(prevProps: Readonly<AProps>, prevState: Readonly<AState>) {
-    if (this.state.explode !== prevState.explode) this.modes.animate.updateExplode();
-
     if (
       this.state.usePerspectiveCam !== prevState.usePerspectiveCam &&
       this.perspCam &&
@@ -406,7 +387,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     });
   };
 
-  resetCamera = () => {
+  resetCameraPosition = () => {
     if (!this.controls || !this.perspCam || !this.orthoCam) return;
 
     if (this.activeCam === this.orthoCam) {
@@ -636,60 +617,43 @@ export default class PaperDoll extends Component<AProps, AState> {
   };
 
   capturePose = () => {
-    this.modes.animate.updateExplode(false);
+    this.modes.animate.updateSetting('explode', false);
     this.modes.pose.clearSavedPose();
     this.modes.pose.savePose();
-    this.setState({
-      mode: this.modes.pose,
-      explode: false
-    });
+    this.setState({ mode: this.modes.pose });
+  };
+
+  nextMode = () => {
+    const modes: AbstractMode[] = Object.values(this.modes);
+    const next = modes.indexOf(this.state.mode) + 1;
+    this.updateSetting('mode', modes[next >= modes.length ? 0 : next]);
   };
 
   updateSetting = <KKey extends keyof AState>(setting: KKey, value: AState[KKey]) => {
-    switch (setting) {
-      case 'anim':
-        this.setState({
-          anim: !!value
-        });
-        if (this.hoveredOutlinePass) this.hoveredOutlinePass.selectedObjects = [];
-        if (this.selectedOutlinePass) this.selectedOutlinePass.selectedObjects = [];
-        this.modes.pose.handles.removeFromParent();
-        this.modes.pose.resetPose();
-        this.modes.animate.updateExplode();
-        break;
-      case 'mode':
-        this.setState({
-          mode: value as AbstractMode,
-          explode: false
-        });
-        if (this.hoveredOutlinePass) this.hoveredOutlinePass.selectedObjects = [];
-        if (this.selectedOutlinePass) this.selectedOutlinePass.selectedObjects = [];
-        this.modes.pose.handles.removeFromParent();
-        if (!value) {
-          this.modes.pose.savePose();
-          this.modes.pose.resetPose();
-        } else {
-          this.modes.pose.loadPose();
-          this.modes.pose.clearSavedPose();
-        }
-        break;
-      case 'poseSettings': {
-        const settings = value as AState['poseSettings'];
-        if (this.state.poseSettings.control !== settings.control)
-          this.modes.pose.selectedObject = undefined;
+    if (setting === 'mode') {
+      if (!this.canvasRef.current) return;
 
-        this.setState({
-          poseSettings: {
-            control: settings.control ?? 'Simple',
-            mode: settings.mode ?? 'Rotation',
-            space: settings.space ?? 'Global'
-          }
-        });
-        break;
+      const mode = value as AbstractMode;
+      this.state.mode.dispose(this.canvasRef.current);
+      this.setState({ mode: mode, ribbon: mode.renderRibbon() });
+      mode.init(this.canvasRef.current);
+
+      if (this.hoveredOutlinePass) this.hoveredOutlinePass.selectedObjects = [];
+      if (this.selectedOutlinePass) this.selectedOutlinePass.selectedObjects = [];
+      this.modes.pose.handles.removeFromParent();
+
+      if (!value) {
+        this.modes.pose.savePose();
+        this.modes.pose.resetPose();
+      } else {
+        this.modes.pose.loadPose();
+        this.modes.pose.clearSavedPose();
       }
-      default:
-        this.setState({ [setting]: value } as Pick<AState, KKey>);
+
+      return;
     }
+
+    this.setState({ [setting]: value } as Pick<AState, KKey>);
   };
 
   updateSettingFinish = (setting: keyof AState, value: AState[keyof AState]) => {
@@ -713,35 +677,43 @@ export default class PaperDoll extends Component<AProps, AState> {
   render() {
     return (
       <div className="paperdoll stack container">
-        <PaperDollSettings
-          settings={{
-            anim: this.state.anim,
-            animSpeed: this.state.animSpeed,
-            animation: this.state.animation,
-            explode: this.state.explode,
-            shade: this.state.shade,
-            lightAngle: this.state.lightAngle,
-            lightFocus: this.state.lightFocus,
-            ambientLightColor: this.state.ambientLightColor,
-            ambientLightIntensity: this.state.ambientLightIntensity,
-            directionalLightColor: this.state.directionalLightColor,
-            directionalLightIntensity: this.state.directionalLightIntensity,
-            mode: this.state.mode,
-            poseSettings: this.state.poseSettings,
-            partToggles: this.state.partToggles,
-            fov: this.state.fov,
-            usePerspectiveCam: this.state.usePerspectiveCam,
-            grid: this.state.grid
-          }}
-          modes={this.modes}
-          slim={this.props.slim}
-          updateSetting={this.updateSetting}
-          updateSlim={this.props.updateSlim}
-          saveRender={this.saveRender}
-          resetCamera={this.resetCamera}
-          resetLighting={() => this.setState(defaultLighting)}
-          addEdit={this.props.addEdit}
-        />
+        <span className="viewport-ui">
+          <ViewportPanel
+            settings={{
+              shade: this.state.shade,
+              lightAngle: this.state.lightAngle,
+              lightFocus: this.state.lightFocus,
+              ambientLightColor: this.state.ambientLightColor,
+              ambientLightIntensity: this.state.ambientLightIntensity,
+              directionalLightColor: this.state.directionalLightColor,
+              directionalLightIntensity: this.state.directionalLightIntensity,
+              partToggles: this.state.partToggles,
+              fov: this.state.fov,
+              usePerspectiveCam: this.state.usePerspectiveCam,
+              grid: this.state.grid
+            }}
+            slim={this.props.slim}
+            updateSetting={this.updateSetting}
+            updateSlim={this.props.updateSlim}
+            resetCameraPosition={this.resetCameraPosition}
+            resetLighting={() => this.setState(defaultLighting)}
+            addEdit={this.props.addEdit}
+          />
+          <span className="top left">
+            <div>
+              <label htmlFor="editorMode">Editor Mode</label>
+              <button id="editorMode" onClick={() => this.nextMode()}>
+                {this.state.mode.name}
+              </button>
+            </div>
+            {this.state.ribbon}
+          </span>
+          <div className="bottom left">
+            <button title="Save Render" onClick={this.saveRender}>
+              <img alt="Save Render" src={save_render} />
+            </button>
+          </div>
+        </span>
         <div className="paperdoll-canvas-container">
           <canvas className="paperdoll-canvas" ref={this.canvasRef} />
         </div>
