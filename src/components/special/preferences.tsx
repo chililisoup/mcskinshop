@@ -23,7 +23,7 @@ export default class Preferences extends Component<AProps> {
       <DraggableWindow title="Preferences" anchor={{ vw: 0.5, vh: 0.5 }} close={this.props.close}>
         <div className="preferences">
           <PropertiesList
-            stringCallback={(id, value) => {
+            stringFallback={(id, value) => {
               if (id === 'theme')
                 this.props.manager.setPrefs({ theme: value as PrefMan.Prefs['theme'] });
               if (Object.keys(PrefMan.USER_THEME_COLOR_VARS).includes(id)) {
@@ -34,11 +34,11 @@ export default class Preferences extends Component<AProps> {
               }
               this.props.updatePrefs(this.props.manager);
             }}
-            numberCallback={(id, value) => {
+            numberFallback={(id, value) => {
               if (id === 'curvature') this.props.manager.setPrefs({ curvature: value });
               this.props.updatePrefs(this.props.manager);
             }}
-            booleanCallback={(id, value) => {
+            booleanFallback={(id, value) => {
               if (id === '--icon-invert') this.props.manager.setPrefs({ [id]: value });
               if (id === 'useFallbackSkinSource') this.props.manager.setPrefs({ [id]: value });
               if (id === 'autosetImageForm') this.props.manager.setPrefs({ [id]: value });

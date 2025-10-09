@@ -22,7 +22,8 @@ type AProps = {
   slim: boolean;
   updateSetting: <KKey extends keyof PaperDoll.AState>(
     setting: KKey,
-    value: PaperDoll.AState[KKey]
+    value: PaperDoll.AState[KKey],
+    saveEdit?: boolean
   ) => void;
   updateSlim: (slim: boolean) => void;
   resetCameraPosition: () => void;
@@ -42,34 +43,6 @@ export default class ViewportPanel extends Component<AProps, AState> {
       panel: true
     };
   }
-
-  updateSetting = <KKey extends keyof PaperDoll.AState>(
-    setting: KKey,
-    value: PaperDoll.AState[KKey]
-  ) => {
-    this.props.updateSetting(setting, value);
-  };
-
-  settingEdit = <KKey extends keyof PaperDoll.AState>(
-    setting: KKey,
-    from: PaperDoll.AState[KKey],
-    to: PaperDoll.AState[KKey]
-  ) => {
-    this.props.updateSetting(setting, from);
-
-    return () => this.settingEdit(setting, to, from);
-  };
-
-  updateSettingFinish = (
-    setting: keyof AProps['settings'],
-    value: PaperDoll.AState[keyof AProps['settings']]
-  ) => {
-    const from = this.props.settings[setting];
-
-    this.updateSetting(setting, value);
-
-    this.props.addEdit('change ' + setting, () => this.settingEdit(setting, from, value));
-  };
 
   resetLighting = () => {
     this.props.resetLighting();
@@ -134,21 +107,22 @@ export default class ViewportPanel extends Component<AProps, AState> {
                 type="checkbox"
                 id="gridToggle"
                 checked={this.props.settings.grid}
-                onChange={e => this.updateSetting('grid', e.target.checked)}
+                onChange={e => this.props.updateSetting('grid', e.target.checked)}
               />
             </span>
             <Dropdown title="Camera">
               <PropertiesList
                 buttonFallback={id => {
                   if (id === 'cameraType')
-                    this.updateSettingFinish(
+                    this.props.updateSetting(
                       'usePerspectiveCam',
-                      !this.props.settings.usePerspectiveCam
+                      !this.props.settings.usePerspectiveCam,
+                      true
                     );
                   else if (id === 'resetCameraPosition') this.props.resetCameraPosition();
                 }}
-                numberCallback={(id, value) => {
-                  if (id === 'fov') this.updateSetting('fov', value);
+                numberFallback={(id, value) => {
+                  if (id === 'fov') this.props.updateSetting('fov', value);
                 }}
                 properties={[
                   {
@@ -177,24 +151,26 @@ export default class ViewportPanel extends Component<AProps, AState> {
             </Dropdown>
             <Dropdown title="Lighting">
               <PropertiesList
-                booleanCallback={(id, value) => {
-                  if (id === 'shade') this.updateSettingFinish('shade', value);
+                booleanFallback={(id, value) => {
+                  if (id === 'shade') this.props.updateSetting('shade', value, true);
                 }}
-                numberCallback={(id, value) => {
-                  if (id === 'lightFocus') this.updateSetting('lightFocus', (value / 10) ** 2);
-                  else if (id === 'lightAngle') this.updateSetting('lightAngle', value);
+                numberFallback={(id, value) => {
+                  if (id === 'lightFocus')
+                    this.props.updateSetting('lightFocus', (value / 10) ** 2);
+                  else if (id === 'lightAngle') this.props.updateSetting('lightAngle', value);
                   else if (id === 'ambientLightIntensity')
-                    this.updateSetting('ambientLightIntensity', value);
+                    this.props.updateSetting('ambientLightIntensity', value);
                   else if (id === 'directionalLightIntensity')
-                    this.updateSetting('directionalLightIntensity', value);
+                    this.props.updateSetting('directionalLightIntensity', value);
                 }}
                 buttonFallback={id => {
                   if (id === 'resetLighting') this.resetLighting();
                 }}
-                stringCallback={(id, value) => {
-                  if (id === 'ambientLightColor') this.updateSetting('ambientLightColor', value);
+                stringFallback={(id, value) => {
+                  if (id === 'ambientLightColor')
+                    this.props.updateSetting('ambientLightColor', value);
                   else if (id === 'directionalLightColor')
-                    this.updateSetting('directionalLightColor', value);
+                    this.props.updateSetting('directionalLightColor', value);
                 }}
                 properties={[
                   {

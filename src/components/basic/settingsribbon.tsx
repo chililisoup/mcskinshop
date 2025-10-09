@@ -10,7 +10,7 @@ export default class SettingsRibbon extends PropertiesList {
             type="checkbox"
             checked={property.value}
             disabled={property.disabled}
-            onChange={e => this.props.booleanCallback?.(property.id, e.target.checked)}
+            onChange={e => this.props.booleanFallback?.(property.id, e.target.checked)}
           />
         ]
       : super.getInput(property, id);

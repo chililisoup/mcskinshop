@@ -691,10 +691,10 @@ class Layer extends Component<CProps, CState> {
         )}
         {this.state.fxOpen && (
           <PropertiesList
-            numberCallback={(id, value) => {
+            numberFallback={(id, value) => {
               if (id in this.state) this.updateFilter(id as keyof CState, value);
             }}
-            stringCallback={(id, value) => {
+            stringFallback={(id, value) => {
               if (id === 'blend') this.changeBlendMode(value as GlobalCompositeOperation);
               if (id === 'type' && this.props.layer instanceof ImgMod.Img) {
                 this.props.layer.type(value as ImgMod.LayerType);

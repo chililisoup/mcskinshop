@@ -330,13 +330,13 @@ export const buildItemModel = async (item: THREE.Object3D, url: string, extra?: 
       ind + 6, ind + 4, ind + 7,
     );
 
-    if (isClear(index + 1)) indices.push(
+    if (index % 16 === 15 || isClear(index + 1)) indices.push(
       // FRONT
       ind + 1, ind + 5, ind + 6,
       ind + 6, ind + 2, ind + 1
     );
 
-    if (isClear(index - 1)) indices.push(
+    if (index % 16 === 0 || isClear(index - 1)) indices.push(
       // BACK
       ind + 0, ind + 7, ind + 4,
       ind + 7, ind + 0, ind + 3,

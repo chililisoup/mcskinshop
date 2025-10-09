@@ -21,17 +21,20 @@ type RangeProperty = BaseProperty & {
   step?: number;
   snap?: number;
   subtype?: SubType;
+  onChange?: (value: number) => void;
 };
 
 type BoolProperty = BaseProperty & {
   type: 'checkbox';
   value: boolean;
+  onChange?: (value: boolean) => void;
 };
 
 type SelectProperty = BaseProperty & {
   type: 'select';
   value?: string;
   options: readonly ([value: string, name?: string] | string)[] | Record<string, string>;
+  onChange?: (value: string) => void;
 };
 
 type ButtonProperty = BaseProperty & {
@@ -44,6 +47,7 @@ type FileProperty = BaseProperty & {
   type: 'file';
   label?: string;
   accept?: string;
+  onUpload?: (value: File, name: string) => void;
 };
 
 type ColorProperty = BaseProperty & {
@@ -51,6 +55,7 @@ type ColorProperty = BaseProperty & {
   value: string;
   alpha?: boolean;
   controlled?: boolean;
+  onChange?: (value: string) => void;
 };
 
 type SectionProperty = BaseProperty & {
@@ -68,11 +73,11 @@ export type Property =
   | SectionProperty;
 
 type AProps = {
-  numberCallback?: (id: string, value: number) => void;
-  booleanCallback?: (id: string, value: boolean) => void;
-  stringCallback?: (id: string, value: string) => void;
+  numberFallback?: (id: string, value: number) => void;
+  booleanFallback?: (id: string, value: boolean) => void;
+  stringFallback?: (id: string, value: string) => void;
   buttonFallback?: (id: string) => void;
-  fileCallback?: (id: string, value: File, name: string) => void;
+  fileFallback?: (id: string, value: File, name: string) => void;
   properties: Property[];
 };
 
@@ -88,7 +93,9 @@ export default class PropertiesList extends Component<AProps> {
       case 'range':
         return [
           <Slider
-            callback={value => this.props.numberCallback?.(property.id, value)}
+            callback={
+              property.onChange ?? (value => this.props.numberFallback?.(property.id, value))
+            }
             id={id}
             value={property.value}
             min={property.min}
@@ -107,7 +114,11 @@ export default class PropertiesList extends Component<AProps> {
               type="checkbox"
               checked={property.value}
               disabled={property.disabled}
-              onChange={e => this.props.booleanCallback?.(property.id, e.target.checked)}
+              onChange={e =>
+                property.onChange
+                  ? property.onChange(e.target.checked)
+                  : this.props.booleanFallback?.(property.id, e.target.checked)
+              }
             />
           </span>
         ];
@@ -117,7 +128,11 @@ export default class PropertiesList extends Component<AProps> {
             id={id}
             value={property.value}
             disabled={property.disabled}
-            onChange={e => this.props.stringCallback?.(property.id, e.target.value)}
+            onChange={e =>
+              property.onChange
+                ? property.onChange(e.target.value)
+                : this.props.stringFallback?.(property.id, e.target.value)
+            }
           >
             {Array.isArray(property.options)
               ? property.options.map(option => {
@@ -156,7 +171,10 @@ export default class PropertiesList extends Component<AProps> {
             id={id}
             accept={property.accept}
             disabled={property.disabled}
-            callback={(value, name) => this.props.fileCallback?.(property.id, value, name)}
+            callback={
+              property.onUpload ??
+              ((value, name) => this.props.fileFallback?.(property.id, value, name))
+            }
           >
             {property.label ?? property.name}
           </FileInput>
@@ -169,7 +187,7 @@ export default class PropertiesList extends Component<AProps> {
             default={property.value}
             alpha={property.alpha}
             controlled={property.controlled}
-            update={value => this.props.stringCallback?.(property.id, value)}
+            update={property.onChange ?? (value => this.props.stringFallback?.(property.id, value))}
           />
         ];
       case 'section':
@@ -178,10 +196,11 @@ export default class PropertiesList extends Component<AProps> {
           : [
               <Dropdown title={property.name}>
                 <PropertiesList
-                  numberCallback={this.props.numberCallback}
-                  booleanCallback={this.props.booleanCallback}
-                  stringCallback={this.props.stringCallback}
+                  numberFallback={this.props.numberFallback}
+                  booleanFallback={this.props.booleanFallback}
+                  stringFallback={this.props.stringFallback}
                   buttonFallback={this.props.buttonFallback}
+                  fileFallback={this.props.fileFallback}
                   properties={property.properties}
                 />
                 <hr />

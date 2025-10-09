@@ -1,7 +1,8 @@
 import React, { Component, RefObject } from 'react';
 import * as THREE from 'three';
-import * as ModelTool from '@tools/modeltool';
 import * as PrefMan from '@tools/prefman';
+import * as ModelTool from '@tools/modeltool';
+import * as Handles from '@components/special/viewport/handles';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -34,8 +35,8 @@ export type AState = {
   ambientLightIntensity: number;
   directionalLightColor: string;
   directionalLightIntensity: number;
-  mode: AbstractMode;
-  ribbon: React.JSX.Element;
+  mode?: AbstractMode;
+  modeElement: React.JSX.Element;
   partToggles: {
     head: {
       base: boolean;
@@ -81,9 +82,16 @@ export default class PaperDoll extends Component<AProps, AState> {
   clock = new THREE.Clock();
   doll = new ModelTool.Model('doll', skinmodel as ModelTool.ModelDefinition);
 
+  modeProps = {
+    instance: this,
+    canvasRef: this.canvasRef,
+    manager: this.props.manager,
+    addEdit: this.props.addEdit
+  };
+
   modes = {
-    animate: new AnimateMode(this),
-    pose: new PoseMode(this)
+    animate: <AnimateMode {...this.modeProps} />,
+    pose: <PoseMode {...this.modeProps} />
   };
 
   raycaster = new THREE.Raycaster();
@@ -92,6 +100,9 @@ export default class PaperDoll extends Component<AProps, AState> {
   ambientLight = new THREE.AmbientLight(0xffffff, 1);
   directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
   grid = new THREE.GridHelper(16, 16);
+  handles = new THREE.Object3D();
+
+  selectedObject?: THREE.Object3D;
 
   renderer?: THREE.WebGLRenderer;
 
@@ -117,8 +128,7 @@ export default class PaperDoll extends Component<AProps, AState> {
       ambientLightIntensity: defaultLighting.ambientLightIntensity,
       directionalLightColor: defaultLighting.directionalLightColor,
       directionalLightIntensity: defaultLighting.directionalLightIntensity,
-      mode: this.modes.animate,
-      ribbon: this.modes.animate.renderRibbon(),
+      modeElement: this.modes.animate,
       partToggles: {
         head: {
           base: true,
@@ -158,6 +168,7 @@ export default class PaperDoll extends Component<AProps, AState> {
 
     this.sceneSetup();
     this.modelSetup();
+    this.createHandles();
     this.updateSlim();
     this.updateCape();
     this.updateElytra();
@@ -171,15 +182,11 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.textureSetup();
     this.startAnimationLoop();
 
-    this.state.mode.init(this.canvasRef.current);
-
     window.addEventListener('resize', this.handleWindowResize);
   }
 
   componentWillUnmount() {
     if (!this.canvasRef.current) return;
-
-    this.state.mode.dispose(this.canvasRef.current);
 
     window.removeEventListener('resize', this.handleWindowResize);
     window.cancelAnimationFrame(this.requestID);
@@ -205,9 +212,9 @@ export default class PaperDoll extends Component<AProps, AState> {
     )
       this.updateLighting();
 
-    if (this.state.grid !== prevState.grid) {
-      this.grid.visible = this.state.grid;
-    }
+    if (this.state.mode !== prevState.mode) this.deselect();
+
+    if (this.state.grid !== prevState.grid) this.grid.visible = this.state.grid;
 
     let updateTextures = false;
 
@@ -423,6 +430,14 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.doll.setupChildItem('leftItem');
   };
 
+  createHandles = () => {
+    this.handles.clear();
+
+    this.handles.add(Handles.createRotationHandles());
+    this.handles.add(Handles.createPositionHandles());
+    this.handles.add(Handles.createScaleHandles());
+  };
+
   updateSlim = () => {
     const pivots = this.doll.pivots;
 
@@ -457,7 +472,7 @@ export default class PaperDoll extends Component<AProps, AState> {
   updateFeaturePart = (feature: string | false, part: THREE.Object3D, deselect?: boolean) => {
     if (!feature) {
       part.layers.disable(0);
-      if (deselect) this.modes.pose.maybeDeselect(part);
+      if (deselect) this.maybeDeselect(part);
       return;
     }
 
@@ -527,14 +542,73 @@ export default class PaperDoll extends Component<AProps, AState> {
     if (left ?? true) this.updateItem('leftItem', this.doll.pivots.leftItem);
   };
 
+  resetPose = () => {
+    for (const pivot of Object.values(this.doll.pivots)) {
+      pivot.setRotationFromEuler(pivot.userData.defaultRotation as THREE.Euler);
+      pivot.position.copy(pivot.userData.defaultPosition as THREE.Vector3Like);
+      // pivot.scale.copy(pivot.userData.defaultScale as THREE.Vector3Like);
+    }
+  };
+
+  savePose = () => {
+    for (const pivot of Object.values(this.doll.pivots)) {
+      if (!pivot.rotation.equals(pivot.userData.defaultRotation as THREE.Euler))
+        pivot.userData.savedRotation = pivot.rotation.clone();
+      if (!pivot.position.equals(pivot.userData.defaultPosition as THREE.Vector3Like))
+        pivot.userData.savedPosition = pivot.position.clone();
+      // if (!pivot.scale.equals(pivot.userData.defaultScale as THREE.Vector3Like))
+      //   pivot.userData.savedScale = pivot.scale.clone();
+    }
+  };
+
+  loadPose = () => {
+    for (const pivot of Object.values(this.doll.pivots)) {
+      if (!pivot.userData.savedRotation)
+        pivot.setRotationFromEuler(pivot.userData.defaultRotation as THREE.Euler);
+      else pivot.setRotationFromEuler(pivot.userData.savedRotation as THREE.Euler);
+
+      if (!pivot.userData.savedPosition)
+        pivot.position.copy(pivot.userData.defaultPosition as THREE.Vector3Like);
+      else pivot.position.copy(pivot.userData.savedPosition as THREE.Vector3Like);
+
+      // if (!pivot.userData.savedScale)
+      //   pivot.scale.copy(pivot.userData.defaultScale as THREE.Vector3Like);
+      // else pivot.scale.copy(pivot.userData.savedScale as THREE.Vector3Like);
+    }
+  };
+
+  clearSavedPose = () => {
+    for (const pivot of Object.values(this.doll.pivots)) {
+      delete pivot.userData.savedPosition;
+      delete pivot.userData.savedRotation;
+    }
+  };
+
+  findSelectableAncestor: (part: THREE.Object3D) => THREE.Object3D | false = part => {
+    if (part.userData.poseable) return part;
+    if (part.parent) return this.findSelectableAncestor(part.parent);
+    return false;
+  };
+
+  deselect = () => {
+    this.selectedObject = undefined;
+
+    if (this.hoveredOutlinePass) this.hoveredOutlinePass.selectedObjects = [];
+    if (this.selectedOutlinePass) this.selectedOutlinePass.selectedObjects = [];
+
+    this.handles.removeFromParent();
+  };
+
+  maybeDeselect = (part: THREE.Object3D) => {
+    if (this.selectedObject && this.selectedObject === this.findSelectableAncestor(part))
+      this.deselect();
+  };
+
   renderFrame = () => {
     if (!this.composer) return;
 
     const delta = this.clock.getDelta();
-
-    if (this.state.mode === this.modes.pose) this.modes.pose.pose();
-    else this.modes.animate.animate(delta);
-
+    this.state.mode?.renderFrame?.(delta);
     this.composer.render();
   };
 
@@ -592,7 +666,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.SMAAPass.enabled = false;
     this.hoveredOutlinePass.enabled = false;
     this.selectedOutlinePass.enabled = false;
-    this.modes.pose.handles.visible = false;
+    this.handles.visible = false;
     this.grid.visible = false;
     this.renderer.setSize(width * scale, height * scale);
     this.composer.setSize(width * scale, height * scale);
@@ -603,7 +677,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.SMAAPass.enabled = true;
     this.hoveredOutlinePass.enabled = true;
     this.selectedOutlinePass.enabled = true;
-    this.modes.pose.handles.visible = true;
+    this.handles.visible = true;
     this.grid.visible = this.state.grid;
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.handleWindowResize();
@@ -616,52 +690,21 @@ export default class PaperDoll extends Component<AProps, AState> {
     link.click();
   };
 
-  capturePose = () => {
-    this.modes.animate.updateSetting('explode', false);
-    this.modes.pose.clearSavedPose();
-    this.modes.pose.savePose();
-    this.setState({ mode: this.modes.pose });
-  };
-
   nextMode = () => {
-    const modes: AbstractMode[] = Object.values(this.modes);
-    const next = modes.indexOf(this.state.mode) + 1;
-    this.updateSetting('mode', modes[next >= modes.length ? 0 : next]);
+    const modes: React.JSX.Element[] = Object.values(this.modes);
+    const next = modes.indexOf(this.state.modeElement) + 1;
+    this.updateSetting('modeElement', modes[next >= modes.length ? 0 : next]);
   };
 
-  updateSetting = <KKey extends keyof AState>(setting: KKey, value: AState[KKey]) => {
-    if (setting === 'mode') {
-      if (!this.canvasRef.current) return;
-
-      const mode = value as AbstractMode;
-      this.state.mode.dispose(this.canvasRef.current);
-      this.setState({ mode: mode, ribbon: mode.renderRibbon() });
-      mode.init(this.canvasRef.current);
-
-      if (this.hoveredOutlinePass) this.hoveredOutlinePass.selectedObjects = [];
-      if (this.selectedOutlinePass) this.selectedOutlinePass.selectedObjects = [];
-      this.modes.pose.handles.removeFromParent();
-
-      if (!value) {
-        this.modes.pose.savePose();
-        this.modes.pose.resetPose();
-      } else {
-        this.modes.pose.loadPose();
-        this.modes.pose.clearSavedPose();
-      }
-
-      return;
-    }
-
-    this.setState({ [setting]: value } as Pick<AState, KKey>);
-  };
-
-  updateSettingFinish = (setting: keyof AState, value: AState[keyof AState]) => {
+  updateSetting = <KKey extends keyof AState>(
+    setting: KKey,
+    value: AState[KKey],
+    saveEdit?: boolean
+  ) => {
     const from = this.state[setting];
-
-    this.updateSetting(setting, value);
-
-    this.props.addEdit('change ' + setting, () => this.settingEdit(setting, from, value));
+    this.setState({ [setting]: value } as Pick<AState, KKey>);
+    if (saveEdit)
+      this.props.addEdit('change ' + setting, () => this.settingEdit(setting, from, value));
   };
 
   settingEdit = <KKey extends keyof AState>(
@@ -699,15 +742,7 @@ export default class PaperDoll extends Component<AProps, AState> {
             resetLighting={() => this.setState(defaultLighting)}
             addEdit={this.props.addEdit}
           />
-          <span className="top left">
-            <div>
-              <label htmlFor="editorMode">Editor Mode</label>
-              <button id="editorMode" onClick={() => this.nextMode()}>
-                {this.state.mode.name}
-              </button>
-            </div>
-            {this.state.ribbon}
-          </span>
+          {this.state.modeElement}
           <div className="bottom left">
             <button title="Save Render" onClick={this.saveRender}>
               <img alt="Save Render" src={save_render} />

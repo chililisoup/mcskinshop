@@ -1,10 +1,8 @@
 import React from 'react';
 import * as THREE from 'three';
 import * as Util from '@tools/util';
-import * as Handles from '@components/special/viewport/handles';
-import PaperDoll from '@components/special/viewport/paperdoll';
-import { BaseMode, ModeSetting } from '@components/special/viewport/modes/abstractmode';
 import SettingsRibbon from '@components/basic/settingsribbon';
+import AbstractMode, { Props } from './abstractmode';
 
 export const POSE_MODES = ['Rotation', 'Position', 'Scale'] as const;
 
@@ -14,80 +12,78 @@ export type PoseEntry = {
   scale?: THREE.Vector3Tuple;
 };
 
-type ASettings = {
-  control: ModeSetting<'Simple' | 'Controlled'>;
-  mode: ModeSetting<(typeof POSE_MODES)[number]>;
-  space: ModeSetting<'Local' | 'Global'>;
-  savedPoses: ModeSetting<string[]>;
+type AState = {
+  control: 'Simple' | 'Controlled';
+  mode: (typeof POSE_MODES)[number];
+  space: 'Local' | 'Global';
+  savedPoses: string[];
+  selectedPose?: AState['savedPoses'][number];
 };
 
-export default class PoseMode extends BaseMode<ASettings> {
+export default class PoseMode extends AbstractMode<AState> {
   activeKeys: Record<string, true> = {};
   mousePos = new THREE.Vector2(1, 1);
   oldMousePos?: THREE.Vector2;
   canDeselect = false;
 
-  handles = new THREE.Object3D();
   handle?: THREE.Mesh;
   hoveredHandle?: THREE.Mesh;
   oldHandlePos?: THREE.Vector3;
+  hoveredObject?: THREE.Object3D;
   selectedStartMatrix?: THREE.Matrix4;
   selectedStartWorldPos?: THREE.Vector3;
-  hoveredObject?: THREE.Object3D;
-  selectedObject?: THREE.Object3D;
   posePivot?: THREE.Vector2Like;
   queuedPoseEdit?: THREE.Vector3;
 
-  selectedPose?: string;
+  constructor(props: Props) {
+    super(props, 'Pose');
 
-  constructor(instance: PaperDoll) {
-    super(instance, 'Pose');
+    const savedPoses = this.getSavedPoses();
+
+    this.state = {
+      control: 'Simple',
+      mode: 'Rotation',
+      space: 'Local',
+      savedPoses: savedPoses,
+      selectedPose: savedPoses[0]
+    };
   }
 
-  settings: ASettings = {
-    control: { value: 'Simple' },
-    mode: { value: 'Rotation' },
-    space: { value: 'Local' },
-    savedPoses: { value: this.getSavedPoses() }
-  };
+  componentDidMount() {
+    super.componentDidMount();
+    if (!this.props.canvasRef.current) return;
 
-  init = (canvas: HTMLCanvasElement) => {
-    this.createHandles();
-    this.addEvents(canvas);
-  };
+    this.props.instance.loadPose();
+    this.props.instance.clearSavedPose();
+    this.addEvents(this.props.canvasRef.current);
+  }
 
-  dispose = (canvas: HTMLCanvasElement) => {
-    if (this.instance.hoveredOutlinePass) this.instance.hoveredOutlinePass.selectedObjects = [];
-    if (this.instance.selectedOutlinePass) this.instance.selectedOutlinePass.selectedObjects = [];
-    this.handles.removeFromParent();
-    this.resetPose();
-    this.removeEvents(canvas);
-  };
+  componentWillUnmount() {
+    if (!this.props.canvasRef.current) return;
 
-  changePoseSetting = <KKey extends keyof ASettings>(name: KKey) => {
-    const value = this.settings[name].value;
+    this.props.instance.savePose();
+    this.props.instance.resetPose();
+    this.removeEvents(this.props.canvasRef.current);
+  }
 
-    let changed: typeof value;
+  changePoseSetting = <KKey extends keyof AState>(name: KKey) => {
+    const value = this.state[name];
+
     switch (name) {
       case 'control':
-        changed = value === 'Simple' ? 'Controlled' : 'Simple';
-        this.selectedObject = undefined;
+        this.props.instance.selectedObject = undefined;
+        this.updateSetting('control', value === 'Simple' ? 'Controlled' : 'Simple');
         break;
       case 'mode': {
-        const typeIndex = POSE_MODES.indexOf(value as ASettings['mode']['value']);
+        const typeIndex = POSE_MODES.indexOf(value as AState['mode']);
         const next = typeIndex + 1 >= POSE_MODES.length ? 0 : typeIndex + 1;
-
-        changed = POSE_MODES[next];
+        this.updateSetting('mode', POSE_MODES[next]);
         break;
       }
       case 'space':
-        changed = value === 'Local' ? 'Global' : 'Local';
+        this.updateSetting('space', value === 'Local' ? 'Global' : 'Local');
         break;
-      default:
-        return;
     }
-
-    this.updateSetting(name, changed);
   };
 
   onSavedPosesUpdated = (savedPoses: string[]) => {
@@ -112,26 +108,22 @@ export default class PoseMode extends BaseMode<ASettings> {
     document.removeEventListener('keyup', this.onKeyUp);
   };
 
-  createHandles = () => {
-    this.handles.clear();
-
-    this.handles.add(Handles.createRotationHandles());
-    this.handles.add(Handles.createPositionHandles());
-    this.handles.add(Handles.createScaleHandles());
-  };
-
   poseRotation = () => {
-    if (!this.oldMousePos || !this.selectedObject?.parent) return;
+    if (!this.oldMousePos || !this.props.instance.selectedObject?.parent) return;
 
-    if (this.settings.control.value === 'Controlled') {
+    if (this.state.control === 'Controlled') {
       if (!this.handle) return;
 
-      const localRotation = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
-      const worldPivotPos = this.selectedObject.getWorldPosition(new THREE.Vector3());
+      const localRotation = this.props.instance.selectedObject.getWorldQuaternion(
+        new THREE.Quaternion()
+      );
+      const worldPivotPos = this.props.instance.selectedObject.getWorldPosition(
+        new THREE.Vector3()
+      );
       const norm = (this.handle.userData.normal as THREE.Vector3).clone();
-      if (this.settings.space.value === 'Local') norm.applyQuaternion(localRotation);
+      if (this.state.space === 'Local') norm.applyQuaternion(localRotation);
 
-      const camMult = this.instance.activeCam instanceof THREE.OrthographicCamera ? -1 : 1;
+      const camMult = this.props.instance.activeCam instanceof THREE.OrthographicCamera ? -1 : 1;
       const start = this.clipToWorldSpace(this.mousePos, 0.5 * camMult);
       const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9 * camMult)
         .sub(start)
@@ -147,7 +139,7 @@ export default class PoseMode extends BaseMode<ASettings> {
 
       if (!this.oldHandlePos || !this.selectedStartMatrix) {
         this.oldHandlePos = intersect;
-        this.selectedStartMatrix = this.selectedObject.matrix.clone();
+        this.selectedStartMatrix = this.props.instance.selectedObject.matrix.clone();
         return;
       }
 
@@ -174,48 +166,56 @@ export default class PoseMode extends BaseMode<ASettings> {
       }
 
       const rotation = new THREE.Quaternion().setFromAxisAngle(
-        this.settings.space.value === 'Global'
+        this.state.space === 'Global'
           ? norm.applyQuaternion(localRotation.invert())
           : (this.handle.userData.normal as THREE.Vector3),
         angle
       );
 
-      this.selectedObject.setRotationFromQuaternion(
+      this.props.instance.selectedObject.setRotationFromQuaternion(
         new THREE.Quaternion().setFromRotationMatrix(this.selectedStartMatrix).multiply(rotation)
       );
-    } else if (this.instance.activeCam && this.posePivot) {
+    } else if (this.props.instance.activeCam && this.posePivot) {
       // Simple mode
-      const axis = this.instance.activeCam.getWorldDirection(new THREE.Vector3());
+      const axis = this.props.instance.activeCam.getWorldDirection(new THREE.Vector3());
 
       const oldRad = this.oldMousePos.clone().sub(this.posePivot).angle();
       const newRad = this.mousePos.clone().sub(this.posePivot).angle();
       const angle = oldRad - newRad;
 
-      const quat = this.selectedObject.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+      const quat = this.props.instance.selectedObject.parent
+        .getWorldQuaternion(new THREE.Quaternion())
+        .invert();
       const rotQuat = new THREE.Quaternion().setFromAxisAngle(axis, angle);
-      const worldQuat = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
+      const worldQuat = this.props.instance.selectedObject.getWorldQuaternion(
+        new THREE.Quaternion()
+      );
 
       quat.multiply(new THREE.Quaternion().multiplyQuaternions(rotQuat, worldQuat));
 
-      this.selectedObject.setRotationFromQuaternion(quat);
+      this.props.instance.selectedObject.setRotationFromQuaternion(quat);
     }
   };
 
   posePosition = () => {
-    if (!this.oldMousePos || !this.selectedObject?.parent) return;
+    if (!this.oldMousePos || !this.props.instance.selectedObject?.parent) return;
 
-    const clipZ = this.getClipZ(this.selectedObject);
+    const clipZ = this.getClipZ(this.props.instance.selectedObject);
     const camMult = Math.sign(clipZ);
 
-    if (this.settings.control.value === 'Controlled') {
+    if (this.state.control === 'Controlled') {
       if (!this.handle) return;
 
-      this.selectedStartMatrix ??= this.selectedObject.matrix.clone();
-      this.selectedStartWorldPos ??= this.selectedObject.getWorldPosition(new THREE.Vector3());
+      this.selectedStartMatrix ??= this.props.instance.selectedObject.matrix.clone();
+      this.selectedStartWorldPos ??= this.props.instance.selectedObject.getWorldPosition(
+        new THREE.Vector3()
+      );
 
-      const worldQuat = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
+      const worldQuat = this.props.instance.selectedObject.getWorldQuaternion(
+        new THREE.Quaternion()
+      );
       const norm = (this.handle.userData.normal as THREE.Vector3).clone();
-      if (this.settings.space.value === 'Local') norm.applyQuaternion(worldQuat);
+      if (this.state.space === 'Local') norm.applyQuaternion(worldQuat);
 
       let movement;
 
@@ -274,45 +274,49 @@ export default class PoseMode extends BaseMode<ASettings> {
         movement = intersect.sub(this.oldHandlePos);
 
         if (this.activeKeys.Control) {
-          if (this.settings.space.value === 'Local') {
+          if (this.state.space === 'Local') {
             movement.applyQuaternion(worldQuat.clone().invert());
             movement.round();
             movement.applyQuaternion(worldQuat);
           } else movement.round();
         }
       }
-      movement.add(this.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
-      this.selectedObject.parent.worldToLocal(movement);
+      movement.add(this.props.instance.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
+      this.props.instance.selectedObject.parent.worldToLocal(movement);
 
-      this.selectedObject.position.copy(
+      this.props.instance.selectedObject.position.copy(
         new THREE.Vector3().setFromMatrixPosition(this.selectedStartMatrix).add(movement)
       );
     } else {
       // Simple mode
       const movement = this.clipToWorldSpace(this.mousePos, clipZ);
       movement.sub(this.clipToWorldSpace(this.oldMousePos, clipZ));
-      movement.add(this.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
-      this.selectedObject.parent.worldToLocal(movement);
+      movement.add(this.props.instance.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
+      this.props.instance.selectedObject.parent.worldToLocal(movement);
 
-      this.selectedObject.position.add(movement);
+      this.props.instance.selectedObject.position.add(movement);
     }
   };
 
   poseScale = () => {
-    if (!this.oldMousePos || !this.selectedObject?.parent) return;
+    if (!this.oldMousePos || !this.props.instance.selectedObject?.parent) return;
 
-    const clipZ = this.getClipZ(this.selectedObject);
+    const clipZ = this.getClipZ(this.props.instance.selectedObject);
     const camMult = Math.sign(clipZ);
 
-    if (this.settings.control.value === 'Controlled') {
+    if (this.state.control === 'Controlled') {
       if (!this.handle) return;
 
-      this.selectedStartMatrix ??= this.selectedObject.matrix.clone();
-      this.selectedStartWorldPos ??= this.selectedObject.getWorldPosition(new THREE.Vector3());
+      this.selectedStartMatrix ??= this.props.instance.selectedObject.matrix.clone();
+      this.selectedStartWorldPos ??= this.props.instance.selectedObject.getWorldPosition(
+        new THREE.Vector3()
+      );
 
-      const worldQuat = this.selectedObject.getWorldQuaternion(new THREE.Quaternion());
+      const worldQuat = this.props.instance.selectedObject.getWorldQuaternion(
+        new THREE.Quaternion()
+      );
       const norm = (this.handle.userData.normal as THREE.Vector3).clone();
-      if (this.settings.space.value === 'Local') norm.applyQuaternion(worldQuat);
+      if (this.state.space === 'Local') norm.applyQuaternion(worldQuat);
 
       let change;
 
@@ -371,17 +375,17 @@ export default class PoseMode extends BaseMode<ASettings> {
         change = intersect.sub(this.oldHandlePos);
 
         if (this.activeKeys.Control) {
-          if (this.settings.space.value === 'Local') {
+          if (this.state.space === 'Local') {
             change.applyQuaternion(worldQuat.clone().invert());
             change.round();
             change.applyQuaternion(worldQuat);
           } else change.round();
         }
       }
-      change.add(this.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
-      this.selectedObject.parent.worldToLocal(change);
+      change.add(this.props.instance.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
+      this.props.instance.selectedObject.parent.worldToLocal(change);
 
-      for (const part of this.findScaleableDescendants(this.selectedObject)) {
+      for (const part of this.findScaleableDescendants(this.props.instance.selectedObject)) {
         const shape = part.userData.defaultShape as THREE.Vector3;
         const partChange = shape.clone().add(change).divide(shape);
         part.scale.copy(partChange);
@@ -390,31 +394,31 @@ export default class PoseMode extends BaseMode<ASettings> {
       // Simple mode
       const movement = this.clipToWorldSpace(this.mousePos, clipZ);
       movement.sub(this.clipToWorldSpace(this.oldMousePos, clipZ));
-      movement.add(this.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
-      this.selectedObject.parent.worldToLocal(movement);
+      movement.add(this.props.instance.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
+      this.props.instance.selectedObject.parent.worldToLocal(movement);
 
-      this.selectedObject.position.add(movement);
+      this.props.instance.selectedObject.position.add(movement);
     }
   };
 
-  pose = () => {
+  renderFrame = () => {
     if (
-      !this.instance.activeCam ||
-      !this.instance.selectedOutlinePass ||
-      !this.instance.hoveredOutlinePass
+      !this.props.instance.activeCam ||
+      !this.props.instance.selectedOutlinePass ||
+      !this.props.instance.hoveredOutlinePass
     )
       return;
 
-    this.instance.raycaster.setFromCamera(this.mousePos, this.instance.activeCam);
+    this.props.instance.raycaster.setFromCamera(this.mousePos, this.props.instance.activeCam);
     this.hoveredHandle = undefined;
 
-    if (this.selectedObject) {
-      if (this.settings.control.value === 'Controlled') {
-        if (!this.handles) return;
+    if (this.props.instance.selectedObject) {
+      if (this.state.control === 'Controlled') {
+        if (!this.props.instance.handles) return;
 
-        const rotationHandles = this.handles.getObjectByName('rotationHandles');
-        const positionHandles = this.handles.getObjectByName('positionHandles');
-        const scaleHandles = this.handles.getObjectByName('scaleHandles');
+        const rotationHandles = this.props.instance.handles.getObjectByName('rotationHandles');
+        const positionHandles = this.props.instance.handles.getObjectByName('positionHandles');
+        const scaleHandles = this.props.instance.handles.getObjectByName('scaleHandles');
         if (!rotationHandles || !positionHandles || !scaleHandles) return;
 
         rotationHandles.visible = false;
@@ -422,7 +426,7 @@ export default class PoseMode extends BaseMode<ASettings> {
         scaleHandles.visible = false;
 
         let activeHandles: THREE.Object3D;
-        switch (this.settings.mode.value) {
+        switch (this.state.mode) {
           case 'Rotation':
             activeHandles = rotationHandles;
             break;
@@ -437,16 +441,21 @@ export default class PoseMode extends BaseMode<ASettings> {
         }
         activeHandles.visible = true;
 
-        if (this.settings.space.value === 'Global') {
-          this.handles.position.copy(this.selectedObject.getWorldPosition(new THREE.Vector3()));
-          this.instance.scene.add(this.handles);
+        if (this.state.space === 'Global') {
+          this.props.instance.handles.position.copy(
+            this.props.instance.selectedObject.getWorldPosition(new THREE.Vector3())
+          );
+          this.props.instance.scene.add(this.props.instance.handles);
         } else {
-          this.handles.position.copy(new THREE.Vector3());
-          this.selectedObject.add(this.handles);
+          this.props.instance.handles.position.copy(new THREE.Vector3());
+          this.props.instance.selectedObject.add(this.props.instance.handles);
         }
 
         if (!this.handle) {
-          const handleIntersects = this.instance.raycaster.intersectObject(activeHandles, true);
+          const handleIntersects = this.props.instance.raycaster.intersectObject(
+            activeHandles,
+            true
+          );
           const hoveredHandle =
             handleIntersects.length > 0
               ? handleIntersects[0].object.name === 'handlePadding'
@@ -476,7 +485,7 @@ export default class PoseMode extends BaseMode<ASettings> {
       if (this.oldMousePos) {
         if (this.mousePos.equals(this.oldMousePos)) return;
 
-        switch (this.settings.mode.value) {
+        switch (this.state.mode) {
           case 'Rotation':
             this.poseRotation();
             break;
@@ -491,36 +500,37 @@ export default class PoseMode extends BaseMode<ASettings> {
         this.oldMousePos = new THREE.Vector2().copy(this.mousePos);
       }
 
-      this.instance.selectedOutlinePass.selectedObjects = this.filterOutline(this.selectedObject);
+      this.props.instance.selectedOutlinePass.selectedObjects = this.filterOutline(
+        this.props.instance.selectedObject
+      );
     } else {
-      this.instance.selectedOutlinePass.selectedObjects = [];
-      this.handles.removeFromParent();
+      this.props.instance.selectedOutlinePass.selectedObjects = [];
+      this.props.instance.handles.removeFromParent();
     }
 
     this.hoveredObject = undefined;
-    this.instance.hoveredOutlinePass.selectedObjects = [];
+    this.props.instance.hoveredOutlinePass.selectedObjects = [];
 
     if (
       !this.hoveredHandle &&
       !this.handle &&
-      !(this.selectedObject && this.settings.control.value === 'Simple')
+      !(this.props.instance.selectedObject && this.state.control === 'Simple')
     ) {
-      const intersects = this.instance.raycaster.intersectObject(this.instance.doll.root, true);
+      const intersects = this.props.instance.raycaster.intersectObject(
+        this.props.instance.doll.root,
+        true
+      );
       const poseable =
-        intersects.length > 0 ? this.findPosableAncestor(intersects[0].object) : false;
+        intersects.length > 0
+          ? this.props.instance.findSelectableAncestor(intersects[0].object)
+          : false;
 
       if (poseable) {
         this.hoveredObject = poseable;
-        if (poseable !== this.selectedObject)
-          this.instance.hoveredOutlinePass.selectedObjects = this.filterOutline(poseable);
+        if (poseable !== this.props.instance.selectedObject)
+          this.props.instance.hoveredOutlinePass.selectedObjects = this.filterOutline(poseable);
       }
     }
-  };
-
-  findPosableAncestor: (part: THREE.Object3D) => THREE.Object3D | false = part => {
-    if (part.userData.poseable) return part;
-    if (part.parent) return this.findPosableAncestor(part.parent);
-    return false;
   };
 
   findScaleableDescendants = (part: THREE.Object3D) => {
@@ -555,60 +565,20 @@ export default class PoseMode extends BaseMode<ASettings> {
   };
 
   getClipZ = (part: THREE.Object3D) => {
-    if (!this.instance.activeCam) return 0;
-    return part.getWorldPosition(new THREE.Vector3()).project(this.instance.activeCam).z;
+    if (!this.props.instance.activeCam) return 0;
+    return part.getWorldPosition(new THREE.Vector3()).project(this.props.instance.activeCam).z;
   };
 
   clipToWorldSpace = (position: THREE.Vector2, clipZ: number) => {
-    if (!this.instance.activeCam) return new THREE.Vector3();
-    return new THREE.Vector3(position.x, position.y, clipZ).unproject(this.instance.activeCam);
+    if (!this.props.instance.activeCam) return new THREE.Vector3();
+    return new THREE.Vector3(position.x, position.y, clipZ).unproject(
+      this.props.instance.activeCam
+    );
   };
 
-  resetPose = () => {
-    for (const pivot of Object.values(this.instance.doll.pivots)) {
-      pivot.setRotationFromEuler(pivot.userData.defaultRotation as THREE.Euler);
-      pivot.position.copy(pivot.userData.defaultPosition as THREE.Vector3Like);
-      // pivot.scale.copy(pivot.userData.defaultScale as THREE.Vector3Like);
-    }
-  };
-
-  savePose = () => {
-    for (const pivot of Object.values(this.instance.doll.pivots)) {
-      if (!pivot.rotation.equals(pivot.userData.defaultRotation as THREE.Euler))
-        pivot.userData.savedRotation = pivot.rotation.clone();
-      if (!pivot.position.equals(pivot.userData.defaultPosition as THREE.Vector3Like))
-        pivot.userData.savedPosition = pivot.position.clone();
-      // if (!pivot.scale.equals(pivot.userData.defaultScale as THREE.Vector3Like))
-      //   pivot.userData.savedScale = pivot.scale.clone();
-    }
-  };
-
-  loadPose = () => {
-    for (const pivot of Object.values(this.instance.doll.pivots)) {
-      if (!pivot.userData.savedRotation)
-        pivot.setRotationFromEuler(pivot.userData.defaultRotation as THREE.Euler);
-      else pivot.setRotationFromEuler(pivot.userData.savedRotation as THREE.Euler);
-
-      if (!pivot.userData.savedPosition)
-        pivot.position.copy(pivot.userData.defaultPosition as THREE.Vector3Like);
-      else pivot.position.copy(pivot.userData.savedPosition as THREE.Vector3Like);
-
-      // if (!pivot.userData.savedScale)
-      //   pivot.scale.copy(pivot.userData.defaultScale as THREE.Vector3Like);
-      // else pivot.scale.copy(pivot.userData.savedScale as THREE.Vector3Like);
-    }
-  };
-
-  clearSavedPose = () => {
-    for (const pivot of Object.values(this.instance.doll.pivots)) {
-      delete pivot.userData.savedPosition;
-      delete pivot.userData.savedRotation;
-    }
-  };
-
-  getSavedPoses() {
+  getSavedPoses = () => {
     return JSON.parse(localStorage.getItem('poses') ?? '[]') as string[];
-  }
+  };
 
   getSavedPose = (poseName: string) => {
     return JSON.parse(localStorage.getItem('pose-' + poseName) ?? '{}') as Record<
@@ -620,7 +590,7 @@ export default class PoseMode extends BaseMode<ASettings> {
   getPoseJson = () => {
     const poseJson: Record<string, PoseEntry> = {};
 
-    for (const [name, pivot] of Object.entries(this.instance.doll.pivots)) {
+    for (const [name, pivot] of Object.entries(this.props.instance.doll.pivots)) {
       const entry: PoseEntry = {};
       if (!pivot.rotation.equals(pivot.userData.defaultRotation as THREE.Euler))
         entry.rotation = pivot.rotation.toArray();
@@ -636,10 +606,10 @@ export default class PoseMode extends BaseMode<ASettings> {
   };
 
   loadPoseJson = (poseJson: Record<string, PoseEntry> = {}) => {
-    this.resetPose();
+    this.props.instance.resetPose();
 
     for (const [name, transform] of Object.entries(poseJson)) {
-      const pivot = this.instance.doll.pivots[name];
+      const pivot = this.props.instance.doll.pivots[name];
       if (!pivot) continue;
 
       if (transform.position) pivot.position.fromArray(transform.position);
@@ -750,9 +720,9 @@ export default class PoseMode extends BaseMode<ASettings> {
   };
 
   addPoseEdit = (prefix: string, suffix?: string) => {
-    if (!this.selectedObject) return;
+    if (!this.props.instance.selectedObject) return;
 
-    const obj = this.selectedObject;
+    const obj = this.props.instance.selectedObject;
 
     const start = new THREE.Object3D();
     start.setRotationFromEuler(obj.rotation);
@@ -760,21 +730,23 @@ export default class PoseMode extends BaseMode<ASettings> {
 
     suffix = suffix === undefined ? '' : ' ' + suffix;
 
-    this.instance.props.addEdit(prefix + ' ' + obj.name + suffix, () => this.poseUndo(obj, start));
+    this.props.instance.props.addEdit(prefix + ' ' + obj.name + suffix, () =>
+      this.poseUndo(obj, start)
+    );
   };
 
   onMouseMove = (e: MouseEvent) => {
     if (this.canDeselect) this.canDeselect = false;
 
     if (
-      this.instance.state.mode !== this ||
-      !this.instance.canvasRef.current?.parentNode ||
-      !(this.instance.canvasRef.current.parentNode instanceof Element)
+      this.props.instance.state.mode !== this ||
+      !this.props.canvasRef.current?.parentNode ||
+      !(this.props.canvasRef.current.parentNode instanceof Element)
     )
       return;
 
-    const width = this.instance.canvasRef.current.parentNode.clientWidth;
-    const height = this.instance.canvasRef.current.parentNode.clientHeight;
+    const width = this.props.canvasRef.current.parentNode.clientWidth;
+    const height = this.props.canvasRef.current.parentNode.clientHeight;
 
     this.mousePos.x = (e.offsetX / width) * 2 - 1;
     this.mousePos.y = (e.offsetY / height) * -2 + 1;
@@ -786,12 +758,12 @@ export default class PoseMode extends BaseMode<ASettings> {
   };
 
   onMouseDown = (e: MouseEvent) => {
-    if (this.instance.state.mode !== this) return;
+    if (this.props.instance.state.mode !== this) return;
     if (e.button === 2) return;
 
-    if (this.settings.control.value === 'Controlled') {
+    if (this.state.control === 'Controlled') {
       if (this.hoveredObject) {
-        this.selectedObject = this.hoveredObject;
+        this.props.instance.selectedObject = this.hoveredObject;
         return;
       } else if (!this.hoveredHandle) {
         this.canDeselect = true;
@@ -799,29 +771,30 @@ export default class PoseMode extends BaseMode<ASettings> {
       }
       this.handle = this.hoveredHandle;
     } else {
-      if (!this.hoveredObject || !this.instance.activeCam) return;
-      this.selectedObject = this.hoveredObject;
+      if (!this.hoveredObject || !this.props.instance.activeCam) return;
+      this.props.instance.selectedObject = this.hoveredObject;
 
-      const posePivot = this.selectedObject
+      const posePivot = this.props.instance.selectedObject
         .getWorldPosition(new THREE.Vector3())
-        .project(this.instance.activeCam);
+        .project(this.props.instance.activeCam);
       this.posePivot = new THREE.Vector2(posePivot.x, posePivot.y);
     }
 
-    if (this.instance.controls) this.instance.controls.enabled = false;
+    if (this.props.instance.controls) this.props.instance.controls.enabled = false;
     this.oldMousePos = new THREE.Vector2().copy(this.mousePos);
-    if (this.selectedObject) this.queuedPoseEdit = this.selectedObject.position.clone();
+    if (this.props.instance.selectedObject)
+      this.queuedPoseEdit = this.props.instance.selectedObject.position.clone();
   };
 
   onMouseUp = () => {
-    if (this.canDeselect) this.deselect();
+    if (this.canDeselect) this.props.instance.deselect();
     this.canDeselect = false;
 
-    if (this.settings.control.value === 'Simple') {
-      this.selectedObject = undefined;
+    if (this.state.control === 'Simple') {
+      this.props.instance.selectedObject = undefined;
     }
 
-    if (this.instance.controls) this.instance.controls.enabled = true;
+    if (this.props.instance.controls) this.props.instance.controls.enabled = true;
     this.oldMousePos = undefined;
     this.oldHandlePos = undefined;
     this.selectedStartMatrix = undefined;
@@ -832,21 +805,21 @@ export default class PoseMode extends BaseMode<ASettings> {
   };
 
   onContextMenu = (e: MouseEvent) => {
-    if (this.instance.state.mode !== this) return;
+    if (this.props.instance.state.mode !== this) return;
     if (!this.hoveredObject) return;
 
-    if (this.settings.control.value === 'Controlled') {
-      if (this.selectedObject !== this.hoveredObject) return;
+    if (this.state.control === 'Controlled') {
+      if (this.props.instance.selectedObject !== this.hoveredObject) return;
     }
 
-    this.selectedObject = this.hoveredObject;
-    if (this.instance.controls) this.instance.controls.enabled = false;
+    this.props.instance.selectedObject = this.hoveredObject;
+    if (this.props.instance.controls) this.props.instance.controls.enabled = false;
 
-    this.addPoseEdit('reset', this.settings.mode.value.toLowerCase());
+    this.addPoseEdit('reset', this.state.mode.toLowerCase());
 
-    const obj = this.selectedObject;
+    const obj = this.props.instance.selectedObject;
 
-    switch (this.settings.mode.value) {
+    switch (this.state.mode) {
       case 'Rotation':
         obj.setRotationFromEuler(obj.userData.defaultRotation as THREE.Euler);
         break;
@@ -868,18 +841,6 @@ export default class PoseMode extends BaseMode<ASettings> {
     delete this.activeKeys[e.key];
   };
 
-  deselect = () => {
-    this.selectedObject = undefined;
-    if (this.instance.hoveredOutlinePass) this.instance.hoveredOutlinePass.selectedObjects = [];
-    if (this.instance.selectedOutlinePass) this.instance.selectedOutlinePass.selectedObjects = [];
-    this.handles.removeFromParent();
-  };
-
-  maybeDeselect = (part: THREE.Object3D) => {
-    if (this.selectedObject && this.selectedObject === this.findPosableAncestor(part))
-      this.deselect();
-  };
-
   renderRibbon = () => {
     return (
       <SettingsRibbon
@@ -891,28 +852,28 @@ export default class PoseMode extends BaseMode<ASettings> {
               this.changePoseSetting(id);
           }
         }}
-        stringCallback={(id, value) => {
-          if (id === 'selectedPose') this.selectedPose = value;
+        stringFallback={(id, value) => {
+          if (id === 'selectedPose') this.setState({ [id]: value });
         }}
-        fileCallback={(id, value, name) => {
+        fileFallback={(id, value, name) => {
           if (id === 'uploadPose') this.uploadPose(value, name);
         }}
         properties={[
           {
             name: 'Pose Control',
-            label: this.settings.control.value,
+            label: this.state.control,
             id: 'control',
             type: 'button'
           },
           {
             name: 'Pose Mode',
-            label: this.settings.mode.value,
+            label: this.state.mode,
             id: 'mode',
             type: 'button'
           },
           {
             name: 'Pose Space',
-            label: this.settings.space.value,
+            label: this.state.space,
             id: 'space',
             type: 'button'
           },
@@ -920,45 +881,45 @@ export default class PoseMode extends BaseMode<ASettings> {
             name: 'Deselect',
             id: 'deselect',
             type: 'button',
-            onClick: this.deselect
+            onClick: this.props.instance.deselect
           },
           {
             name: 'Reset Pose',
             id: 'resetPose',
             type: 'button',
-            onClick: this.resetPose
+            onClick: this.props.instance.resetPose
           },
           {
             name: 'Selected Pose',
             id: 'selectedPose',
             unlabeled: true,
             type: 'select',
-            value: this.selectedPose,
-            options: this.settings.savedPoses.value
+            value: this.state.selectedPose,
+            options: this.state.savedPoses
           },
           {
             name: 'Load Pose',
             id: 'loadPose',
             type: 'button',
-            onClick: () => this.selectedPose && this.loadPoseByName(this.selectedPose)
+            onClick: () => this.state.selectedPose && this.loadPoseByName(this.state.selectedPose)
           },
           {
             name: 'Delete Pose',
             id: 'deletePose',
             type: 'button',
-            onClick: () => this.selectedPose && this.deletePoseByName(this.selectedPose)
+            onClick: () => this.state.selectedPose && this.deletePoseByName(this.state.selectedPose)
           },
           {
             name: 'Save New Pose',
             id: 'savePose',
             type: 'button',
-            onClick: this.savePose
+            onClick: this.props.instance.savePose
           },
           {
             name: 'Download Pose',
             id: 'downloadPose',
             type: 'button',
-            onClick: () => this.selectedPose && this.downloadPoseJson(this.selectedPose)
+            onClick: () => this.state.selectedPose && this.downloadPoseJson(this.state.selectedPose)
           },
           {
             name: 'Upload Pose',

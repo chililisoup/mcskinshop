@@ -1,41 +1,49 @@
 import React from 'react';
 import * as THREE from 'three';
 import skinmodel from '@/skinmodel.json';
-import { BaseMode, ModeSetting } from '@components/special/viewport/modes/abstractmode';
 import SettingsRibbon from '@components/basic/settingsribbon';
-import PaperDoll from '@components/special/viewport/paperdoll';
+import AbstractMode, { Props } from './abstractmode';
 
-export const ANIMATIONS = ['Walk', 'Crouch Walk'] as const;
+const ANIMATIONS = ['Walk', 'Crouch Walk'] as const;
 
-type ASettings = {
-  explode: ModeSetting<boolean>;
-  animate: ModeSetting<boolean>;
-  speed: ModeSetting<number>;
-  animation: ModeSetting<(typeof ANIMATIONS)[number]>;
+type AState = {
+  explode: boolean;
+  animate: boolean;
+  speed: number;
+  animation: (typeof ANIMATIONS)[number];
 };
 
-export default class AnimateMode extends BaseMode<ASettings> {
+export default class AnimateMode extends AbstractMode<AState> {
   time = 0;
   idleTime = 0;
 
-  constructor(instance: PaperDoll) {
-    super(instance, 'Animate');
+  constructor(props: Props) {
+    super(props, 'Animate');
+
+    this.state = {
+      explode: false,
+      animate: this.props.manager.get().animatePlayerOnStart,
+      speed: 0.5,
+      animation: 'Walk'
+    };
   }
 
-  settings: ASettings = {
-    explode: { value: false, update: () => this.updateExplode() },
-    animate: { value: this.instance.props.manager.get().animatePlayerOnStart },
-    speed: { value: 0.5 },
-    animation: { value: 'Walk' }
-  };
+  componentDidMount() {
+    super.componentDidMount();
+    this.updateExplode();
+  }
 
-  init = () => this.updateExplode();
+  componentDidUpdate(_prevProps: Readonly<Props>, prevState: Readonly<AState>) {
+    if (this.state.explode !== prevState.explode) this.updateExplode();
+  }
 
-  dispose = () => this.updateExplode(false);
+  componentWillUnmount() {
+    this.updateExplode(false);
+  }
 
   updateExplode = (explode?: boolean) => {
-    const mod = (explode ?? this.settings.explode.value) ? 2.5 : 0;
-    const pivots = this.instance.doll.pivots;
+    const mod = (explode ?? this.state.explode) ? 2.5 : 0;
+    const pivots = this.props.instance.doll.pivots;
 
     pivots.head.position.y = skinmodel.head.position[1] + mod;
 
@@ -56,11 +64,18 @@ export default class AnimateMode extends BaseMode<ASettings> {
       skinmodel.torso.children.rightElytraWing.position[2] - mod * 5;
   };
 
-  animate = (delta: number) => {
-    const pivots = this.instance.doll.pivots;
+  capturePose = () => {
+    this.updateSetting('explode', false);
+    this.props.instance.clearSavedPose();
+    this.props.instance.savePose();
+    this.props.instance.setState({ modeElement: this.props.instance.modes.pose });
+  };
 
-    if (this.settings.animate.value) {
-      this.time += delta * 8 * this.settings.speed.value;
+  renderFrame = (delta: number) => {
+    const pivots = this.props.instance.doll.pivots;
+
+    if (this.state.animate) {
+      this.time += delta * 8 * this.state.speed;
       this.idleTime += delta * 8;
       if (this.time > Math.PI * 20) this.time -= Math.PI * 20;
     }
@@ -80,7 +95,7 @@ export default class AnimateMode extends BaseMode<ASettings> {
 
     this.updateExplode();
 
-    const rotation = Math.sin(this.time) * this.settings.speed.value;
+    const rotation = Math.sin(this.time) * this.state.speed;
 
     pivots.leftLeg.rotation.x = rotation;
     pivots.rightLeg.rotation.x = -rotation;
@@ -90,13 +105,12 @@ export default class AnimateMode extends BaseMode<ASettings> {
     pivots.leftArm.rotation.z = Math.sin(this.idleTime * 0.3) * 0.075 + 0.075;
     pivots.rightArm.rotation.z = -pivots.leftArm.rotation.z;
 
-    pivots.cape.rotation.x =
-      Math.sin(this.idleTime * 0.1) * 0.05 + 0.75 * this.settings.speed.value + 0.1;
+    pivots.cape.rotation.x = Math.sin(this.idleTime * 0.1) * 0.05 + 0.75 * this.state.speed + 0.1;
 
     const oldWingRotation = pivots.leftElytraWing.rotation.clone();
     let newWingRotation = new THREE.Euler(Math.PI / 12, Math.PI / 36, Math.PI / 12);
 
-    switch (this.settings.animation.value) {
+    switch (this.state.animation) {
       case 'Walk':
         pivots.torso.rotation.x = 0;
 
@@ -150,34 +164,35 @@ export default class AnimateMode extends BaseMode<ASettings> {
   renderRibbon = () => {
     return (
       <SettingsRibbon
-        booleanCallback={(id, value) => {
-          if (id === 'explode') this.updateSettingWithEdit(id, value);
+        booleanFallback={(id, value) => {
+          if (id === 'explode') this.updateSetting(id, value, true);
           if (id === 'animate') this.updateSetting('animate', value);
         }}
-        numberCallback={(id, value) => {
+        numberFallback={(id, value) => {
           if (id === 'speed') this.updateSetting(id, value);
         }}
-        stringCallback={(id, value) => {
-          if (id === 'animation') this.updateSettingWithEdit(id, value);
+        stringFallback={(id, value) => {
+          if (id === 'animation')
+            this.updateSetting(id, value as (typeof ANIMATIONS)[number], true);
         }}
         properties={[
           {
             name: 'Explode',
             id: 'explode',
             type: 'checkbox',
-            value: this.settings.explode.value
+            value: this.state.explode
           },
           {
             name: 'Animate',
             id: 'animate',
             type: 'checkbox',
-            value: this.settings.animate.value,
+            value: this.state.animate,
             siblings: [
               {
                 name: 'Speed',
                 id: 'speed',
                 type: 'range',
-                value: this.settings.speed.value,
+                value: this.state.speed,
                 min: 0,
                 max: 2,
                 step: 0.01
@@ -189,14 +204,14 @@ export default class AnimateMode extends BaseMode<ASettings> {
             id: 'animation',
             unlabeled: true,
             type: 'select',
-            value: this.settings.animation.value,
+            value: this.state.animation,
             options: ANIMATIONS
           },
           {
             name: 'Capture Pose',
             id: 'capturePose',
             type: 'button',
-            onClick: this.instance.capturePose
+            onClick: this.capturePose
           }
         ]}
       />
