@@ -637,6 +637,16 @@ export default class PaperDoll extends Component<AProps, AState> {
     link.click();
   };
 
+  capturePose = () => {
+    this.modes.animate.updateExplode(false);
+    this.modes.pose.clearSavedPose();
+    this.modes.pose.savePose();
+    this.setState({
+      pose: true,
+      explode: false
+    });
+  };
+
   updateSetting = <KKey extends keyof AState>(setting: KKey, value: AState[KKey]) => {
     switch (setting) {
       case 'anim':
@@ -725,7 +735,7 @@ export default class PaperDoll extends Component<AProps, AState> {
           deletePose={this.modes.pose.deletePoseName}
           downloadPose={this.modes.pose.downloadPoseJson}
           uploadPose={this.modes.pose.uploadPoseJson}
-          capturePose={this.modes.animate.capturePose}
+          capturePose={this.capturePose}
         />
         <div className="paperdoll-canvas-container">
           <canvas className="paperdoll-canvas" ref={this.canvasRef} />

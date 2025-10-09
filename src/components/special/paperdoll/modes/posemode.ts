@@ -326,13 +326,11 @@ export default class PoseMode extends AbstractMode {
       change.add(this.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
       this.selectedObject.parent.worldToLocal(change);
 
-      this.selectedObject.scale.copy(
-        new THREE.Vector3().setFromMatrixScale(this.selectedStartMatrix).addScaledVector(change, 0.25)
-      );
-
-      this.selectedObject.position.copy(
-        new THREE.Vector3().setFromMatrixPosition(this.selectedStartMatrix).addScaledVector(change, 0.5)
-      );
+      for (const part of this.findScaleableDescendants(this.selectedObject)) {
+        const shape = part.userData.defaultShape as THREE.Vector3;
+        const partChange = shape.clone().add(change).divide(shape);
+        part.scale.copy(partChange);
+      }
     } else {
       // Simple mode
       const movement = this.clipToWorldSpace(this.mousePos, clipZ);
@@ -468,6 +466,21 @@ export default class PoseMode extends AbstractMode {
     return false;
   };
 
+  findScaleableDescendants = (part: THREE.Object3D) => {
+    const children = [];
+
+    if (!children.length) {
+      for (const child of part.children) {
+        if (child.userData.poseable) continue;
+        if (child.userData.defaultShape) children.push(child);
+        for (const grandchild of child.children)
+          if (grandchild.userData.defaultShape) children.push(grandchild);
+      }
+    }
+
+    return children;
+  };
+
   filterOutline = (part: THREE.Object3D) => {
     let children: THREE.Object3D[] = [];
 
@@ -498,7 +511,7 @@ export default class PoseMode extends AbstractMode {
     for (const pivot of Object.values(this.instance.doll.pivots)) {
       pivot.setRotationFromEuler(pivot.userData.defaultRotation as THREE.Euler);
       pivot.position.copy(pivot.userData.defaultPosition as THREE.Vector3Like);
-      pivot.scale.copy(pivot.userData.defaultScale as THREE.Vector3Like);
+      // pivot.scale.copy(pivot.userData.defaultScale as THREE.Vector3Like);
     }
   };
 
@@ -508,8 +521,8 @@ export default class PoseMode extends AbstractMode {
         pivot.userData.savedRotation = pivot.rotation.clone();
       if (!pivot.position.equals(pivot.userData.defaultPosition as THREE.Vector3Like))
         pivot.userData.savedPosition = pivot.position.clone();
-      if (!pivot.scale.equals(pivot.userData.defaultScale as THREE.Vector3Like))
-        pivot.userData.savedScale = pivot.scale.clone();
+      // if (!pivot.scale.equals(pivot.userData.defaultScale as THREE.Vector3Like))
+      //   pivot.userData.savedScale = pivot.scale.clone();
     }
   };
 
@@ -523,9 +536,9 @@ export default class PoseMode extends AbstractMode {
         pivot.position.copy(pivot.userData.defaultPosition as THREE.Vector3Like);
       else pivot.position.copy(pivot.userData.savedPosition as THREE.Vector3Like);
 
-      if (!pivot.userData.savedScale)
-        pivot.scale.copy(pivot.userData.defaultScale as THREE.Vector3Like);
-      else pivot.scale.copy(pivot.userData.savedScale as THREE.Vector3Like);
+      // if (!pivot.userData.savedScale)
+      //   pivot.scale.copy(pivot.userData.defaultScale as THREE.Vector3Like);
+      // else pivot.scale.copy(pivot.userData.savedScale as THREE.Vector3Like);
     }
   };
 

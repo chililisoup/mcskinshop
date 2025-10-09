@@ -627,7 +627,8 @@ export default class PaperDollSettings extends Component<AProps, AState> {
                 {
                   name: 'Capture Pose',
                   id: 'capturePose',
-                  type: 'button'
+                  type: 'button',
+                  onClick: this.props.capturePose
                 }
               ]}
             />

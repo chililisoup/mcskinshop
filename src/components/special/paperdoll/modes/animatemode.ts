@@ -12,8 +12,8 @@ export default class AnimateMode extends AbstractMode {
 
   dispose = () => undefined;
 
-  updateExplode = () => {
-    const mod = this.instance.state.explode ? 2.5 : 0;
+  updateExplode = (explode?: boolean) => {
+    const mod = (explode ?? this.instance.state.explode) ? 2.5 : 0;
     const pivots = this.instance.doll.pivots;
 
     pivots.head.position.y = skinmodel.head.position[1] + mod;
@@ -33,13 +33,6 @@ export default class AnimateMode extends AbstractMode {
       skinmodel.torso.children.leftElytraWing.position[2] - mod * 5;
     pivots.rightElytraWing.position.z =
       skinmodel.torso.children.rightElytraWing.position[2] - mod * 5;
-  };
-
-  capturePose = () => {
-    this.instance.setState({
-      pose: true,
-      explode: false
-    });
   };
 
   animate = (delta: number) => {

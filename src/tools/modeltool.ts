@@ -60,9 +60,10 @@ export class Model {
         uv.forEach((v, i) => uvAttribute.setXY(i, v[0] / textureSize[0], v[1] / textureSize[1]));
       }
 
-      let shadedMat, flatMat;
-
       part = new THREE.Mesh(geometry);
+      part.userData.defaultShape = new THREE.Vector3().fromArray(child.shape);
+
+      let shadedMat, flatMat;
       if (child.renderType === 'cutout') {
         part.userData.renderType = 'cutout';
 
@@ -107,16 +108,18 @@ export class Model {
 
     if (child.position) part.position.fromArray(child.position);
 
+    let rotation = new THREE.Euler();
     if (child.rotation) {
-      const rotation = child.rotation.map(degrees => (degrees * Math.PI) / 180);
-      part.setRotationFromEuler(new THREE.Euler(rotation[0], rotation[1], rotation[2]));
+      rotation = new THREE.Euler().fromArray(
+        child.rotation.map(degrees => (degrees * Math.PI) / 180) as THREE.EulerTuple
+      );
+      part.setRotationFromEuler(rotation);
     }
 
     if (child.poseable) {
       part.userData.poseable = true;
-      part.userData.defaultRotation = part.rotation.clone();
+      part.userData.defaultRotation = rotation;
       part.userData.defaultPosition = part.position.clone();
-      part.userData.defaultScale = part.scale.clone();
       this.pivots[name] = part;
     }
 
@@ -130,7 +133,6 @@ export class Model {
     item.userData.poseable = true;
     item.userData.defaultRotation = new THREE.Euler();
     item.userData.defaultPosition = new THREE.Vector3();
-    item.userData.defaultScale = new THREE.Vector3();
 
     const shadedMat = new THREE.MeshLambertMaterial({
       side: THREE.DoubleSide,
@@ -377,6 +379,7 @@ export const buildItemModel = async (item: THREE.Object3D, url: string, extra?: 
     part.position.set(0, 3, 1);
   }
 
+  part.userData.defaultShape = new THREE.Vector3(16, 16, 1);
   part.userData.materialIndex = item.userData.materialIndex as number;
   part.userData.renderType = 'cutout';
   part.userData.forceOutline = true;
