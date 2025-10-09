@@ -1,7 +1,12 @@
+import React from 'react';
 import * as THREE from 'three';
 import * as Util from '@tools/util';
 import * as Handles from '@components/special/paperdoll/handles';
+import PaperDoll, { AState } from '@components/special/paperdoll/paperdoll';
 import AbstractMode from '@components/special/paperdoll/modes/abstractmode';
+import SettingsRibbon from '@components/basic/settingsribbon';
+
+export const POSE_MODES = ['Rotation', 'Position', 'Scale'] as const;
 
 export type PoseEntry = {
   rotation?: THREE.EulerTuple;
@@ -26,6 +31,12 @@ export default class PoseMode extends AbstractMode {
   posePivot?: THREE.Vector2Like;
   queuedPoseEdit?: THREE.Vector3;
 
+  selectedPose?: string;
+
+  constructor(instance: PaperDoll) {
+    super(instance, 'Pose');
+  }
+
   init = (canvas: HTMLCanvasElement) => {
     this.createHandles();
     this.addEvents(canvas);
@@ -33,6 +44,38 @@ export default class PoseMode extends AbstractMode {
 
   dispose = (canvas: HTMLCanvasElement) => {
     this.removeEvents(canvas);
+  };
+
+  changePoseSetting = <KKey extends keyof AState['poseSettings']>(setting: KKey) => {
+    const poseSettings: AState['poseSettings'] = {
+      control: this.instance.state.poseSettings.control,
+      mode: this.instance.state.poseSettings.mode,
+      space: this.instance.state.poseSettings.space
+    };
+
+    switch (setting) {
+      case 'control':
+        poseSettings[setting] = (
+          poseSettings.control === 'Simple' ? 'Controlled' : 'Simple'
+        ) as AState['poseSettings'][KKey];
+        break;
+      case 'mode': {
+        const typeIndex = POSE_MODES.indexOf(poseSettings.mode);
+        const next = typeIndex + 1 >= POSE_MODES.length ? 0 : typeIndex + 1;
+
+        poseSettings[setting] = POSE_MODES[next] as AState['poseSettings'][KKey];
+        break;
+      }
+      case 'space':
+        poseSettings[setting] = (
+          poseSettings.space === 'Local' ? 'Global' : 'Local'
+        ) as AState['poseSettings'][KKey];
+        break;
+      default:
+        return;
+    }
+
+    this.instance.updateSetting('poseSettings', poseSettings);
   };
 
   onSavedPosesUpdated = (savedPoses: string[]) => {
@@ -618,7 +661,7 @@ export default class PoseMode extends AbstractMode {
     }
   };
 
-  loadPoseName = (poseName: string) => {
+  loadPoseByName = (poseName: string) => {
     const poseJson = this.getSavedPose(poseName);
     if (!poseJson) {
       window.alert(`Unable to load! Pose '${poseName}' not found`);
@@ -633,7 +676,7 @@ export default class PoseMode extends AbstractMode {
     this.loadPoseJson(poseJson);
   };
 
-  deletePoseName = (poseName: string) => {
+  deletePoseByName = (poseName: string) => {
     localStorage.removeItem('pose-' + poseName);
 
     const savedPoses = this.getSavedPoses();
@@ -671,6 +714,14 @@ export default class PoseMode extends AbstractMode {
     if (this.onSavedPosesUpdated) this.onSavedPosesUpdated(savedPoses);
   };
 
+  uploadPose = (file: File, name: string) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') this.uploadPoseJson(name, reader.result);
+    };
+    reader.readAsText(file);
+  };
+
   poseUndo = (obj: THREE.Object3D, start: THREE.Object3D) => {
     const redoStart = new THREE.Object3D();
     redoStart.setRotationFromEuler(obj.rotation);
@@ -702,7 +753,7 @@ export default class PoseMode extends AbstractMode {
     if (this.canDeselect) this.canDeselect = false;
 
     if (
-      !this.instance.state.pose ||
+      this.instance.state.mode !== this ||
       !this.instance.canvasRef.current?.parentNode ||
       !(this.instance.canvasRef.current.parentNode instanceof Element)
     )
@@ -721,7 +772,7 @@ export default class PoseMode extends AbstractMode {
   };
 
   onMouseDown = (e: MouseEvent) => {
-    if (!this.instance.state.pose) return;
+    if (this.instance.state.mode !== this) return;
     if (e.button === 2) return;
 
     if (this.instance.state.poseSettings.control === 'Controlled') {
@@ -767,7 +818,7 @@ export default class PoseMode extends AbstractMode {
   };
 
   onContextMenu = (e: MouseEvent) => {
-    if (!this.instance.state.pose) return;
+    if (this.instance.state.mode !== this) return;
     if (!this.hoveredObject) return;
 
     if (this.instance.state.poseSettings.control === 'Controlled') {
@@ -789,7 +840,7 @@ export default class PoseMode extends AbstractMode {
         obj.position.copy(obj.userData.defaultPosition as THREE.Vector3Like);
         break;
       case 'Scale':
-        obj.scale.copy(obj.userData.defaultScale as THREE.Vector3Like);
+      // obj.scale.copy(obj.userData.defaultScale as THREE.Vector3Like);
     }
 
     e.preventDefault();
@@ -814,4 +865,93 @@ export default class PoseMode extends AbstractMode {
     if (this.selectedObject && this.selectedObject === this.findPosableAncestor(part))
       this.deselect();
   };
+
+  settingsRibbon = (
+    <SettingsRibbon
+      buttonFallback={id => {
+        switch (id) {
+          case 'control':
+          case 'mode':
+          case 'space':
+            this.changePoseSetting(id);
+        }
+      }}
+      stringCallback={(id, value) => {
+        if (id === 'selectedPose') this.selectedPose = value;
+      }}
+      fileCallback={(id, value, name) => {
+        if (id === 'uploadPose') this.uploadPose(value, name);
+      }}
+      properties={[
+        {
+          name: 'Pose Control',
+          label: this.instance.state.poseSettings.control,
+          id: 'control',
+          type: 'button'
+        },
+        {
+          name: 'Pose Mode',
+          label: this.instance.state.poseSettings.mode,
+          id: 'mode',
+          type: 'button'
+        },
+        {
+          name: 'Pose Space',
+          label: this.instance.state.poseSettings.space,
+          id: 'space',
+          type: 'button'
+        },
+        {
+          name: 'Deselect',
+          id: 'deselect',
+          type: 'button',
+          onClick: this.deselect
+        },
+        {
+          name: 'Reset Pose',
+          id: 'resetPose',
+          type: 'button',
+          onClick: this.resetPose
+        },
+        {
+          name: 'Selected Pose',
+          id: 'selectedPose',
+          unlabeled: true,
+          type: 'select',
+          value: this.selectedPose,
+          options: this.instance.state.savedPoses
+        },
+        {
+          name: 'Load Pose',
+          id: 'loadPose',
+          type: 'button',
+          onClick: () => this.selectedPose && this.loadPoseByName(this.selectedPose)
+        },
+        {
+          name: 'Delete Pose',
+          id: 'deletePose',
+          type: 'button',
+          onClick: () => this.selectedPose && this.deletePoseByName(this.selectedPose)
+        },
+        {
+          name: 'Save New Pose',
+          id: 'savePose',
+          type: 'button',
+          onClick: this.savePose
+        },
+        {
+          name: 'Download Pose',
+          id: 'downloadPose',
+          type: 'button',
+          onClick: () => this.selectedPose && this.downloadPoseJson(this.selectedPose)
+        },
+        {
+          name: 'Upload Pose',
+          id: 'uploadPose',
+          type: 'file',
+          accept: 'application/json'
+        }
+      ]}
+    />
+  );
 }

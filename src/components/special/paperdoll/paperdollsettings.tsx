@@ -4,7 +4,7 @@ import * as PaperDoll from '@components/special/paperdoll/paperdoll';
 import { UndoCallback } from '@components/special/skinmanager';
 import Dropdown from '@components/basic/dropdown';
 import PropertiesList from '@components/basic/propertieslist';
-import SettingsRibbon from '@components/basic/settingsribbon';
+import AbstractMode from './modes/abstractmode';
 
 type AProps = {
   settings: {
@@ -19,7 +19,7 @@ type AProps = {
     ambientLightIntensity: number;
     directionalLightColor: string;
     directionalLightIntensity: number;
-    pose: boolean;
+    mode: AbstractMode;
     poseSettings: PaperDoll.AState['poseSettings'];
     partToggles: PaperDoll.AState['partToggles'];
     fov: number;
@@ -27,6 +27,7 @@ type AProps = {
     grid: boolean;
   };
 
+  modes: Record<string, AbstractMode>;
   slim: boolean;
   updateSetting: <KKey extends keyof PaperDoll.AState>(
     setting: KKey,
@@ -37,15 +38,6 @@ type AProps = {
   resetCamera: () => void;
   resetLighting: () => void;
   addEdit: (name: string, undoCallback: UndoCallback) => void;
-  deselect: () => void;
-  resetPose: () => void;
-  savedPoses: string[];
-  savePose: () => void;
-  loadPose: (poseName: string) => void;
-  deletePose: (poseName: string) => void;
-  downloadPose: (poseName: string) => void;
-  uploadPose: (poseName: string, poseJsonString: string) => void;
-  capturePose: () => void;
 };
 
 type AState = {
@@ -58,20 +50,9 @@ export default class PaperDollSettings extends Component<AProps, AState> {
     super(props);
 
     this.state = {
-      selectedPose: this.props.savedPoses[0],
       panel: true
     };
   }
-
-  componentDidUpdate = () => {
-    if (this.state.selectedPose === undefined) return;
-
-    if (this.props.savedPoses.length) {
-      if (!this.props.savedPoses.includes(this.state.selectedPose)) {
-        this.setState({ selectedPose: this.props.savedPoses[0] });
-      }
-    } else this.setState({ selectedPose: undefined });
-  };
 
   updateSetting = <KKey extends keyof PaperDoll.AState>(
     setting: KKey,
@@ -105,54 +86,11 @@ export default class PaperDollSettings extends Component<AProps, AState> {
     this.props.resetLighting();
   };
 
-  toggleAnim = (anim: boolean) => {
-    this.props.updateSetting('anim', anim);
-  };
-
-  togglePose = (pose: boolean) => {
-    this.props.updateSetting('pose', pose);
-  };
-
-  changePoseSetting = <KKey extends keyof PaperDoll.AState['poseSettings']>(setting: KKey) => {
-    const poseSettings: PaperDoll.AState['poseSettings'] = {
-      control: this.props.settings.poseSettings.control,
-      mode: this.props.settings.poseSettings.mode,
-      space: this.props.settings.poseSettings.space
-    };
-
-    switch (setting) {
-      case 'control':
-        poseSettings[setting] = (
-          poseSettings.control === 'Simple' ? 'Controlled' : 'Simple'
-        ) as PaperDoll.AState['poseSettings'][KKey];
-        break;
-      case 'mode': {
-        const typeIndex = PaperDoll.POSE_MODES.indexOf(poseSettings.mode);
-        const next = typeIndex + 1 >= PaperDoll.POSE_MODES.length ? 0 : typeIndex + 1;
-
-        poseSettings[setting] = PaperDoll.POSE_MODES[
-          next
-        ] as PaperDoll.AState['poseSettings'][KKey];
-        break;
-      }
-      case 'space':
-        poseSettings[setting] = (
-          poseSettings.space === 'Local' ? 'Global' : 'Local'
-        ) as PaperDoll.AState['poseSettings'][KKey];
-        break;
-      default:
-        return;
-    }
-
-    this.props.updateSetting('poseSettings', poseSettings);
-  };
-
-  uploadPose = (file: File, name: string) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') this.props.uploadPose(name, reader.result);
-    };
-    reader.readAsText(file);
+  nextMode = () => {
+    const modes = Object.values(this.props.modes);
+    const next = modes.indexOf(this.props.settings.mode) + 1;
+    if (next >= modes.length) return;
+    this.props.updateSetting('mode', modes[next]);
   };
 
   togglePart = (part: keyof PaperDoll.AState['partToggles'], hat: boolean, value: boolean) => {
@@ -485,154 +423,11 @@ export default class PaperDollSettings extends Component<AProps, AState> {
         <span className="top left">
           <div>
             <label htmlFor="editorMode">Editor Mode</label>
-            <button id="editorMode" onClick={() => this.togglePose(!this.props.settings.pose)}>
-              {this.props.settings.pose ? 'Pose' : 'Animate'}
+            <button id="editorMode" onClick={() => this.nextMode()}>
+              {this.props.settings.mode.name}
             </button>
           </div>
-          {this.props.settings.pose && (
-            <SettingsRibbon
-              buttonFallback={id => {
-                switch (id) {
-                  case 'control':
-                  case 'mode':
-                  case 'space':
-                    this.changePoseSetting(id);
-                }
-              }}
-              stringCallback={(id, value) => {
-                if (id === 'selectedPose') this.setState({ selectedPose: value });
-              }}
-              fileCallback={(id, value, name) => {
-                if (id === 'uploadPose') this.uploadPose(value, name);
-              }}
-              properties={[
-                {
-                  name: 'Pose Control',
-                  label: this.props.settings.poseSettings.control,
-                  id: 'control',
-                  type: 'button'
-                },
-                {
-                  name: 'Pose Mode',
-                  label: this.props.settings.poseSettings.mode,
-                  id: 'mode',
-                  type: 'button'
-                },
-                {
-                  name: 'Pose Space',
-                  label: this.props.settings.poseSettings.space,
-                  id: 'space',
-                  type: 'button'
-                },
-                {
-                  name: 'Deselect',
-                  id: 'deselect',
-                  type: 'button',
-                  onClick: this.props.deselect
-                },
-                {
-                  name: 'Reset Pose',
-                  id: 'resetPose',
-                  type: 'button',
-                  onClick: this.props.resetPose
-                },
-                {
-                  name: 'Selected Pose',
-                  id: 'selectedPose',
-                  unlabeled: true,
-                  type: 'select',
-                  value: this.state.selectedPose,
-                  options: this.props.savedPoses
-                },
-                {
-                  name: 'Load Pose',
-                  id: 'loadPose',
-                  type: 'button',
-                  onClick: () =>
-                    this.state.selectedPose && this.props.loadPose(this.state.selectedPose)
-                },
-                {
-                  name: 'Delete Pose',
-                  id: 'deletePose',
-                  type: 'button',
-                  onClick: () =>
-                    this.state.selectedPose && this.props.deletePose(this.state.selectedPose)
-                },
-                {
-                  name: 'Save New Pose',
-                  id: 'savePose',
-                  type: 'button',
-                  onClick: this.props.savePose
-                },
-                {
-                  name: 'Download Pose',
-                  id: 'downloadPose',
-                  type: 'button',
-                  onClick: () =>
-                    this.state.selectedPose && this.props.downloadPose(this.state.selectedPose)
-                },
-                {
-                  name: 'Upload Pose',
-                  id: 'uploadPose',
-                  type: 'file',
-                  accept: 'application/json'
-                }
-              ]}
-            />
-          )}
-          {!this.props.settings.pose && (
-            <SettingsRibbon
-              booleanCallback={(id, value) => {
-                if (id === 'explode') this.updateSettingFinish(id, value);
-                if (id === 'animate') this.toggleAnim(value);
-              }}
-              numberCallback={(id, value) => {
-                if (id === 'animSpeed') this.updateSetting(id, value);
-              }}
-              stringCallback={(id, value) => {
-                if (id === 'animation') this.updateSettingFinish(id, value);
-              }}
-              properties={[
-                {
-                  name: 'Explode',
-                  id: 'explode',
-                  type: 'checkbox',
-                  value: this.props.settings.explode
-                },
-                {
-                  name: 'Animate',
-                  id: 'animate',
-                  type: 'checkbox',
-                  value: this.props.settings.anim,
-                  siblings: [
-                    {
-                      name: 'Animation Speed',
-                      id: 'animSpeed',
-                      type: 'range',
-                      value: this.props.settings.animSpeed,
-                      min: 0,
-                      max: 2,
-                      step: 0.01
-                    }
-                  ]
-                },
-                {
-                  name: 'Animation',
-                  id: 'animation',
-                  unlabeled: true,
-                  type: 'select',
-                  value: this.props.settings.animation,
-                  options: PaperDoll.ANIMATIONS
-                },
-                {
-                  name: 'Capture Pose',
-                  id: 'capturePose',
-                  type: 'button',
-                  onClick: this.props.capturePose
-                }
-              ]}
-            />
-          )}
+          {this.props.settings.mode.settingsRibbon}
         </span>
         <div className="bottom left">
           <button title="Save Render" onClick={this.props.saveRender}>

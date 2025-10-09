@@ -1,10 +1,19 @@
+import React from 'react';
 import * as THREE from 'three';
 import skinmodel from '@/skinmodel.json';
 import AbstractMode from '@components/special/paperdoll/modes/abstractmode';
+import SettingsRibbon from '@components/basic/settingsribbon';
+import PaperDoll from '@components/special/paperdoll/paperdoll';
+
+export const ANIMATIONS = ['Walk', 'Crouch Walk'] as const;
 
 export default class AnimateMode extends AbstractMode {
   time = 0;
   idleTime = 0;
+
+  constructor(instance: PaperDoll) {
+    super(instance, 'Animate');
+  }
 
   init = () => {
     this.updateExplode();
@@ -125,4 +134,58 @@ export default class AnimateMode extends AbstractMode {
       new THREE.Euler(wingRotation.x, -wingRotation.y, -wingRotation.z)
     );
   };
+
+  settingsRibbon = (
+    <SettingsRibbon
+      booleanCallback={(id, value) => {
+        if (id === 'explode') this.instance.updateSettingFinish(id, value);
+        if (id === 'animate') this.instance.updateSetting('anim', value);
+      }}
+      numberCallback={(id, value) => {
+        if (id === 'animSpeed') this.instance.updateSetting(id, value);
+      }}
+      stringCallback={(id, value) => {
+        if (id === 'animation') this.instance.updateSettingFinish(id, value);
+      }}
+      properties={[
+        {
+          name: 'Explode',
+          id: 'explode',
+          type: 'checkbox',
+          value: this.instance.state.explode
+        },
+        {
+          name: 'Animate',
+          id: 'animate',
+          type: 'checkbox',
+          value: this.instance.state.anim,
+          siblings: [
+            {
+              name: 'Animation Speed',
+              id: 'animSpeed',
+              type: 'range',
+              value: this.instance.state.animSpeed,
+              min: 0,
+              max: 2,
+              step: 0.01
+            }
+          ]
+        },
+        {
+          name: 'Animation',
+          id: 'animation',
+          unlabeled: true,
+          type: 'select',
+          value: this.instance.state.animation,
+          options: ANIMATIONS
+        },
+        {
+          name: 'Capture Pose',
+          id: 'capturePose',
+          type: 'button',
+          onClick: this.instance.capturePose
+        }
+      ]}
+    />
+  );
 }

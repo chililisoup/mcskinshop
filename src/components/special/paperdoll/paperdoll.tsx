@@ -11,12 +11,10 @@ import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import skinmodel from '@/skinmodel.json';
 import { Features } from '@components/special/modelfeatures';
 import { UndoCallback } from '@components/special/skinmanager';
-import AnimateMode from '@components/special/paperdoll/modes/animatemode';
-import PoseMode from '@components/special/paperdoll/modes/posemode';
+import AnimateMode, { ANIMATIONS } from '@components/special/paperdoll/modes/animatemode';
+import PoseMode, { POSE_MODES } from '@components/special/paperdoll/modes/posemode';
 import PaperDollSettings from '@components/special/paperdoll/paperdollsettings';
-
-export const ANIMATIONS = ['Walk', 'Crouch Walk'] as const;
-export const POSE_MODES = ['Rotation', 'Position', 'Scale'] as const;
+import AbstractMode from './modes/abstractmode';
 
 type AProps = {
   skin: string;
@@ -39,7 +37,7 @@ export type AState = {
   ambientLightIntensity: number;
   directionalLightColor: string;
   directionalLightIntensity: number;
-  pose: boolean;
+  mode: AbstractMode;
   poseSettings: {
     control: 'Simple' | 'Controlled';
     mode: (typeof POSE_MODES)[number];
@@ -131,7 +129,7 @@ export default class PaperDoll extends Component<AProps, AState> {
       ambientLightIntensity: defaultLighting.ambientLightIntensity,
       directionalLightColor: defaultLighting.directionalLightColor,
       directionalLightIntensity: defaultLighting.directionalLightIntensity,
-      pose: false,
+      mode: this.modes.animate,
       poseSettings: {
         control: 'Simple',
         mode: 'Rotation',
@@ -553,7 +551,7 @@ export default class PaperDoll extends Component<AProps, AState> {
 
     const delta = this.clock.getDelta();
 
-    if (this.state.pose) this.modes.pose.pose();
+    if (this.state.mode === this.modes.pose) this.modes.pose.pose();
     else this.modes.animate.animate(delta);
 
     this.composer.render();
@@ -642,7 +640,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.modes.pose.clearSavedPose();
     this.modes.pose.savePose();
     this.setState({
-      pose: true,
+      mode: this.modes.pose,
       explode: false
     });
   };
@@ -659,9 +657,9 @@ export default class PaperDoll extends Component<AProps, AState> {
         this.modes.pose.resetPose();
         this.modes.animate.updateExplode();
         break;
-      case 'pose':
+      case 'mode':
         this.setState({
-          pose: !!value,
+          mode: value as AbstractMode,
           explode: false
         });
         if (this.hoveredOutlinePass) this.hoveredOutlinePass.selectedObjects = [];
@@ -694,6 +692,24 @@ export default class PaperDoll extends Component<AProps, AState> {
     }
   };
 
+  updateSettingFinish = (setting: keyof AState, value: AState[keyof AState]) => {
+    const from = this.state[setting];
+
+    this.updateSetting(setting, value);
+
+    this.props.addEdit('change ' + setting, () => this.settingEdit(setting, from, value));
+  };
+
+  settingEdit = <KKey extends keyof AState>(
+    setting: KKey,
+    from: AState[KKey],
+    to: AState[KKey]
+  ) => {
+    this.updateSetting(setting, from);
+
+    return () => this.settingEdit(setting, to, from);
+  };
+
   render() {
     return (
       <div className="paperdoll stack container">
@@ -710,13 +726,14 @@ export default class PaperDoll extends Component<AProps, AState> {
             ambientLightIntensity: this.state.ambientLightIntensity,
             directionalLightColor: this.state.directionalLightColor,
             directionalLightIntensity: this.state.directionalLightIntensity,
-            pose: this.state.pose,
+            mode: this.state.mode,
             poseSettings: this.state.poseSettings,
             partToggles: this.state.partToggles,
             fov: this.state.fov,
             usePerspectiveCam: this.state.usePerspectiveCam,
             grid: this.state.grid
           }}
+          modes={this.modes}
           slim={this.props.slim}
           updateSetting={this.updateSetting}
           updateSlim={this.props.updateSlim}
@@ -724,18 +741,6 @@ export default class PaperDoll extends Component<AProps, AState> {
           resetCamera={this.resetCamera}
           resetLighting={() => this.setState(defaultLighting)}
           addEdit={this.props.addEdit}
-          deselect={this.modes.pose.deselect}
-          resetPose={() => {
-            this.modes.pose.resetPose();
-            if (this.state.explode) this.modes.animate.updateExplode();
-          }}
-          savedPoses={this.state.savedPoses}
-          savePose={this.modes.pose.savePoseJson}
-          loadPose={this.modes.pose.loadPoseName}
-          deletePose={this.modes.pose.deletePoseName}
-          downloadPose={this.modes.pose.downloadPoseJson}
-          uploadPose={this.modes.pose.uploadPoseJson}
-          capturePose={this.capturePose}
         />
         <div className="paperdoll-canvas-container">
           <canvas className="paperdoll-canvas" ref={this.canvasRef} />
