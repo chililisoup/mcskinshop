@@ -258,31 +258,33 @@
             },
             "leftElytraWing": {
                 "poseable": true,
-                "position": [0.5, 0, -2],
+                "position": [0, 0, -2],
                 "children": {
                     "base": {
                         "renderType": "cutout",
                         "forceOutline": true,
-                        "position": [-1, -10.5, -1],
-                        "shape": [10, 20, 2],
+                        "position": [-0.1875, -11, 0],
+                        "shape": [12, 22, 4],
                         "uniqueMaterial": true,
                         "textureSize": [64, 32],
-                        "uv": [22, 0]
+                        "uv": [22, 0],
+                        "uvSize": [10, 20, 2]
                     }
                 }
             },
             "rightElytraWing": {
                 "poseable": true,
-                "position": [-0.5, 0, -2],
+                "position": [0, 0, -2],
                 "children": {
                     "base": {
                         "renderType": "cutout",
                         "forceOutline": true,
-                        "position": [1, -10.5, -1],
-                        "shape": [10, 20, 2],
+                        "position": [0.1875, -11, 0],
+                        "shape": [12, 22, 4],
                         "uniqueMaterial": true,
                         "textureSize": [64, 32],
                         "uv": [22, 0],
+                        "uvSize": [10, 20, 2],
                         "uvMirrored": true
                     }
                 }
