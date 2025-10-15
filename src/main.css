@@ -9,6 +9,7 @@
   --container-selected-outline: var(--accent);
   --container-alt: color-mix(in srgb, var(--container) 60%, black);
   --container-alt-text: var(--highlight);
+  --viewport-ui: var(--container);
 
   --active-window-outline: none;
   --inactive-window-outline: var(--main-bg);
@@ -362,6 +363,7 @@ hr {
 
 .paperdoll {
   overflow: hidden;
+  background-color: var(--viewport-ui);
 }
 
 .viewport-ui {
@@ -402,7 +404,7 @@ hr {
 }
 
 .viewport-ui > span > div:first-child {
-  background-color: var(--container);
+  background-color: var(--viewport-ui);
   border-bottom-right-radius: var(--curvature);
   box-shadow: var(--box-shadow);
   padding: 4px 8px;
