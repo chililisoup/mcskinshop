@@ -18,10 +18,21 @@ export default abstract class AbstractMode<State = {}> extends Component<Props, 
     super(props);
 
     this.name = name;
+
+    const stateString = props.instance.cachedModeStates[this.name];
+    if (stateString) {
+      const state = JSON.parse(stateString) as State;
+      this.state = state;
+    }
   }
 
   componentDidMount() {
     this.props.instance.setState({ mode: this });
+  }
+
+  componentWillUnmount() {
+    const state = JSON.stringify(this.state);
+    this.props.instance.cachedModeStates[this.name] = state;
   }
 
   updateSetting = <KKey extends keyof State>(

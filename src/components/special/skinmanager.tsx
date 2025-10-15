@@ -14,6 +14,7 @@ import Preferences from '@components/special/preferences';
 import * as PrefMan from '@tools/prefman';
 import DraggableWindow from '@components/basic/draggablewindow';
 import LayerEditor from '@components/special/layereditor';
+import AppWindow from '@components/basic/appwindow';
 
 export type UndoCallback = () => RedoCallback;
 export type RedoCallback = () => UndoCallback;
@@ -370,14 +371,16 @@ export default class SkinManager extends Component<AProps, AState> {
         />
         <div className="SkinManager">
           {this.state.layerManager && (
-            <LayerManager
-              layers={this.layers}
-              updateSkin={this.updateSkin}
-              slim={this.state.slim}
-              manager={this.state.prefMan}
-              selectForEdit={this.selectForEdit}
-              selectedLayer={this.state.selectedLayer}
-            />
+            <AppWindow style={{ flex: '0 0 325px' }}>
+              <LayerManager
+                layers={this.layers}
+                updateSkin={this.updateSkin}
+                slim={this.state.slim}
+                manager={this.state.prefMan}
+                selectForEdit={this.selectForEdit}
+                selectedLayer={this.state.selectedLayer}
+              />
+            </AppWindow>
           )}
           {this.state.layerEditor && (
             <DraggableWindow
@@ -394,37 +397,48 @@ export default class SkinManager extends Component<AProps, AState> {
             </DraggableWindow>
           )}
           {this.state.paperDoll && (
-            <PaperDoll
-              skin={this.state.skin}
-              slim={this.state.slim}
-              updateSlim={this.updateSkin}
-              modelFeatures={this.state.modelFeatures}
-              addEdit={this.addEdit}
-              manager={this.state.prefMan}
-            />
+            <AppWindow style={{ flex: '100%' }}>
+              <PaperDoll
+                skin={this.state.skin}
+                slim={this.state.slim}
+                updateSlim={this.updateSkin}
+                modelFeatures={this.state.modelFeatures}
+                addEdit={this.addEdit}
+                manager={this.state.prefMan}
+              />
+            </AppWindow>
           )}
           {this.state.preview && (
             <Preview skin={this.state.skin} close={() => this.updateState('preview', false)} />
           )}
           {this.state.assetCreator && <AssetCreator addLayer={this.addLayer} />}
           {this.state.layerAdder && (
-            <LayerAdder
-              addLayer={this.addLayer}
-              addDefaultLayer={() => void this.setDefaultLayers(true)}
-            />
+            <AppWindow style={{ flex: '0 0 325px' }}>
+              <LayerAdder
+                addLayer={this.addLayer}
+                addDefaultLayer={() => void this.setDefaultLayers(true)}
+              />
+            </AppWindow>
           )}
           {this.state.modelFeaturesWindow && (
-            <ModelFeatures
-              features={this.state.modelFeatures}
-              updateFeatures={features => this.updateState('modelFeatures', features)}
-            />
+            <AppWindow style={{ flex: '0 0 325px' }}>
+              <ModelFeatures
+                features={this.state.modelFeatures}
+                updateFeatures={features => this.updateState('modelFeatures', features)}
+              />
+            </AppWindow>
           )}
           {this.state.preferences && (
-            <Preferences
-              manager={this.state.prefMan}
-              updatePrefs={manager => this.setState({ prefMan: manager })}
+            <DraggableWindow
+              title="Preferences"
+              anchor={{ vw: 0.5, vh: 0.5 }}
               close={() => this.updateState('preferences', false)}
-            />
+            >
+              <Preferences
+                manager={this.state.prefMan}
+                updatePrefs={manager => this.setState({ prefMan: manager })}
+              />
+            </DraggableWindow>
           )}
         </div>
       </div>

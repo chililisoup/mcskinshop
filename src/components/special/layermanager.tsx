@@ -44,6 +44,7 @@ export default class LayerManager extends Component<AProps> {
         <LayerList
           layers={this.props.layers}
           root={this.props.layers}
+          isRoot={true}
           manager={this.props.manager}
           updateSkin={this.props.updateSkin}
           selectForEdit={this.props.selectForEdit}
@@ -61,6 +62,7 @@ export default class LayerManager extends Component<AProps> {
 type BProps = {
   layers: ImgMod.Layer;
   root: ImgMod.Layer;
+  isRoot?: boolean;
   manager: PrefMan.Manager;
   updateSkin: () => void;
   selectForEdit: (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => void;
@@ -124,8 +126,10 @@ class LayerList extends Component<BProps, BState> {
 
     this.listRef.current.classList.add('dragover');
 
-    const children = this.listRef.current.children;
-    if (children.length < 1) {
+    const children = this.props.isRoot
+      ? this.listRef.current.children.namedItem('root-layer-list')?.children
+      : this.listRef.current.children;
+    if (!children || children.length < 1) {
       this.setState({ insertingIndex: 0 });
       return;
     }
@@ -194,6 +198,7 @@ class LayerList extends Component<BProps, BState> {
     if (!layer) return;
 
     this.props.layers.insertLayer(insertingIndex, layer);
+    this.props.updateSkin();
   };
 
   onDropFiles: (files: FileList, insertingIndex: number) => void = async (
@@ -286,10 +291,33 @@ class LayerList extends Component<BProps, BState> {
         />
       ));
 
-    if (this.state.insertingIndex !== undefined)
+    let canRootAddRule = this.props.isRoot;
+    if (
+      this.state.insertingIndex !== undefined &&
+      (!this.props.isRoot ||
+        (this.state.insertingIndex > 0 && this.state.insertingIndex !== layers.length))
+    ) {
       layers.splice(this.state.insertingIndex, 0, <hr />);
+      canRootAddRule = false;
+    }
 
-    return (
+    return this.props.isRoot ? (
+      <div
+        className="container layer-list root-layer-list"
+        onDragEnter={this.onDragOver}
+        onDragOver={this.onDragOver}
+        onDragLeave={this.onDragLeave}
+        onDragEnd={this.onDragEnd}
+        onDrop={this.onDrop}
+        ref={this.listRef}
+      >
+        {canRootAddRule && this.state.insertingIndex === layers.length && <hr />}
+        <div className="container layer-list" id="root-layer-list">
+          {layers}
+        </div>
+        {canRootAddRule && this.state.insertingIndex === 0 && <hr />}
+      </div>
+    ) : (
       <div
         className="container layer-list"
         onDragEnter={this.onDragOver}

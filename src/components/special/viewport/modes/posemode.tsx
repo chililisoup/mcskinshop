@@ -4,9 +4,9 @@ import * as Util from '@tools/util';
 import SettingsRibbon from '@components/basic/settingsribbon';
 import AbstractMode, { Props } from './abstractmode';
 
-export const POSE_MODES = ['Rotation', 'Position', 'Scale'] as const;
+const POSE_MODES = ['Rotation', 'Position', 'Scale'] as const;
 
-export type PoseEntry = {
+type PoseEntry = {
   rotation?: THREE.EulerTuple;
   position?: THREE.Vector3Tuple;
   scale?: THREE.Vector3Tuple;
@@ -38,32 +38,35 @@ export default class PoseMode extends AbstractMode<AState> {
   constructor(props: Props) {
     super(props, 'Pose');
 
-    const savedPoses = this.getSavedPoses();
+    if (!this.state) {
+      const savedPoses = this.getSavedPoses();
 
-    this.state = {
-      control: 'Simple',
-      mode: 'Rotation',
-      space: 'Local',
-      savedPoses: savedPoses,
-      selectedPose: savedPoses[0]
-    };
+      this.state = {
+        control: 'Simple',
+        mode: 'Rotation',
+        space: 'Local',
+        savedPoses: savedPoses,
+        selectedPose: savedPoses[0]
+      };
+    }
   }
 
   componentDidMount() {
     super.componentDidMount();
-    if (!this.props.canvasRef.current) return;
 
     this.props.instance.loadPose();
     this.props.instance.clearSavedPose();
-    this.addEvents(this.props.canvasRef.current);
+
+    if (this.props.canvasRef.current) this.addEvents(this.props.canvasRef.current);
   }
 
   componentWillUnmount() {
-    if (!this.props.canvasRef.current) return;
+    super.componentWillUnmount();
 
     this.props.instance.savePose();
     this.props.instance.resetPose();
-    this.removeEvents(this.props.canvasRef.current);
+
+    if (this.props.canvasRef.current) this.removeEvents(this.props.canvasRef.current);
   }
 
   changePoseSetting = <KKey extends keyof AState>(name: KKey) => {

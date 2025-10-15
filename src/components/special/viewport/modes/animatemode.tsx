@@ -20,12 +20,13 @@ export default class AnimateMode extends AbstractMode<AState> {
   constructor(props: Props) {
     super(props, 'Animate');
 
-    this.state = {
-      explode: false,
-      animate: this.props.manager.get().animatePlayerOnStart,
-      speed: 0.5,
-      animation: 'Walk'
-    };
+    if (!this.state)
+      this.state = {
+        explode: false,
+        animate: this.props.manager.get().animatePlayerOnStart,
+        speed: 0.5,
+        animation: 'Walk'
+      };
   }
 
   componentDidMount() {
@@ -38,6 +39,7 @@ export default class AnimateMode extends AbstractMode<AState> {
   }
 
   componentWillUnmount() {
+    super.componentWillUnmount();
     this.updateExplode(false);
   }
 

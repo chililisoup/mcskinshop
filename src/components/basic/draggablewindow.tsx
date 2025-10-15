@@ -26,6 +26,7 @@ type AState = {
   };
   focused: boolean;
   fresh: boolean;
+  active: boolean;
 };
 
 export default class DraggableWindow extends Component<AProps, AState> {
@@ -43,7 +44,8 @@ export default class DraggableWindow extends Component<AProps, AState> {
       pos: props.startPos ?? { x: 0, y: 0 },
       anchor: props.anchor ?? { vw: 0, vh: 0 },
       focused: false,
-      fresh: true
+      fresh: true,
+      active: false
     };
 
     this.resizeObserver = new ResizeObserver(this.handleWindowRefResize);
@@ -83,13 +85,13 @@ export default class DraggableWindow extends Component<AProps, AState> {
 
     const ref = this.windowRef.current;
     if (!ref?.contains(e.target) && e.target.closest('.draggable')) {
-      this.setState({ focused: false, fresh: false });
+      this.setState({ focused: false, fresh: false, active: false });
       document.removeEventListener('mousedown', this.checkFocus);
-    }
+    } else if (!ref?.contains(e.target)) this.setState({ active: false });
   };
 
   startFocus = () => {
-    this.setState({ focused: true, fresh: false });
+    this.setState({ focused: true, fresh: false, active: true });
     document.addEventListener('mousedown', this.checkFocus);
   };
 
@@ -170,7 +172,8 @@ export default class DraggableWindow extends Component<AProps, AState> {
         className={
           'draggable container' +
           (this.state.focused ? ' focused' : '') +
-          (this.state.fresh ? ' fresh' : '')
+          (this.state.fresh ? ' fresh' : '') +
+          (this.state.active ? ' active' : '')
         }
         style={{
           left: this.state.pos.x + this.anchorOffset.x,

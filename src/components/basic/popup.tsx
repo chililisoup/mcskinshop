@@ -45,6 +45,6 @@ export default class PopUp extends Component<AProps, AState> {
   };
 
   render() {
-    return <div ref={this.wrapperRef}>{this.props.children}</div>;
+    return <div ref={this.wrapperRef} className='popup'>{this.props.children}</div>;
   }
 }

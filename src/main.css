@@ -2,16 +2,35 @@
 
 :root {
   --main-bg: rgb(32, 38, 51);
+  --text: var(--highlight);
+
   --container: rgb(67, 70, 100);
   --container-selected: var(--container-alt);
+  --container-selected-outline: var(--accent);
   --container-alt: color-mix(in srgb, var(--container) 60%, black);
   --container-alt-text: var(--highlight);
+
+  --active-window-outline: none;
+  --inactive-window-outline: var(--main-bg);
+  --active-draggable-window-outline: var(--outline);
+  --inactive-draggable-window-outline: var(--outline);
+
   --panel: color-mix(in srgb, var(--container) 36%, black);
+  --panel-content: var(--container);
+
   --empty-area: var(--panel);
+  --filled-area: none;
+
   --menu-bar: rgb(103, 88, 146);
+  --menu-bar-alt: var(--container-alt);
   --menu-bar-text: var(--highlight);
+  --menu-bar-outline: var(--outline);
+
   --input: var(--medium-shadow);
   --input-text: var(--highlight);
+  --input-text-alt: var(--input-text);
+  --input-outline: var(--input);
+  --popup-outline: var(--outline);
 
   --curvature: 8px;
   --half-curvature: calc(var(--curvature) * 0.5);
@@ -20,9 +39,11 @@
   --no-accent: rgb(255, 255, 255, 0.25);
   --highlight: white;
   --outline: black;
+  --line: var(--outline);
   --box-shadow: none;
   --drop-shadow: none;
   --icon-invert: 0;
+  --icon-filter: invert(var(--icon-invert)) drop-shadow(var(--drop-shadow));
 
   --light-shadow: rgba(0, 0, 0, 0.3);
   --medium-shadow: rgba(0, 0, 0, 0.4);
@@ -31,10 +52,10 @@
   --main-font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   --alt-font: monospace;
 
-  --thick-outline:
-    2px 0 0 var(--outline), -2px 0 0 var(--outline), 0 2px 0 var(--outline),
-    0 -2px 0 var(--outline), 2px 2px 0 var(--outline), -2px 2px 0 var(--outline),
-    -2px -2px 0 var(--outline), 2px -2px 0 var(--outline);
+  --input-text-outline:
+    2px 0 0 var(--input), -2px 0 0 var(--input), 0 2px 0 var(--input), 0 -2px 0 var(--input),
+    1.4px 1.4px 0 var(--input), -1.4px 1.4px 0 var(--input), -1.4px -1.4px 0 var(--input),
+    1.4px -1.4px 0 var(--input);
 }
 
 html,
@@ -55,7 +76,7 @@ body {
   background-attachment: fixed;
   margin: 0;
   font-family: var(--main-font);
-  color: var(--highlight);
+  color: var(--text);
 }
 
 button,
@@ -66,7 +87,9 @@ label:has(> img) {
   background-color: var(--input);
   box-shadow: var(--box-shadow);
   color: var(--input-text);
-  border-radius: var(--half-curvature);
+  outline: 2px solid var(--input-outline);
+  border-radius: calc(var(--half-curvature) + 1px);
+  outline-offset: -1px;
   margin: 3px;
   font-family: var(--main-font);
 }
@@ -80,29 +103,33 @@ input[type='checkbox'] {
   appearance: none;
   display: grid;
   place-content: center;
-  margin: 5px;
-  width: 18px;
-  height: 18px;
-  outline: 2px solid var(--outline);
+  margin: 4px;
+  width: 20px;
+  height: 20px;
+}
+
+input[type='checkbox']:checked {
+  background-color: var(--accent);
 }
 
 input[type='checkbox']:checked::before {
+  position: absolute;
   content: '';
+  margin: 2px;
   width: 16px;
   height: 16px;
-  background-color: var(--accent);
-  border-radius: var(--half-curvature);
+  background-color: var(--input);
+  clip-path: polygon(17% 32%, 42% 49%, 71% 2%, 100% 24%, 51% 97%, 0% 65%);
 }
 
 input[type='checkbox']:checked::after {
   position: absolute;
   content: '';
   margin: 2px;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   background-color: var(--input-text);
-  border-radius: var(--half-curvature);
-  clip-path: polygon(11% 43%, 45% 73%, 85% 2%, 100% 13%, 49% 97%, 0 58%);
+  clip-path: polygon(22% 45%, 46% 60%, 73% 16%, 87% 25%, 50% 83%, 12% 60%);
 }
 
 button:hover:enabled,
@@ -110,6 +137,7 @@ input:hover:enabled,
 select:hover:enabled,
 label:has(> img):has(+ input:enabled):hover {
   outline: 2px solid var(--highlight);
+  outline-offset: 1px;
   cursor: pointer;
 }
 
@@ -124,7 +152,7 @@ label > img {
   padding: 0;
   background: none;
   image-rendering: auto;
-  filter: invert(var(--icon-invert)) drop-shadow(var(--drop-shadow));
+  filter: var(--icon-filter);
 }
 
 button:has(> img),
@@ -148,19 +176,36 @@ label:has(+ input:checked) > img {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  gap: 8px;
+  gap: 6px;
 }
 
 .appRoot > * {
   margin: 0;
 }
 
+.window {
+  position: relative;
+  display: flex;
+  width: 100%;
+  margin: 0;
+  padding: 4px;
+  overflow: hidden;
+  outline: 2px solid var(--inactive-window-outline);
+  outline-offset: -2px;
+  border-radius: calc(var(--curvature) + 4px);
+}
+
+.window.active {
+  outline: 2px solid var(--active-window-outline);
+  outline-offset: 0;
+}
+
 .SkinManager {
   display: flex;
   flex: 1;
   min-height: 0;
-  padding: 0 6px 6px;
-  gap: 8px;
+  padding: 0 4px 4px;
+  gap: 2px;
 }
 
 .MenuBar {
@@ -206,25 +251,52 @@ label:has(+ input:checked) > img {
   user-select: none;
 }
 
-.MenuBar button:hover:enabled {
-  background: var(--light-shadow);
-  outline: none;
-}
-
 .MenuBar > div {
-  position: absolute;
-  top: 32px;
+  width: min-content;
+  display: inline-block;
 }
 
-.MenuBar > div > div {
+.MenuBar button.active {
+  position: relative;
+  background: var(--container-alt);
+  outline: 2px solid var(--menu-bar-outline);
+  border-radius: 0;
+  outline-offset: 0;
+}
+
+.MenuBar button.active::after {
+  content: '';
   position: absolute;
+  display: block;
+  margin-left: -12px;
+  margin-top: 5px;
+  height: 0;
+  width: 100%;
+  outline: 1px solid var(--menu-bar-alt);
+  outline-offset: -1px;
+  z-index: 101;
+}
+
+.MenuBar .popup {
+  position: absolute;
+  padding: 0;
+}
+
+.MenuBar .popup > div {
+  position: absolute;
+  margin: 0;
   z-index: 100;
-  background: var(--menu-bar);
+  background: var(--menu-bar-alt);
   display: flex;
   flex-direction: column;
-  outline: 2px solid var(--outline);
+  outline: 2px solid var(--menu-bar-outline);
   border-bottom-left-radius: var(--half-curvature);
   border-bottom-right-radius: var(--half-curvature);
+}
+
+.MenuBar button:enabled:hover:not(.active) {
+  background: var(--light-shadow);
+  outline: none;
 }
 
 .MenuBar button {
@@ -255,7 +327,7 @@ span {
 }
 
 hr {
-  outline: 1px solid var(--outline);
+  outline: 1px solid var(--line);
   width: calc(100% - 16px);
   margin: 0 auto;
 }
@@ -337,18 +409,6 @@ hr {
   margin-right: 8px;
 }
 
-.viewport-ui > span > span {
-  gap: 12px;
-}
-
-.viewport-ui > span > span label {
-  color: var(--container-alt-text);
-}
-
-.viewport-ui > span > span > span {
-  width: min-content;
-}
-
 .viewport-ui > span > * {
   max-height: 28px;
   padding: 4px 0;
@@ -357,6 +417,18 @@ hr {
 .viewport-ui > span * {
   white-space: nowrap;
   min-width: max-content;
+}
+
+.settings-ribbon {
+  gap: 12px;
+}
+
+.settings-ribbon label {
+  color: var(--container-alt-text);
+}
+
+.settings-ribbon > span {
+  width: min-content;
 }
 
 .panel {
@@ -374,10 +446,11 @@ hr {
   float: right;
   margin: 0;
   background-color: var(--panel);
-  color: var(--highlight);
+  color: var(--text);
   box-shadow: none;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
+  outline: none;
 }
 
 .panel-content {
@@ -391,6 +464,10 @@ hr {
   max-height: calc(100% - 104px);
   overflow-y: auto;
   pointer-events: initial;
+}
+
+.panel-content .container {
+  background-color: var(--panel-content);
 }
 
 .paperdoll-canvas-container {
@@ -429,7 +506,7 @@ hr {
   margin: 0;
   width: 100%;
   height: 100%;
-  background: none;
+  background: none !important;
 }
 
 .model-toggles input::after,
@@ -462,31 +539,34 @@ hr {
 }
 
 .LayerManager {
-  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
 }
 
 .LayerManager > span > * {
   margin: 0;
 }
 
+.root-layer-list {
+  display: block;
+  background: var(--empty-area) !important;
+  outline: 2px solid var(--outline) !important;
+  height: 100%;
+  width: 100%;
+  overflow: hidden auto;
+}
+
 .layer-list {
   flex: 1;
   flex-direction: column-reverse;
-  width: 325px;
-  overflow: hidden auto;
   background: var(--empty-area);
   box-shadow: inset var(--box-shadow);
-  outline-offset: -2px;
-  padding: 2px;
+  outline: none;
+  padding: 0;
   margin: 0;
   position: relative;
-}
-
-.layer-list > *:first-child {
-  margin-bottom: auto !important;
 }
 
 .layer-list > hr {
@@ -509,7 +589,8 @@ hr {
   pointer-events: none;
 }
 
-.layer-list.dragover > hr::after {
+.layer-list.dragover > hr::after,
+.root-layer-list.dragover > .layer-list > hr::after {
   content: '';
   position: absolute;
   display: block;
@@ -524,7 +605,7 @@ hr {
   position: relative;
   flex-direction: column;
   padding: 3px;
-  margin-bottom: 6px;
+  margin: 2px;
   pointer-events: initial;
   user-select: none;
   z-index: 1;
@@ -539,7 +620,7 @@ hr {
   background-color: var(--container-selected);
 }
 
-.manager-layer:hover:not(:has(.manager-layer:hover))::after {
+.manager-layer::after {
   content: '';
   position: absolute;
   display: block;
@@ -548,9 +629,21 @@ hr {
   width: 100%;
   height: 100%;
   border-radius: inherit;
-  outline: 2px solid var(--highlight);
+  outline: none;
   outline-offset: -2px;
   pointer-events: none;
+}
+
+.manager-layer.selected {
+  outline: 2px solid var(--container-selected-outline);
+}
+
+.manager-layer:hover:not(:has(.manager-layer:hover))::after {
+  outline: 2px solid var(--highlight);
+}
+
+.manager-layer:has(.popup) {
+  z-index: 2;
 }
 
 .manager-layer.dragging {
@@ -611,13 +704,20 @@ hr {
   width: 100%;
   outline: none;
   overflow: visible;
-  background: none;
+  padding-bottom: 2px;
+}
+
+.layer-list:has(.manager-layer) {
+  background: var(--filled-area);
 }
 
 .sublayers .layer-list:not(:has(.manager-layer)) {
-  background: var(--empty-area);
   min-height: 32px;
   pointer-events: initial;
+}
+
+.sublayers .manager-layer {
+  margin-bottom: 0;
 }
 
 span.layerTitle {
@@ -647,7 +747,8 @@ span.layerTitle button {
 }
 
 .layer-adder {
-  height: 95vh;
+  height: 100%;
+  width: 100%;
   overflow-y: scroll;
   overflow-x: hidden;
 }
@@ -655,7 +756,7 @@ span.layerTitle button {
 .layer-adder-content {
   display: flex;
   flex-direction: column;
-  width: 325px;
+  width: 100%;
 }
 
 .properties-list {
@@ -713,7 +814,7 @@ h3 {
 }
 
 .model-features {
-  width: 325px;
+  width: 100%;
   overflow-y: auto;
 }
 
@@ -737,7 +838,7 @@ h3 {
   padding: 0;
   width: 100%;
   height: 100%;
-  outline: 2px solid var(--outline);
+  outline: 2px solid var(--input-outline);
   image-rendering: pixelated;
   /* this is needed on chrome, again, and im dumb or somethin */
   min-height: 18px;
@@ -767,7 +868,7 @@ h3 {
     35.79% 100%,
     0% 100%
   );
-  background-color: var(--outline);
+  background-color: var(--input-outline);
 }
 
 .color-label.linked::after {
@@ -790,7 +891,7 @@ h3 {
     19.76% 100%,
     0% 100%
   );
-  background-color: var(--highlight);
+  background-color: var(--input-text);
 }
 
 .color-picker {
@@ -806,10 +907,12 @@ h3 {
   z-index: 1000;
   width: 200px;
   padding: 10px 0 10px;
+  outline: 2px solid var(--popup-outline);
+  box-shadow: 0 0 0 5px var(--empty-area);
 }
 
 .color-picker-top > div {
-  top: 10px;
+  top: 6px;
 }
 
 .color-picker-bottom > div {
@@ -820,7 +923,7 @@ h3 {
   content: '';
   position: absolute;
   border-style: solid;
-  border-color: var(--outline) transparent;
+  border-color: var(--input-outline) transparent;
   display: block;
   width: 0;
   left: 70px;
@@ -838,7 +941,7 @@ h3 {
 }
 
 .color-picker > div::before {
-  border-color: var(--outline) transparent;
+  border-color: var(--popup-outline) transparent;
 }
 
 .color-picker-top > div::after,
@@ -863,10 +966,10 @@ h3 {
 
 .color-picker > div > input {
   width: 80%;
-  height: 12px;
-  margin: 10px 0 10px;
+  height: 18px;
+  margin: 4px 0 4px;
   appearance: none;
-  outline: 2px solid var(--outline);
+  outline: 2px solid var(--input-outline);
   image-rendering: pixelated;
 }
 
@@ -900,18 +1003,18 @@ h3 {
 .color-picker > div > input::-webkit-slider-thumb,
 .color-picker > div > input::-moz-range-thumb {
   width: 6px;
-  height: 14px;
-  border: 2px solid var(--outline);
+  height: 20px;
+  border: 3px solid var(--input-outline);
 }
 
 .color-picker > div > input:hover::-webkit-slider-thumb,
 .color-picker > div > input:hover::-moz-range-thumb {
-  border: 2px solid var(--highlight);
+  border: 3px solid var(--highlight);
 }
 
 .color-picker > div > input:disabled::-webkit-slider-thumb,
 .color-picker > div > input:disabled::-moz-range-thumb {
-  border: 2px solid var(--outline);
+  border: 3px solid var(--input-outline);
   cursor: default;
 }
 
@@ -930,8 +1033,8 @@ h3 {
   height: 100%;
   text-align: center;
   font-size: smaller;
-  font-weight: bold;
-  text-shadow: 0 0 4px var(--input);
+  font-weight: bolder;
+  text-shadow: var(--input-text-outline);
   color: var(--input-text);
   user-select: none;
   pointer-events: none;
@@ -952,6 +1055,7 @@ h3 {
 }
 
 .dropdown-bar {
+  position: relative;
   user-select: none;
   cursor: pointer;
   justify-content: space-around;
@@ -980,6 +1084,14 @@ h3 {
 .draggable {
   position: absolute;
   z-index: 80;
+}
+
+.draggable.container.draggable.active {
+  outline: 2px solid var(--active-draggable-window-outline);
+}
+
+.draggable.container {
+  outline: 2px solid var(--inactive-draggable-window-outline);
 }
 
 .draggable.focused {

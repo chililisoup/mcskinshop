@@ -93,6 +93,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     animate: <AnimateMode {...this.modeProps} />,
     pose: <PoseMode {...this.modeProps} />
   };
+  cachedModeStates: Record<string, string> = {};
 
   raycaster = new THREE.Raycaster();
   scene: THREE.Scene;

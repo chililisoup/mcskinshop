@@ -112,83 +112,88 @@ export default class MenuBar extends Component<AProps, AState> {
 
     return (
       <div className="MenuBar">
-        <button
-          style={this.state.file ? { background: 'var(--dark-shadow)' } : {}}
-          onMouseDown={() => this.setState({ file: !this.state.file })}
-        >
-          File
-        </button>
-        {this.state.file && (
-          <PopUp close={() => this.setState({ file: false })}>
-            {' '}
-            <div>
-              <FileInput callback={this.addLayerFromInput} accept="image/png">
-                Load from File...
-              </FileInput>
-              {Util.fileSystemAccess && (
-                <button onClick={this.addDynamicLayerFromInput}>
-                  Dynamically Load from File...
+        <div>
+          <button
+            className={this.state.file ? 'active' : ''}
+            onMouseDown={() => this.setState({ file: !this.state.file })}
+          >
+            File
+          </button>
+          {this.state.file && (
+            <PopUp close={() => this.setState({ file: false })}>
+              <div>
+                <FileInput callback={this.addLayerFromInput} accept="image/png">
+                  Load from File...
+                </FileInput>
+                {Util.fileSystemAccess && (
+                  <button onClick={this.addDynamicLayerFromInput}>
+                    Dynamically Load from File...
+                  </button>
+                )}
+                <button onClick={this.addLayerFromUsername}>Load from Username...</button>
+                <button onClick={this.addLayerFromUrl}>Load from URL...</button>
+                <hr />
+                <button onClick={this.downloadSkin}>Save As...</button>
+              </div>
+            </PopUp>
+          )}
+        </div>
+        <div>
+          <button
+            className={this.state.edit ? 'active' : ''}
+            onMouseDown={() => this.setState({ edit: !this.state.edit })}
+          >
+            Edit
+          </button>
+          {this.state.edit && (
+            <PopUp close={() => this.setState({ edit: false })}>
+              <div>
+                <button disabled={!undoHint} onClick={this.props.requestUndo}>
+                  {undoHint ? undoHint : 'Undo'}
                 </button>
-              )}
-              <button onClick={this.addLayerFromUsername}>Load from Username...</button>
-              <button onClick={this.addLayerFromUrl}>Load from URL...</button>
-              <hr />
-              <button onClick={this.downloadSkin}>Save As...</button>
-            </div>
-          </PopUp>
-        )}
-        <button
-          style={this.state.edit ? { background: 'var(--dark-shadow)' } : {}}
-          onMouseDown={() => this.setState({ edit: !this.state.edit })}
-        >
-          Edit
-        </button>
-        {this.state.edit && (
-          <PopUp close={() => this.setState({ edit: false })}>
-            {' '}
-            <div style={{ marginLeft: '46px' }}>
-              <button disabled={!undoHint} onClick={this.props.requestUndo}>
-                {undoHint ? undoHint : 'Undo'}
-              </button>
-              <button disabled={!redoHint} onClick={this.props.requestRedo}>
-                {redoHint ? redoHint : 'Redo'}
-              </button>
-              {editTabChildren}
-            </div>
-          </PopUp>
-        )}
-        <button
-          style={this.state.view ? { background: 'var(--dark-shadow)' } : {}}
-          onMouseDown={() => this.setState({ view: !this.state.view })}
-        >
-          View
-        </button>
-        {this.state.view && (
-          <PopUp close={() => this.setState({ view: false })}>
-            <div style={{ marginLeft: '94px' }}>
-              {viewTabChildren}
-              <hr />
-              <span key="fullscreen">
-                <p>{this.state.fullscreen ? '✓' : ''}</p>
-                <button onClick={this.toggleFullscreen}>Fullscreen</button>
-              </span>
-            </div>
-          </PopUp>
-        )}
-        <button
-          style={this.state.help ? { background: 'var(--dark-shadow)' } : {}}
-          onMouseDown={() => this.setState({ help: !this.state.help })}
-        >
-          Help
-        </button>
-        {this.state.help && (
-          <PopUp close={() => this.setState({ help: false })}>
-            {' '}
-            <div style={{ marginLeft: '148px' }}>
-              <button>Stop it. Get some help.</button>
-            </div>
-          </PopUp>
-        )}
+                <button disabled={!redoHint} onClick={this.props.requestRedo}>
+                  {redoHint ? redoHint : 'Redo'}
+                </button>
+                {editTabChildren}
+              </div>
+            </PopUp>
+          )}
+        </div>
+        <div>
+          <button
+            className={this.state.view ? 'active' : ''}
+            onMouseDown={() => this.setState({ view: !this.state.view })}
+          >
+            View
+          </button>
+          {this.state.view && (
+            <PopUp close={() => this.setState({ view: false })}>
+              <div>
+                {viewTabChildren}
+                <hr />
+                <span key="fullscreen">
+                  <p>{this.state.fullscreen ? '✓' : ''}</p>
+                  <button onClick={this.toggleFullscreen}>Fullscreen</button>
+                </span>
+              </div>
+            </PopUp>
+          )}
+        </div>
+        <div>
+          <button
+            className={this.state.help ? 'active' : ''}
+            onMouseDown={() => this.setState({ help: !this.state.help })}
+          >
+            Help
+          </button>
+          {this.state.help && (
+            <PopUp close={() => this.setState({ help: false })}>
+              <div>
+                <button>Stop it. Get some help.</button>
+              </div>
+            </PopUp>
+          )}
+        </div>
       </div>
     );
   }
