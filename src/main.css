@@ -553,9 +553,14 @@ hr {
   display: block;
   background: var(--empty-area) !important;
   outline: 2px solid var(--outline) !important;
+  border-radius: calc(var(--curvature) + 2px);
   height: 100%;
   width: 100%;
   overflow: hidden auto;
+}
+
+.root-layer-list > .layer-list > .manager-layer {
+  outline-offset: -2px;
 }
 
 .layer-list {

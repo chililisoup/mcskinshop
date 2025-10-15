@@ -8,7 +8,7 @@ export const SELECT_PREFS = {
     light: 'Light',
     catppuccinMocha: 'Catppuccin Mocha',
     catppuccinMacchiato: 'Catppuccin Macchiato',
-    catppuccinFrappe: 'Catppuccin Frappe',
+    catppuccinFrappe: 'Catppuccin Frappé',
     catppuccinLatte: 'Catppuccin Latte',
     purple: 'Purple',
     taiga: 'Taiga',
