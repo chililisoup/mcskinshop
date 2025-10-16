@@ -367,7 +367,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     const arrowGeometry = new THREE.BufferGeometry();
     arrowGeometry.setAttribute(
       'position',
-      new THREE.BufferAttribute(new Float32Array([-1.5, 0, 0, 1.5, 0, 0, 0, 0, 2.5]), 3)
+      new THREE.BufferAttribute(new Float32Array([-1.5, 0, 0, 1.5, 0, 0, 0, 0, 1.5 * Math.sqrt(3)]), 3)
     );
     this.gridArrow.geometry = arrowGeometry;
     this.gridArrow.material = gridMaterial;

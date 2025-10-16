@@ -626,7 +626,7 @@ class Layer extends Component<CProps, CState> {
         }}
         ref={this.layerRef}
       >
-        <span className="layerTitle">
+        <span className="layer-title">
           <input
             type="checkbox"
             title="Toggle Layer Visibility"
@@ -685,7 +685,11 @@ class Layer extends Component<CProps, CState> {
             >
               &#128471;
             </button>
-            <button onClick={() => this.props.removeLayer(this.props.index)} title="Delete Layer">
+            <button
+              onClick={() => this.props.removeLayer(this.props.index)}
+              title="Delete Layer"
+              className="delete-button"
+            >
               &#10006;
             </button>
           </div>

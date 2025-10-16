@@ -7,6 +7,13 @@ import FileInput from '@components/basic/fileinput';
 
 type AssetType = 'capes' | 'equipment' | 'leggings' | 'items';
 
+const ASSET_TYPE_RESOLUTIONS: Record<AssetType, [width: number, height: number]> = {
+  capes: [64, 32],
+  equipment: [64, 32],
+  leggings: [64, 32],
+  items: [16, 16]
+};
+
 type FeatureType =
   | 'cape'
   | 'elytra'
@@ -33,18 +40,28 @@ type FeatureList =
   | 'availableBoots'
   | 'availableItems';
 
-type CustomFeature = [
-  list: FeatureList,
-  resolution: [width: number, height: number],
-  extra?: string
-];
+const FEATURE_LIST_ASSET_TYPES: Record<FeatureList, AssetType> = {
+  availableCapes: 'capes',
+  availableElytras: 'capes',
+  availableHelmets: 'equipment',
+  availableChestplates: 'equipment',
+  availableLeggings: 'leggings',
+  availableBoots: 'equipment',
+  availableItems: 'items'
+};
+
+type CustomFeature = [list: FeatureList, extra?: string];
+
+type FeaturesRecord = Record<FeatureList, Option[]>;
 
 type AProps = {
   features: Features;
   updateFeatures: (features: Features) => void;
 };
 
-type AState = Record<FeatureList, Option[]>;
+type AState = FeaturesRecord & {
+  customFeatures: Partial<FeaturesRecord>;
+};
 
 export default class ModelFeatures extends Component<AProps, AState> {
   constructor(props: AProps) {
@@ -57,8 +74,13 @@ export default class ModelFeatures extends Component<AProps, AState> {
       availableChestplates: this.getFeatureAssets('equipment', ['turtle_scute']),
       availableLeggings: this.getFeatureAssets('leggings'),
       availableBoots: this.getFeatureAssets('equipment', ['turtle_scute']),
-      availableItems: this.getFeatureAssets('items')
+      availableItems: this.getFeatureAssets('items'),
+      customFeatures: this.loadCustomFeatures()
     };
+  }
+
+  componentDidUpdate(_prevProps: Readonly<AProps>, prevState: Readonly<AState>) {
+    if (this.state.customFeatures !== prevState.customFeatures) this.saveCustomFeatures();
   }
 
   getFeatureAssets = (feature: AssetType, exclusions?: string[]) => {
@@ -73,6 +95,12 @@ export default class ModelFeatures extends Component<AProps, AState> {
       )
       .filter(asset => !exclusions.includes(asset ? asset[0] : ''));
   };
+
+  loadCustomFeatures = () =>
+    JSON.parse(localStorage.getItem('customModelFeatures') ?? '{}') as Partial<FeaturesRecord>;
+
+  saveCustomFeatures = () =>
+    localStorage.setItem('customModelFeatures', JSON.stringify(this.state.customFeatures));
 
   changeFeature = (featureType: FeatureType, feature: Feature) => {
     const features: Features = {
@@ -98,7 +126,7 @@ export default class ModelFeatures extends Component<AProps, AState> {
 
   getFeatureOption = (featureType: FeatureType, featureList: FeatureList): Option | undefined => {
     const feature = this.props.features[featureType];
-    const options = this.state[featureList];
+    const options = this.getOptions(featureList);
     if (!feature) return false;
     for (const option of options) {
       if (!option) continue;
@@ -108,20 +136,34 @@ export default class ModelFeatures extends Component<AProps, AState> {
   };
 
   onCustomUpload: (file: File, feature: CustomFeature) => void = async (file, feature) => {
+    const name = feature[1] ? feature[1] + '/' + file.name : file.name;
     const image = new ImgMod.Img();
-    image.size = feature[1];
-    image.name = file.name;
-    if (feature[2]) image.name = feature[2] + '/' + image.name;
+    image.size = ASSET_TYPE_RESOLUTIONS[FEATURE_LIST_ASSET_TYPES[feature[0]]];
 
     await image.loadUrl(URL.createObjectURL(file));
+    const blobSrc = await image.getImageBlobSrc();
+    if (!blobSrc) return;
 
-    const updatedFeatures = this.state[feature[0]];
-    updatedFeatures.push([image.name, image.src]);
+    const save = this.loadCustomFeatures();
+    const updated = save[feature[0]] ?? [];
+    updated.push([name, blobSrc, true]);
+    save[feature[0]] = updated;
 
-    this.setState({
-      [feature[0]]: updatedFeatures
-    } as Pick<AState, FeatureList>);
+    this.setState({ customFeatures: save });
   };
+
+  deleteCustomFeature = (featureList: FeatureList, option: Option) => {
+    const customFeatures = this.state.customFeatures[featureList];
+    if (!customFeatures) return;
+    this.setState({
+      customFeatures: {
+        [featureList]: customFeatures.filter(feature => feature !== option)
+      }
+    });
+  };
+
+  getOptions = (featureList: FeatureList) =>
+    (this.state.customFeatures[featureList] ?? []).concat(this.state[featureList]);
 
   render() {
     return (
@@ -130,12 +172,13 @@ export default class ModelFeatures extends Component<AProps, AState> {
         <br />
         <FeatureEntry
           title="Capes"
-          uploadCustom={file => this.onCustomUpload(file, ['availableCapes', [64, 32]])}
-          options={this.state.availableCapes}
+          uploadCustom={file => this.onCustomUpload(file, ['availableCapes'])}
+          options={this.getOptions('availableCapes')}
           default={this.getFeatureOption('cape', 'availableCapes')}
           changeFeature={option =>
             this.changeFeature('cape', { value: option ? option[1] : option })
           }
+          deleteCustomFeature={option => this.deleteCustomFeature('availableCapes', option)}
           crop={{
             aspectRatio: 2.0,
             x: 1.05 / 64,
@@ -146,28 +189,31 @@ export default class ModelFeatures extends Component<AProps, AState> {
         />
         <FeatureEntry
           title="Elytras"
-          uploadCustom={file => this.onCustomUpload(file, ['availableElytras', [64, 32]])}
-          options={this.state.availableElytras}
+          uploadCustom={file => this.onCustomUpload(file, ['availableElytras'])}
+          options={this.getOptions('availableElytras')}
           default={this.getFeatureOption('elytra', 'availableElytras')}
           changeFeature={option =>
             this.changeFeature('elytra', { value: option ? option[1] : option })
           }
+          deleteCustomFeature={option => this.deleteCustomFeature('availableElytras', option)}
           crop={{
             aspectRatio: 2.0,
-            x: 30.05 / 64,
+            x: 34.05 / 64,
             y: 2.05 / 32,
-            sx: 19.9 / 64,
+            sx: 11.9 / 64,
             sy: 19.9 / 32
           }}
+          targetGridEntryWidth={80}
         />
         <FeatureEntry
           title="Helmets"
-          uploadCustom={file => this.onCustomUpload(file, ['availableHelmets', [64, 32]])}
-          options={this.state.availableHelmets}
+          uploadCustom={file => this.onCustomUpload(file, ['availableHelmets'])}
+          options={this.getOptions('availableHelmets')}
           default={this.getFeatureOption('helmet', 'availableHelmets')}
           changeFeature={option =>
             this.changeFeature('helmet', { value: option ? option[1] : option })
           }
+          deleteCustomFeature={option => this.deleteCustomFeature('availableHelmets', option)}
           crop={{
             aspectRatio: 2.0,
             x: 0.05 / 64,
@@ -178,12 +224,13 @@ export default class ModelFeatures extends Component<AProps, AState> {
         />
         <FeatureEntry
           title="Chestplates"
-          uploadCustom={file => this.onCustomUpload(file, ['availableChestplates', [64, 32]])}
-          options={this.state.availableChestplates}
+          uploadCustom={file => this.onCustomUpload(file, ['availableChestplates'])}
+          options={this.getOptions('availableChestplates')}
           default={this.getFeatureOption('chestplate', 'availableChestplates')}
           changeFeature={option =>
             this.changeFeature('chestplate', { value: option ? option[1] : option })
           }
+          deleteCustomFeature={option => this.deleteCustomFeature('availableChestplates', option)}
           crop={{
             aspectRatio: 2.0,
             x: 16.05 / 64,
@@ -194,12 +241,13 @@ export default class ModelFeatures extends Component<AProps, AState> {
         />
         <FeatureEntry
           title="Leggings"
-          uploadCustom={file => this.onCustomUpload(file, ['availableLeggings', [64, 32]])}
-          options={this.state.availableLeggings}
+          uploadCustom={file => this.onCustomUpload(file, ['availableLeggings'])}
+          options={this.getOptions('availableLeggings')}
           default={this.getFeatureOption('leggings', 'availableLeggings')}
           changeFeature={option =>
             this.changeFeature('leggings', { value: option ? option[1] : option })
           }
+          deleteCustomFeature={option => this.deleteCustomFeature('availableLeggings', option)}
           crop={{
             aspectRatio: 2.0,
             x: 20.05 / 64,
@@ -210,12 +258,13 @@ export default class ModelFeatures extends Component<AProps, AState> {
         />
         <FeatureEntry
           title="Boots"
-          uploadCustom={file => this.onCustomUpload(file, ['availableBoots', [64, 32]])}
-          options={this.state.availableBoots}
+          uploadCustom={file => this.onCustomUpload(file, ['availableBoots'])}
+          options={this.getOptions('availableBoots')}
           default={this.getFeatureOption('boots', 'availableBoots')}
           changeFeature={option =>
             this.changeFeature('boots', { value: option ? option[1] : option })
           }
+          deleteCustomFeature={option => this.deleteCustomFeature('availableBoots', option)}
           crop={{
             aspectRatio: 2.0,
             x: 0.05 / 64,
@@ -227,7 +276,7 @@ export default class ModelFeatures extends Component<AProps, AState> {
         <Dropdown title="Items">
           <FeatureEntry
             title="Right Hand"
-            options={this.state.availableItems}
+            options={this.getOptions('availableItems')}
             default={this.getFeatureOption('rightItem', 'availableItems')}
             changeFeature={option =>
               this.changeFeature('rightItem', {
@@ -235,6 +284,7 @@ export default class ModelFeatures extends Component<AProps, AState> {
                 extra: option ? option[0] : undefined
               })
             }
+            deleteCustomFeature={option => this.deleteCustomFeature('availableItems', option)}
             crop={{
               aspectRatio: 1.0,
               x: -0.05,
@@ -245,21 +295,21 @@ export default class ModelFeatures extends Component<AProps, AState> {
           >
             <FileInput
               accept="image/png"
-              callback={file => this.onCustomUpload(file, ['availableItems', [16, 16]])}
+              callback={file => this.onCustomUpload(file, ['availableItems'])}
             >
               Upload custom... (Regular)
             </FileInput>
 
             <FileInput
               accept="image/png"
-              callback={file => this.onCustomUpload(file, ['availableItems', [16, 16], 'handheld'])}
+              callback={file => this.onCustomUpload(file, ['availableItems', 'handheld'])}
             >
               Upload custom... (Tool)
             </FileInput>
           </FeatureEntry>
           <FeatureEntry
             title="Left Hand"
-            options={this.state.availableItems}
+            options={this.getOptions('availableItems')}
             default={this.getFeatureOption('leftItem', 'availableItems')}
             changeFeature={option =>
               this.changeFeature('leftItem', {
@@ -267,6 +317,7 @@ export default class ModelFeatures extends Component<AProps, AState> {
                 extra: option ? option[0] : undefined
               })
             }
+            deleteCustomFeature={option => this.deleteCustomFeature('availableItems', option)}
             crop={{
               aspectRatio: 1.0,
               x: -0.05,
@@ -277,14 +328,14 @@ export default class ModelFeatures extends Component<AProps, AState> {
           >
             <FileInput
               accept="image/png"
-              callback={file => this.onCustomUpload(file, ['availableItems', [16, 16]])}
+              callback={file => this.onCustomUpload(file, ['availableItems'])}
             >
               Upload custom... (Regular)
             </FileInput>
 
             <FileInput
               accept="image/png"
-              callback={file => this.onCustomUpload(file, ['availableItems', [16, 16], 'handheld'])}
+              callback={file => this.onCustomUpload(file, ['availableItems', 'handheld'])}
             >
               Upload custom... (Tool)
             </FileInput>
@@ -302,6 +353,7 @@ type BProps = {
   options: readonly Option[];
   default?: Option;
   changeFeature: (option: Option) => void;
+  deleteCustomFeature: (option: Option) => void;
   crop?: Crop;
   children?: ReactNode;
 };
@@ -323,6 +375,7 @@ class FeatureEntry extends Component<BProps> {
             options={[false, ...this.props.options]}
             default={this.props.default}
             select={this.props.changeFeature}
+            delete={this.props.deleteCustomFeature}
           />
         </span>
       </Dropdown>

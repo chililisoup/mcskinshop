@@ -41,6 +41,7 @@
 
   --accent: rgb(79, 195, 255);
   --no-accent: rgb(255, 255, 255, 0.25);
+  --danger: rgb(255, 91, 79);
   --highlight: white;
   --outline: black;
   --line: var(--outline);
@@ -698,6 +699,10 @@ hr {
   outline: 2px solid var(--highlight);
 }
 
+.manager-layer:has(> span > .manager-layer-buttons > .delete-button:hover)::after {
+  outline: 4px solid var(--danger);
+}
+
 .manager-layer:has(.popup) {
   z-index: 2;
 }
@@ -776,7 +781,7 @@ hr {
   margin-bottom: 0;
 }
 
-span.layerTitle {
+span.layer-title {
   height: auto;
   flex-wrap: nowrap;
   margin-bottom: 4px;
@@ -784,21 +789,21 @@ span.layerTitle {
   border-radius: calc(var(--curvature) * 1);
 }
 
-span.layerTitle input,
-span.layerTitle p {
+span.layer-title input,
+span.layer-title p {
   margin-right: 6px;
   cursor: text;
 }
 
-span.layerTitle input[type='text'],
-span.layerTitle p {
+span.layer-title input[type='text'],
+span.layer-title p {
   min-width: 0;
   flex-grow: 1;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-span.layerTitle button {
+span.layer-title button {
   white-space: nowrap;
 }
 
@@ -1203,7 +1208,11 @@ h3 {
   border-radius: var(--half-curvature);
 }
 
-.grid-select > .highlighted::before {
+.grid-select > *:has(.delete-button:hover):hover {
+  outline: 4px solid var(--danger);
+}
+
+.grid-select > .highlighted:not(:has(.delete-button:hover))::before {
   position: absolute;
   content: '';
   width: 100%;
@@ -1214,7 +1223,7 @@ h3 {
   pointer-events: none;
 }
 
-.grid-select > *:hover::before {
+.grid-select > *:not(:has(.delete-button:hover)):hover::before {
   position: absolute;
   content: '';
   width: 100%;
@@ -1225,9 +1234,15 @@ h3 {
   pointer-events: none;
 }
 
-.grid-select > .highlighted:hover::before {
+.grid-select > .highlighted:not(:has(.delete-button:hover)):hover::before {
   outline: 4px solid var(--accent);
   outline-offset: -4px;
+}
+
+.grid-select > div > .delete-button {
+  position: absolute;
+  top: 2px;
+  right: 2px;
 }
 
 .grid-select > .true-option {
@@ -1252,10 +1267,11 @@ h3 {
 }
 
 .grid-select > .none-option > img {
-  position: absolute;
-  padding: 0;
-  height: 100%;
+  display: block;
+  max-width: calc(100% - 12px);
+  max-height: calc(100% - 12px);
   width: auto;
+  height: auto;
   image-rendering: auto;
   background: none;
 }

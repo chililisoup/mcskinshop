@@ -97,6 +97,7 @@ const CATPPUCCIN_THEMES = {
     sky: '#89dceb',
     green: '#a6e3a1',
     yellow: '#f9e2af',
+    peach: '#fab387',
     red: '#f38ba8',
     mauve: '#cba6f7',
     pink: '#f5c2e7',
@@ -117,6 +118,7 @@ const CATPPUCCIN_THEMES = {
     sky: '#91d7e3',
     green: '#a6da95',
     yellow: '#eed49f',
+    peach: '#f5a97f',
     red: '#ed8796',
     mauve: '#c6a0f6',
     pink: '#f5bde6',
@@ -137,6 +139,7 @@ const CATPPUCCIN_THEMES = {
     sky: '#99d1db',
     green: '#a6d189',
     yellow: '#e5c890',
+    peach: '#ef9f76',
     red: '#e78284',
     mauve: '#ca9ee6',
     pink: '#f4b8e4',
@@ -157,6 +160,7 @@ const CATPPUCCIN_THEMES = {
     sky: '#04a5e5',
     green: '#40a02b',
     yellow: '#df8e1d',
+    peach: '#fe640b',
     red: '#d20f39',
     mauve: '#8839ef',
     pink: '#ea76cb',
@@ -296,7 +300,7 @@ export class Manager {
         root.style.setProperty('--container-alt-text', theme.text);
         root.style.setProperty('--viewport-ui', theme.crust);
         root.style.setProperty('--viewport-widget', theme.overlay2);
-        root.style.setProperty('--viewport-part-selected-outline', theme.red);
+        root.style.setProperty('--viewport-part-selected-outline', theme.peach);
         root.style.setProperty('--active-window-outline', theme.lavender);
         root.style.setProperty('--active-draggable-window-outline', theme.lavender);
         root.style.setProperty('--inactive-draggable-window-outline', theme.overlay0);
@@ -311,6 +315,7 @@ export class Manager {
         root.style.setProperty('--outline', 'none');
         root.style.setProperty('--line', theme.overlay0);
         root.style.setProperty('--accent', theme.blue);
+        root.style.setProperty('--danger', theme.red);
         root.style.setProperty('--input', theme.surface0);
         root.style.setProperty('--input-text', theme.text);
         root.style.setProperty('--input-text-alt', theme.surface0);

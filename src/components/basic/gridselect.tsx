@@ -1,7 +1,7 @@
 import React, { Component, RefObject } from 'react';
 import no from '@assets/no.png';
 
-export type Option = [entry: string, imageSrc: string] | false;
+export type Option = [entry: string, imageSrc: string, hasDeleteButton?: boolean] | false;
 
 export type Crop = {
   aspectRatio: number;
@@ -17,6 +17,7 @@ type AProps = {
   options: readonly Option[];
   default?: Option;
   select: (option: Option) => void;
+  delete?: (option: Option) => void;
 };
 
 type AState = {
@@ -74,6 +75,20 @@ export default class GridSelect extends Component<AProps, AState> {
           <img alt={option[0]} src={option[1]} style={imgStyle} />
         ) : (
           <img alt="None" src={no} />
+        )}
+        {option && option[2] && (
+          <button
+            className="delete-button"
+            onClickCapture={e => {
+              e.preventDefault();
+              e.stopPropagation();
+
+              if (this.state.selected === option) this.select(false);
+              this.props.delete?.(option);
+            }}
+          >
+            &#10006;
+          </button>
         )}
       </div>
     );

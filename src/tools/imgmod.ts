@@ -291,7 +291,7 @@ export class Img extends AbstractLayer {
         formInternal: img.formInternal,
         linearOpacity: img.linearOpacity,
         size: img.size,
-        rawSrc: await img.getImageSrc(img.rawImage)
+        rawSrc: await img.getImageBlobSrc(img.rawImage)
       };
     },
     async data => {
@@ -650,7 +650,7 @@ export class Img extends AbstractLayer {
     return ctx.getImageData(0, 0, this.size[0], this.size[1]);
   };
 
-  getImageSrc = async (image?: ImageBitmap) => {
+  getImageBlobSrc = async (image?: ImageBitmap) => {
     image = image ?? this.image;
     if (!image) return;
 
