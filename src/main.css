@@ -10,6 +10,9 @@
   --container-alt: color-mix(in srgb, var(--container) 60%, black);
   --container-alt-text: var(--highlight);
   --viewport-ui: var(--container);
+  --viewport-widget: color-mix(in srgb, var(--input) 67%, white);
+  --viewport-part-hovered-outline: var(--highlight);
+  --viewport-part-selected-outline: rgb(255, 126, 28);
 
   --active-window-outline: none;
   --inactive-window-outline: var(--main-bg);
@@ -43,8 +46,6 @@
   --line: var(--outline);
   --box-shadow: none;
   --drop-shadow: none;
-  --icon-invert: 0;
-  --icon-filter: invert(var(--icon-invert)) drop-shadow(var(--drop-shadow));
 
   --light-shadow: rgba(0, 0, 0, 0.3);
   --medium-shadow: rgba(0, 0, 0, 0.4);
@@ -83,7 +84,8 @@ body {
 button,
 input,
 select,
-label:has(> img) {
+label:has(> img),
+label:has(> svg) {
   font-weight: bolder;
   background-color: var(--input);
   box-shadow: var(--box-shadow);
@@ -136,7 +138,8 @@ input[type='checkbox']:checked::after {
 button:hover:enabled,
 input:hover:enabled,
 select:hover:enabled,
-label:has(> img):has(+ input:enabled):hover {
+label:has(> img):has(+ input:enabled):hover,
+label:has(> svg):has(+ input:enabled):hover {
   outline: 2px solid var(--highlight);
   outline-offset: 1px;
   cursor: pointer;
@@ -149,24 +152,33 @@ input::placeholder {
 
 button > img,
 label > img {
+  image-rendering: auto;
+}
+
+button > img,
+label > img,
+button > svg,
+label > svg {
   margin: 0;
   padding: 0;
   background: none;
-  image-rendering: auto;
-  filter: var(--icon-filter);
 }
 
 button:has(> img),
-label:has(> img) {
+label:has(> img),
+button:has(> svg),
+label:has(> svg) {
   display: inline-flex;
   padding: 0;
 }
 
-label:has(+ input:disabled) > img {
+label:has(+ input:disabled) > img,
+label:has(+ input:disabled) > svg {
   filter: brightness(0.4);
 }
 
-label:has(+ input:checked) > img {
+label:has(+ input:checked) > img,
+label:has(+ input:checked) > svg {
   /* https://codepen.io/sosuke/pen/Pjoqqp for #4fc3ff (--accent) */
   /* Not a permanent solution */
   filter: brightness(0) saturate(100%) invert(74%) sepia(10%) saturate(7451%) hue-rotate(172deg)
@@ -201,6 +213,10 @@ label:has(+ input:checked) > img {
   outline-offset: 0;
 }
 
+.hidden {
+  display: none;
+}
+
 .SkinManager {
   display: flex;
   flex: 1;
@@ -211,15 +227,17 @@ label:has(+ input:checked) > img {
 
 .MenuBar {
   width: 100%;
-  height: 30px;
+  height: 32px;
   background: var(--menu-bar);
   padding: 0;
   outline: 2px solid var(--outline);
   box-shadow: var(--box-shadow);
+  display: flex;
+  padding: 2px;
 }
 
-.hidden {
-  display: none;
+.MenuBar * {
+  user-select: none;
 }
 
 .MenuBar button,
@@ -249,12 +267,26 @@ label:has(+ input:checked) > img {
   text-align: center;
   padding: 3px 0;
   aspect-ratio: 1 / 1;
-  user-select: none;
+}
+
+.MenuBar > * {
+  height: 32px;
+}
+
+.MenuBar > img {
+  width: 32px;
+  padding: 0;
+  margin: 0 6px;
+  background: none;
+  pointer-events: none;
 }
 
 .MenuBar > div {
   width: min-content;
-  display: inline-block;
+}
+
+.MenuBar > div > button {
+  height: 100%;
 }
 
 .MenuBar button.active {
@@ -270,7 +302,7 @@ label:has(+ input:checked) > img {
   position: absolute;
   display: block;
   margin-left: -12px;
-  margin-top: 5px;
+  margin-top: 6px;
   height: 0;
   width: 100%;
   outline: 1px solid var(--menu-bar-alt);
@@ -315,11 +347,26 @@ label:has(+ input:checked) > img {
 }
 
 img {
-  width: 48px;
-  height: 48px;
   image-rendering: pixelated;
   background-image: url('assets/checkerboard.png');
   background-size: 12px;
+}
+
+img,
+svg {
+  width: 48px;
+  height: 48px;
+}
+
+svg {
+  stroke: var(--input-text);
+  fill: var(--input-text);
+  fill-rule: 'evenodd';
+  clip-rule: 'evenodd';
+  stroke-linecap: 'round';
+  stroke-linejoin: 'round';
+  stroke-miterlimit: 1.5;
+  stroke-width: 7.2px;
 }
 
 span {
@@ -385,13 +432,17 @@ hr {
 }
 
 .viewport-ui button > img,
-.viewport-ui label > img {
+.viewport-ui label > img,
+.viewport-ui button > svg,
+.viewport-ui label > svg {
   width: 32px;
   height: 32px;
 }
 
 .viewport-ui button:has(> img),
-.viewport-ui label:has(> img) {
+.viewport-ui label:has(> img),
+.viewport-ui button:has(> svg),
+.viewport-ui label:has(> svg) {
   display: inline-flex;
   padding: 4px;
 }
@@ -547,22 +598,20 @@ hr {
   width: 100%;
 }
 
-.LayerManager > span > * {
-  margin: 0;
-}
-
 .root-layer-list {
   display: block;
   background: var(--empty-area) !important;
   outline: 2px solid var(--outline) !important;
-  border-radius: calc(var(--curvature) + 2px);
+  border-radius: calc(var(--curvature) + 4px);
   height: 100%;
   width: 100%;
   overflow: hidden auto;
 }
 
-.root-layer-list > .layer-list > .manager-layer {
-  outline-offset: -2px;
+.root-layer-list > .layer-list {
+  width: calc(100% - 8px);
+  margin: auto;
+  margin-top: 4px;
 }
 
 .layer-list {

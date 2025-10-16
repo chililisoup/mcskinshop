@@ -36,8 +36,9 @@ export default class Preferences extends Component<AProps> {
             this.props.updatePrefs(this.props.manager);
           }}
           booleanFallback={(id, value) => {
-            if (id === '--icon-invert') this.props.manager.setPrefs({ [id]: value });
+            if (id === 'autosaveSession') this.props.manager.setPrefs({ [id]: value });
             if (id === 'useFallbackSkinSource') this.props.manager.setPrefs({ [id]: value });
+            if (id === 'showPlaceholderSkins') this.props.manager.setPrefs({ [id]: value });
             if (id === 'autosetImageForm') this.props.manager.setPrefs({ [id]: value });
 
             if (id === 'addDefaultLayer') this.props.manager.setPrefs({ [id]: value });
@@ -72,24 +73,21 @@ export default class Preferences extends Component<AProps> {
               id: 'userThemeColors',
               type: 'section',
               disabled: values.theme !== 'user',
-              properties: (
-                Object.entries(PrefMan.USER_THEME_COLOR_VARS).map(([key, value]) => {
-                  return {
-                    name: value,
-                    id: key,
-                    type: 'color',
-                    value: values[key as keyof typeof PrefMan.USER_THEME_COLOR_VARS],
-                    alpha: true
-                  };
-                }) as Property[]
-              ).concat([
-                {
-                  name: 'Icon Invert',
-                  id: '--icon-invert',
-                  type: 'checkbox',
-                  value: values['--icon-invert']
-                }
-              ])
+              properties: Object.entries(PrefMan.USER_THEME_COLOR_VARS).map(([key, value]) => {
+                return {
+                  name: value,
+                  id: key,
+                  type: 'color',
+                  value: values[key as keyof typeof PrefMan.USER_THEME_COLOR_VARS],
+                  alpha: true
+                };
+              }) as Property[]
+            },
+            {
+              name: 'Autosave Session',
+              id: 'autosaveSession',
+              type: 'checkbox',
+              value: values.autosaveSession
             },
             {
               name: 'Autoset Image Form',
@@ -102,6 +100,12 @@ export default class Preferences extends Component<AProps> {
               id: 'useFallbackSkinSource',
               type: 'checkbox',
               value: values.useFallbackSkinSource
+            },
+            {
+              name: 'Show Placeholder Skins',
+              id: 'showPlaceholderSkins',
+              type: 'checkbox',
+              value: values.showPlaceholderSkins
             },
             {
               name: 'Startup',

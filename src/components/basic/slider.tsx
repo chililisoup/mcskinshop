@@ -25,6 +25,8 @@ export default class Slider extends Component<AProps, AState> {
   prevValues = [0, 0, 0];
   textVal = '0';
   ctrlKey = false;
+  timer?: NodeJS.Timeout;
+  firstInput = true;
 
   constructor(props: AProps) {
     super(props);
@@ -99,10 +101,30 @@ export default class Slider extends Component<AProps, AState> {
   };
 
   onInput = (e: React.FormEvent<HTMLInputElement>) => {
+    if (!this.firstInput) this.closeTimer();
+    this.firstInput = false;
     const value = Number((e.target as HTMLInputElement).value);
     this.props.callback?.(
       this.clamp(this.alignValue(value, this.ctrlKey ? this.snap() : this.step()))
     );
+  };
+
+  closeTimer = () => {
+    clearTimeout(this.timer);
+    this.timer = undefined;
+  };
+
+  startTyping = () => {
+    this.closeTimer();
+    this.props.callback?.(this.prevValues[0]);
+    this.textVal = String(this.prevValues[0]);
+    this.setState({ typing: true });
+  };
+
+  onMouseDown = () => {
+    this.closeTimer();
+    this.timer = setTimeout(this.startTyping, 1000);
+    this.firstInput = true;
   };
 
   render() {
@@ -120,12 +142,11 @@ export default class Slider extends Component<AProps, AState> {
           this.prevValues.shift();
           this.prevValues.push(this.props.value);
         }}
-        onDoubleClick={() => {
-          if (this.props.callback) this.props.callback(this.prevValues[0]);
-
-          this.textVal = String(this.prevValues[0]);
-          this.setState({ typing: true });
-        }}
+        onDoubleClick={this.startTyping}
+        onMouseDown={this.onMouseDown}
+        onTouchStart={this.onMouseDown}
+        onMouseUp={this.closeTimer}
+        onTouchEnd={this.closeTimer}
       >
         <input
           type="range"

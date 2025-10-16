@@ -1,9 +1,11 @@
 import React, { Component } from 'react';
 import PopUp from '@components/basic/popup';
 import * as Util from '@tools/util';
+import icon from '@assets/icon.png';
 import FileInput from '@components/basic/fileinput';
 
 type AProps = {
+  newSession: () => void;
   uploadSkin: (name: string, url?: string) => void;
   uploadDynamicSkin: () => void;
   downloadSkin: () => void;
@@ -112,6 +114,7 @@ export default class MenuBar extends Component<AProps, AState> {
 
     return (
       <div className="MenuBar">
+        <img alt="Logo" src={icon} />
         <div>
           <button
             className={this.state.file ? 'active' : ''}
@@ -122,16 +125,18 @@ export default class MenuBar extends Component<AProps, AState> {
           {this.state.file && (
             <PopUp close={() => this.setState({ file: false })}>
               <div>
+                <button onClick={this.props.newSession}>New Session</button>
+                <hr />
                 <FileInput callback={this.addLayerFromInput} accept="image/png">
-                  Load from File...
+                  Import File...
                 </FileInput>
                 {Util.fileSystemAccess && (
                   <button onClick={this.addDynamicLayerFromInput}>
-                    Dynamically Load from File...
+                    Dynamically Import File...
                   </button>
                 )}
-                <button onClick={this.addLayerFromUsername}>Load from Username...</button>
-                <button onClick={this.addLayerFromUrl}>Load from URL...</button>
+                <button onClick={this.addLayerFromUsername}>Import from Username...</button>
+                <button onClick={this.addLayerFromUrl}>Import from URL...</button>
                 <hr />
                 <button onClick={this.downloadSkin}>Save As...</button>
               </div>

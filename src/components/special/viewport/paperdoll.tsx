@@ -1,5 +1,6 @@
 import React, { Component, RefObject } from 'react';
 import * as THREE from 'three';
+import * as ImgMod from '@tools/imgmod';
 import * as PrefMan from '@tools/prefman';
 import * as ModelTool from '@tools/modeltool';
 import * as Handles from '@components/special/viewport/handles';
@@ -10,7 +11,7 @@ import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import skinmodel from '@/skinmodel.json';
-import save_render from '@assets/save_render.png';
+import { SAVE_RENDER } from '@components/svgs';
 import { Features } from '@components/special/modelfeatures';
 import { UndoCallback } from '@components/special/skinmanager';
 import AnimateMode from '@components/special/viewport/modes/animatemode';
@@ -101,6 +102,7 @@ export default class PaperDoll extends Component<AProps, AState> {
   ambientLight = new THREE.AmbientLight(0xffffff, 1);
   directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
   grid = new THREE.GridHelper(16, 16);
+  gridArrow = new THREE.Mesh();
   handles = new THREE.Object3D();
 
   selectedObject?: THREE.Object3D;
@@ -180,16 +182,20 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.updateItems();
     this.updateLighting();
     this.propagateShade(this.doll.root);
+    this.updateThemedMaterials();
     this.textureSetup();
     this.startAnimationLoop();
 
     window.addEventListener('resize', this.handleWindowResize);
+    this.props.manager.registerListener(this.updateThemedMaterials);
   }
 
   componentWillUnmount() {
     if (!this.canvasRef.current) return;
 
     window.removeEventListener('resize', this.handleWindowResize);
+    this.props.manager.unregisterListener(this.updateThemedMaterials);
+
     window.cancelAnimationFrame(this.requestID);
     if (this.controls) this.controls.dispose();
     if (this.renderer) this.renderer.dispose();
@@ -329,7 +335,6 @@ export default class PaperDoll extends Component<AProps, AState> {
       this.scene,
       this.perspCam
     );
-    this.hoveredOutlinePass.hiddenEdgeColor.set(0xffffff);
     this.hoveredOutlinePass.edgeStrength = 3;
     this.hoveredOutlinePass.edgeThickness = 1;
     this.composer.addPass(this.hoveredOutlinePass);
@@ -339,7 +344,6 @@ export default class PaperDoll extends Component<AProps, AState> {
       this.scene,
       this.perspCam
     );
-    this.selectedOutlinePass.hiddenEdgeColor.set(0xff7e1c);
     this.selectedOutlinePass.edgeStrength = 3;
     this.selectedOutlinePass.edgeThickness = 1;
     this.composer.addPass(this.selectedOutlinePass);
@@ -353,12 +357,22 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.scene.add(this.ambientLight);
     this.perspCam.add(this.directionalLight);
 
-    this.grid.material = new THREE.LineBasicMaterial({
-      color: 'black',
+    const gridMaterial = new THREE.LineBasicMaterial({
       transparent: true,
-      opacity: 0.75
+      side: THREE.DoubleSide
     });
+    this.grid.material = gridMaterial;
     this.scene.add(this.grid);
+
+    const arrowGeometry = new THREE.BufferGeometry();
+    arrowGeometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(new Float32Array([-1.5, 0, 0, 1.5, 0, 0, 0, 0, 2.5]), 3)
+    );
+    this.gridArrow.geometry = arrowGeometry;
+    this.gridArrow.material = gridMaterial;
+    this.gridArrow.position.set(0, 0, 9);
+    this.grid.add(this.gridArrow);
 
     // Debug geometry, can move it to positions to reference code :)
     // this.sphere = new THREE.Mesh(
@@ -371,6 +385,24 @@ export default class PaperDoll extends Component<AProps, AState> {
     //     })
     // );
     // this.scene.add(this.sphere);
+  };
+
+  updateThemedMaterials = () => {
+    const gridColor = ImgMod.cssVariableColor('--viewport-widget');
+    this.grid.material.color.set(ImgMod.rgbaToHex(gridColor, false));
+    this.grid.material.opacity = gridColor[3] / 255;
+
+    if (this.hoveredOutlinePass) {
+      const outline = ImgMod.rgbaToHex(ImgMod.cssVariableColor('--viewport-part-hovered-outline'), false);
+      this.hoveredOutlinePass.hiddenEdgeColor.set(outline);
+      this.hoveredOutlinePass.usePatternTexture = outline === '#000000';
+    }
+
+    if (this.selectedOutlinePass) {
+      const outline = ImgMod.rgbaToHex(ImgMod.cssVariableColor('--viewport-part-selected-outline'), false);
+      this.selectedOutlinePass.hiddenEdgeColor.set(outline);
+      this.selectedOutlinePass.usePatternTexture = outline === '#000000';
+    }
   };
 
   changeCamera = (camera: THREE.PerspectiveCamera | THREE.OrthographicCamera) => {
@@ -527,15 +559,17 @@ export default class PaperDoll extends Component<AProps, AState> {
     ]);
   };
 
-  updateItem = (name: keyof Features, item: THREE.Object3D) => {
+  updateItem: (name: keyof Features, item: THREE.Object3D) => void = async (name, item) => {
     item.clear();
     const feature = this.props.modelFeatures[name];
     if (!feature.value) return;
-    void ModelTool.buildItemModel(item, feature.value, feature.extra).then(model => {
-      item.add(model);
-      this.updateFeature(name, item.children);
-      this.propagateShade(item);
-    });
+
+    const model = await ModelTool.buildItemModel(item, feature.value, feature.extra);
+    if (!model) return;
+    
+    item.add(model);
+    this.updateFeature(name, item.children);
+    this.propagateShade(item);
   };
 
   updateItems = (right?: boolean, left?: boolean) => {
@@ -746,7 +780,7 @@ export default class PaperDoll extends Component<AProps, AState> {
           {this.state.modeElement}
           <div className="bottom left">
             <button title="Save Render" onClick={this.saveRender}>
-              <img alt="Save Render" src={save_render} />
+              {SAVE_RENDER}
             </button>
           </div>
         </span>

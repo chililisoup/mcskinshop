@@ -74,3 +74,7 @@ export const radToDeg = (rad: number) => rad * r2d;
 let slim = false;
 export const setSlim = (set: boolean) => (slim = set);
 export const getSlim = () => slim;
+
+export const getCssVariable = (variable: string) => {
+  return getComputedStyle(document.documentElement).getPropertyValue(variable);
+};

@@ -14,8 +14,11 @@ type AState = {
 };
 
 export default class AnimateMode extends AbstractMode<AState> {
-  time = 0;
-  idleTime = 0;
+  data: {
+    time: number;
+    idleTime: number;
+    [key: string]: unknown;
+  };
 
   constructor(props: Props) {
     super(props, 'Animate');
@@ -27,6 +30,11 @@ export default class AnimateMode extends AbstractMode<AState> {
         speed: 0.5,
         animation: 'Walk'
       };
+
+    const data = this.props.instance.scene.userData;
+    data.time ??= 0;
+    data.idleTime ??= 0;
+    this.data = data as typeof this.data;
   }
 
   componentDidMount() {
@@ -77,9 +85,9 @@ export default class AnimateMode extends AbstractMode<AState> {
     const pivots = this.props.instance.doll.pivots;
 
     if (this.state.animate) {
-      this.time += delta * 8 * this.state.speed;
-      this.idleTime += delta * 8;
-      if (this.time > Math.PI * 20) this.time -= Math.PI * 20;
+      this.data.time += delta * 8 * this.state.speed;
+      this.data.idleTime += delta * 8;
+      if (this.data.time > Math.PI * 20) this.data.time -= Math.PI * 20;
     }
 
     pivots.head.position.copy(pivots.head.userData.defaultPosition as THREE.Vector3Like);
@@ -97,17 +105,18 @@ export default class AnimateMode extends AbstractMode<AState> {
 
     this.updateExplode();
 
-    const rotation = Math.sin(this.time) * this.state.speed;
+    const rotation = Math.sin(this.data.time) * this.state.speed;
 
     pivots.leftLeg.rotation.x = rotation;
     pivots.rightLeg.rotation.x = -rotation;
     pivots.leftArm.rotation.x = -rotation;
     pivots.rightArm.rotation.x = rotation;
 
-    pivots.leftArm.rotation.z = Math.sin(this.idleTime * 0.3) * 0.075 + 0.075;
+    pivots.leftArm.rotation.z = Math.sin(this.data.idleTime * 0.3) * 0.075 + 0.075;
     pivots.rightArm.rotation.z = -pivots.leftArm.rotation.z;
 
-    pivots.cape.rotation.x = Math.sin(this.idleTime * 0.1) * 0.05 + 0.75 * this.state.speed + 0.1;
+    pivots.cape.rotation.x =
+      Math.sin(this.data.idleTime * 0.1) * 0.05 + 0.75 * this.state.speed + 0.1;
 
     const oldWingRotation = pivots.leftElytraWing.rotation.clone();
     let newWingRotation = new THREE.Euler(Math.PI / 12, Math.PI / 36, Math.PI / 12);

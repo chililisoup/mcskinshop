@@ -1,4 +1,4 @@
-import * as Util from './util';
+import * as Util from '@tools/util';
 
 export const SELECT_PREFS = {
   theme: {
@@ -39,10 +39,11 @@ export const USER_THEME_COLOR_VARS = {
 export type Prefs = {
   -readonly [key in keyof typeof SELECT_PREFS]: keyof (typeof SELECT_PREFS)[key];
 } & Record<keyof typeof USER_THEME_COLOR_VARS, string> & {
-    '--icon-invert': boolean;
     curvature: number;
+    autosaveSession: boolean;
     autosetImageForm: boolean;
     useFallbackSkinSource: boolean;
+    showPlaceholderSkins: boolean;
     addDefaultLayer: boolean;
     animatePlayerOnStart: boolean;
     showLayerManagerOnStart: boolean;
@@ -73,10 +74,11 @@ export const defaultPrefs: Prefs = {
   '--accent': '#4fc3ff',
   '--no-accent': 'rgb(255, 255, 255, 0.25)',
   '--shadow': 'rgba(0, 0, 0, 0)',
-  '--icon-invert': false,
   curvature: 8,
+  autosaveSession: true,
   autosetImageForm: false,
   useFallbackSkinSource: false,
+  showPlaceholderSkins: true,
   addDefaultLayer: true,
   animatePlayerOnStart: true,
   showLayerManagerOnStart: true,
@@ -107,9 +109,7 @@ const CATPPUCCIN_THEMES = {
     overlay0: '#6c7086',
     overlay1: '#7f849c',
     overlay2: '#9399b2',
-    text: '#cdd6f4',
-    textFilter:
-      'brightness(0) saturate(100%) invert(84%) sepia(20%) saturate(276%) hue-rotate(190deg) brightness(97%) contrast(97%)'
+    text: '#cdd6f4'
   },
   catppuccinMacchiato: {
     lavender: '#b7bdf8',
@@ -129,9 +129,7 @@ const CATPPUCCIN_THEMES = {
     overlay0: '#6e738d',
     overlay1: '#8087a2',
     overlay2: '#939ab7',
-    text: '#cad3f5',
-    textFilter:
-      'brightness(0) saturate(100%) invert(79%) sepia(37%) saturate(189%) hue-rotate(192deg) brightness(101%) contrast(92%)'
+    text: '#cad3f5'
   },
   catppuccinFrappe: {
     lavender: '#babbf1',
@@ -151,9 +149,7 @@ const CATPPUCCIN_THEMES = {
     overlay0: '#737994',
     overlay1: '#838ba7',
     overlay2: '#949cbb',
-    text: '#c6d0f5',
-    textFilter:
-      'brightness(0) saturate(100%) invert(81%) sepia(23%) saturate(304%) hue-rotate(191deg) brightness(99%) contrast(94%)'
+    text: '#c6d0f5'
   },
   catppuccinLatte: {
     lavender: '#7287fd',
@@ -173,14 +169,15 @@ const CATPPUCCIN_THEMES = {
     overlay0: '#9ca0b0',
     overlay1: '#8c8fa1',
     overlay2: '#7c7f93',
-    text: '#4c4f69',
-    textFilter:
-      'brightness(0) saturate(100%) invert(29%) sepia(7%) saturate(1770%) hue-rotate(196deg) brightness(99%) contrast(90%)'
+    text: '#4c4f69'
   }
 };
 
+type Listener = (prefs: Readonly<Prefs>) => void;
+
 export class Manager {
   private prefs: Prefs;
+  private listeners: Listener[] = [];
 
   constructor() {
     this.prefs = JSON.parse(JSON.stringify(defaultPrefs)) as Prefs;
@@ -223,7 +220,17 @@ export class Manager {
     return this.prefs as Readonly<Prefs>;
   };
 
+  registerListener = (listener: Listener) => {
+    if (!this.listeners.includes(listener)) this.listeners.push(listener);
+  };
+
+  unregisterListener = (listener: Listener) => {
+    this.listeners = this.listeners.filter(registered => registered !== listener);
+  };
+
   private applyPrefs = () => {
+    if (!this.prefs.autosaveSession) localStorage.removeItem('savedSession');
+
     const root = document.documentElement;
     root.style = '';
     root.style.setProperty('--curvature', this.prefs.curvature + 'px');
@@ -250,7 +257,6 @@ export class Manager {
         root.style.setProperty('--no-accent', this.prefs['--no-accent']);
         root.style.setProperty('--box-shadow', `0 0 2px 2px ${this.prefs['--shadow']}`);
         root.style.setProperty('--drop-shadow', `0 0 4px ${this.prefs['--shadow']}`);
-        root.style.setProperty('--icon-invert', this.prefs['--icon-invert'] ? '100%' : '0%');
         break;
       case 'darker':
         root.style.setProperty('--main-bg', 'rgb(23, 26, 32)');
@@ -275,7 +281,6 @@ export class Manager {
         root.style.setProperty('--dark-shadow', 'rgba(16, 24, 32, 0.25)');
         root.style.setProperty('--box-shadow', '0 0 2px 2px var(--dark-shadow)');
         root.style.setProperty('--drop-shadow', '0 0 4px var(--dark-shadow)');
-        root.style.setProperty('--icon-invert', '100%');
         break;
       case 'catppuccinMocha':
       case 'catppuccinMacchiato':
@@ -287,9 +292,11 @@ export class Manager {
         root.style.setProperty('--container', theme.mantle);
         root.style.setProperty('--container-selected', theme.base);
         root.style.setProperty('--container-selected-outline', theme.sky);
-        root.style.setProperty('--container-alt', theme.base);
+        root.style.setProperty('--container-alt', theme.mantle);
         root.style.setProperty('--container-alt-text', theme.text);
         root.style.setProperty('--viewport-ui', theme.crust);
+        root.style.setProperty('--viewport-widget', theme.overlay2);
+        root.style.setProperty('--viewport-part-selected-outline', theme.red);
         root.style.setProperty('--active-window-outline', theme.lavender);
         root.style.setProperty('--active-draggable-window-outline', theme.lavender);
         root.style.setProperty('--inactive-draggable-window-outline', theme.overlay0);
@@ -311,14 +318,14 @@ export class Manager {
         root.style.setProperty('--popup-outline', theme.green);
         root.style.setProperty('--light-shadow', `rgb(from ${theme.overlay2} r g b / 30%)`);
         root.style.setProperty('--medium-shadow', `rgb(from ${theme.surface0} r g b / 30%)`);
-        root.style.setProperty('--dark-shadow', `rgb(from ${theme.crust} r g b / 30%)`);
-        root.style.setProperty('--icon-filter', theme.textFilter);
-
-        if (this.prefs.theme === 'catppuccinLatte') {
-          root.style.setProperty('--dark-shadow', `rgb(from ${theme.text} r g b / 40%)`);
-          root.style.setProperty('--box-shadow', '0 0 4px var(--dark-shadow)');
-          root.style.setProperty('--drop-shadow', '0 0 4px var(--dark-shadow)');
-        }
+        root.style.setProperty(
+          '--dark-shadow',
+          this.prefs.theme === 'catppuccinLatte'
+            ? `rgb(from ${theme.text} r g b / 40%)`
+            : `rgb(from ${theme.crust} r g b / 30%)`
+        );
+        root.style.setProperty('--box-shadow', '0 0 4px var(--dark-shadow)');
+        root.style.setProperty('--drop-shadow', '0 0 4px var(--dark-shadow)');
         break;
       }
       case 'taiga':
@@ -356,5 +363,7 @@ export class Manager {
         root.style.setProperty('--outline', 'rgb(63, 69, 91)');
         root.style.setProperty('--input', 'var(--outline)');
     }
+
+    this.listeners.forEach(listener => listener(this.get()));
   };
 }

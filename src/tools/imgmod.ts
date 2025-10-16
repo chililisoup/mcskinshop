@@ -1,4 +1,5 @@
-import * as Util from './util';
+import * as Util from '@tools/util';
+import Codec, { PairCodec } from '@tools/codec';
 
 type Offset = {
   width: number;
@@ -80,6 +81,7 @@ export const LAYER_FORMS = [
 export type LayerForm = (typeof LAYER_FORMS)[number];
 
 export type Hsla = [hue: number, saturation: number, lightness: number, alpha: number];
+export type Rgba = [red: number, green: number, blue: number, alpha: number];
 export type RelativeColor = { from: number; offset: Hsla };
 export type UnloadedRelativeColor = { from: number; to: string };
 export type CopyColor = { copy: number };
@@ -143,6 +145,16 @@ export const hslaToHex = (hsla: Hsla) => {
   return `#${f(0)}${f(8)}${f(4)}${a < 1 ? Math.round(255 * a).toString(16) : ''}`;
 };
 
+export const rgbaToHex = (rgba: Rgba, includeAlpha?: boolean) => {
+  return (
+    '#' +
+    rgba[0].toString(16).padStart(2, '0') +
+    rgba[1].toString(16).padStart(2, '0') +
+    rgba[2].toString(16).padStart(2, '0') +
+    (includeAlpha !== false && rgba[3] !== 255 ? rgba[3].toString(16).padStart(2, '0') : '')
+  );
+};
+
 export const hslaToString = (hsla: Hsla) => `hsla(${hsla[0]},${hsla[1]}%,${hsla[2]}%,${hsla[3]})`;
 
 export const hslToString = (hsl: Hsla) => `hsl(${hsl[0]},${hsl[1]}%,${hsl[2]}%)`;
@@ -160,27 +172,66 @@ export const applyHslaOffset = (from: Hsla, offset: Hsla) => {
   ] as Hsla;
 };
 
-export const colorAsHex = (color: string) => {
-  if (color.startsWith('#')) return color;
-
+export const colorAsRgba = (color: string) => {
   const canvas = new OffscreenCanvas(1, 1);
   const ctx = canvas.getContext('2d')!;
   ctx.fillStyle = color;
   ctx.fillRect(0, 0, 1, 1);
   const rgba = ctx.getImageData(0, 0, 1, 1).data;
-
-  return (
-    '#' +
-    rgba[0].toString(16).padStart(2, '0') +
-    rgba[1].toString(16).padStart(2, '0') +
-    rgba[2].toString(16).padStart(2, '0') +
-    (rgba[3] !== 255 ? rgba[3].toString(16).padStart(2, '0') : '')
-  );
+  return [rgba[0], rgba[1], rgba[2], rgba[3]] as Rgba;
 };
+
+export const colorAsHex = (color: string) => rgbaToHex(colorAsRgba(color));
 
 export const colorAsHsla = (color: string) => hexToHsla(colorAsHex(color));
 
+export const cssVariableColor = (variable: string) => colorAsRgba(Util.getCssVariable(variable));
+
+type SerializedAbstractLayer = {
+  blendInternal: GlobalCompositeOperation;
+  filterInternal: string;
+  active: boolean;
+  name?: string;
+};
 export abstract class AbstractLayer {
+  static codec<TType extends AbstractLayer, SSerialized>(
+    serialize: (instance: TType) => Promise<SSerialized>,
+    deserialize: (data: SSerialized) => Promise<TType>
+  ): Codec<TType, SSerialized & SerializedAbstractLayer> {
+    const serializer: (
+      instance: TType
+    ) => Promise<SSerialized & SerializedAbstractLayer> = async instance => {
+      const base: SerializedAbstractLayer = {
+        blendInternal: instance.blendInternal,
+        filterInternal: instance.filterInternal,
+        active: instance.active,
+        name: instance.name
+      };
+
+      return {
+        ...(await serialize(instance)),
+        ...base
+      };
+    };
+
+    const deserializer: (
+      data: SSerialized & SerializedAbstractLayer
+    ) => Promise<TType> = async data => {
+      const instance = await deserialize(data);
+
+      instance.blendInternal = data.blendInternal;
+      instance.filterInternal = data.filterInternal;
+      instance.active = data.active;
+      instance.name = data.name;
+
+      return instance;
+    };
+
+    return Codec.of(serializer, deserializer);
+  }
+
+  abstract getCodec: () => PairCodec<keyof typeof CODECS, AbstractLayer, SerializedAbstractLayer>;
+
   private blendInternal: GlobalCompositeOperation;
   private filterInternal: string;
   id: string;
@@ -225,7 +276,34 @@ export abstract class AbstractLayer {
   abstract cleanup: () => void;
 }
 
+type SerializedImg = {
+  typeInternal: LayerType;
+  formInternal: LayerForm;
+  linearOpacity: boolean;
+  size: [w: number, h: number];
+  rawSrc?: string;
+};
 export class Img extends AbstractLayer {
+  static CODEC: Codec<Img, SerializedImg & SerializedAbstractLayer> = this.codec(
+    async img => {
+      return {
+        typeInternal: img.typeInternal,
+        formInternal: img.formInternal,
+        linearOpacity: img.linearOpacity,
+        size: img.size,
+        rawSrc: await img.getImageSrc(img.rawImage)
+      };
+    },
+    async data => {
+      const img = new Img(data.typeInternal, data.formInternal);
+      img.linearOpacity = data.linearOpacity;
+      if (data.rawSrc) await img.loadUrl(URL.createObjectURL(await Util.getBlob(data.rawSrc)));
+      return img;
+    }
+  );
+
+  getCodec = () => PairCodec.of('Img', Img.CODEC);
+
   private typeInternal;
   private formInternal;
   // rawSrc contains uncolored image data,
@@ -572,6 +650,28 @@ export class Img extends AbstractLayer {
     return ctx.getImageData(0, 0, this.size[0], this.size[1]);
   };
 
+  getImageSrc = async (image?: ImageBitmap) => {
+    image = image ?? this.image;
+    if (!image) return;
+
+    const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.drawImage(image, 0, 0);
+    const blob = await canvas.convertToBlob();
+
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onerror = reject;
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') resolve(reader.result);
+        else reject(new Error('Invalid result from blob'));
+      };
+      reader.readAsDataURL(blob);
+    });
+  };
+
   detectSlimModel = () => {
     if (!this.image) return false;
 
@@ -635,7 +735,39 @@ export class ImgPreview extends Img {
   filter = () => this.base.filter();
 }
 
+type SerializedLayer = {
+  sublayers: [key: keyof typeof CODECS, data: SerializedAbstractLayer][];
+  colors: Color[];
+  advanced?: boolean[];
+};
+export type FullSerializedLayer = SerializedLayer & SerializedAbstractLayer;
 export class Layer extends AbstractLayer {
+  static CODEC: Codec<Layer, FullSerializedLayer> = this.codec(
+    async layer => {
+      return {
+        sublayers: await Promise.all(
+          layer.sublayers
+            .filter(sublayer => !(sublayer instanceof ImgPreview))
+            .map(sublayer => sublayer.getCodec().serialize(sublayer))
+        ),
+        colors: [...layer.colors],
+        advanced: layer.advanced ? [...layer.advanced] : undefined
+      };
+    },
+    async data => {
+      const layer = new Layer(
+        await Promise.all(
+          data.sublayers.map(sublayer => CODECS[sublayer[0]].deserialize(sublayer[1]))
+        ),
+        data.colors
+      );
+      layer.advanced = data.advanced;
+      return layer;
+    }
+  );
+
+  getCodec = () => PairCodec.of('Layer', Layer.CODEC);
+
   private sublayers;
   private colors: Color[];
   advanced?: boolean[];
@@ -656,6 +788,7 @@ export class Layer extends AbstractLayer {
     this.colors =
       colors && colors.length === this.sublayers.length
         ? colors.map(color => {
+            if (color === null || color === undefined) return undefined;
             if (typeof color !== 'object') return color;
             if (!('to' in color)) return color;
 
@@ -1003,3 +1136,9 @@ export class Layer extends AbstractLayer {
     if (this.image) this.image.close();
   };
 }
+
+type AbstractLayerCodec = Codec<AbstractLayer, SerializedAbstractLayer>;
+const CODECS = {
+  Layer: Layer.CODEC as AbstractLayerCodec,
+  Img: Img.CODEC as AbstractLayerCodec
+};

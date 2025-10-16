@@ -22,14 +22,9 @@ export type RedoCallback = () => UndoCallback;
 type UndoEdit = [name: string, undoCallback: RedoCallback];
 type RedoEdit = [name: string, redoCallback: UndoCallback];
 
-type AProps = object;
-
-type AState = {
-  skin: string;
+type StateCommon = {
   slim: boolean;
-  editHints: [string, string];
   modelFeatures: Features;
-  prefMan: PrefMan.Manager;
   layerManager: boolean;
   layerEditor: boolean;
   paperDoll: boolean;
@@ -37,10 +32,23 @@ type AState = {
   assetCreator: boolean;
   layerAdder: boolean;
   modelFeaturesWindow: boolean;
+};
+
+type SavedSession = {
+  layers: ImgMod.FullSerializedLayer;
+} & StateCommon;
+
+type AProps = object;
+
+type AState = {
+  skin: string;
+  editHints: [string, string];
+  prefMan: PrefMan.Manager;
   preferences: boolean;
   selectedLayer?: ImgMod.AbstractLayer;
   selectedLayerPreview?: ImgMod.ImgPreview;
-};
+  sessionKey: string;
+} & StateCommon;
 
 export default class SkinManager extends Component<AProps, AState> {
   layers = new ImgMod.Layer();
@@ -49,12 +57,14 @@ export default class SkinManager extends Component<AProps, AState> {
 
   constructor(props: AProps) {
     super(props);
+    this.state = this.defaultState(new PrefMan.Manager());
+  }
 
-    const prefMan = new PrefMan.Manager();
+  defaultState(prefMan: PrefMan.Manager): AState {
     const prefs = prefMan.get();
 
-    this.state = {
-      skin: steve,
+    return {
+      skin: prefMan.get().showPlaceholderSkins ? steve : ImgMod.EMPTY_IMAGE_SOURCE,
       slim: false,
       editHints: ['', ''],
       modelFeatures: {
@@ -77,13 +87,17 @@ export default class SkinManager extends Component<AProps, AState> {
       modelFeaturesWindow: prefs.showModelFeaturesOnStart,
       preferences: false,
       selectedLayer: undefined,
-      selectedLayerPreview: undefined
+      selectedLayerPreview: undefined,
+      sessionKey: Util.randomKey()
     };
   }
 
   componentDidMount() {
     document.addEventListener('keydown', this.onKeyDown);
-    if (this.state.prefMan.get().addDefaultLayer) void this.setDefaultLayers();
+
+    this.loadSession().catch(() => {
+      if (this.state.prefMan.get().addDefaultLayer) this.setDefaultLayers();
+    });
   }
 
   componentWillUnmount() {
@@ -92,9 +106,10 @@ export default class SkinManager extends Component<AProps, AState> {
 
   componentDidUpdate = () => {
     Util.setSlim(this.state.slim);
+    if (this.state.prefMan.get().autosaveSession) void this.saveSession();
   };
 
-  setDefaultLayers = async (add?: boolean) => {
+  setDefaultLayers: (add?: boolean) => void = async add => {
     if (!add && this.layers.getLayers().length) return;
 
     const steveImg = new ImgMod.Img('normal', 'full-only');
@@ -171,7 +186,10 @@ export default class SkinManager extends Component<AProps, AState> {
     Util.setSlim(slim);
 
     await this.layers.render(slim !== this.state.slim);
-    this.setState({ skin: this.layers.src, slim: slim });
+    const stateUpdate = { skin: this.layers.src, slim: slim };
+    if (this.layers.getLayers().length === 0 && this.state.prefMan.get().showPlaceholderSkins)
+      stateUpdate.skin = slim ? alex : steve;
+    this.setState(stateUpdate);
   };
 
   addLayer = (layer: ImgMod.AbstractLayer) => {
@@ -324,10 +342,79 @@ export default class SkinManager extends Component<AProps, AState> {
     this.setState({ selectedLayer: layer, selectedLayerPreview: preview });
   };
 
+  newSession = () => {
+    localStorage.removeItem('savedSession');
+
+    this.layers = new ImgMod.Layer();
+    this.editHistory = [];
+    this.redoProphecy = [];
+
+    this.setState(this.defaultState(this.state.prefMan));
+    if (this.state.prefMan.get().addDefaultLayer) this.setDefaultLayers();
+    else this.updateSkin();
+  };
+
+  saveSession = async () => {
+    const serialized = JSON.stringify({
+      layers: this.layers.getLayers().length
+        ? await ImgMod.Layer.CODEC.serialize(this.layers)
+        : undefined,
+      slim: this.state.slim,
+      modelFeatures: this.state.modelFeatures,
+      layerManager: this.state.layerManager,
+      layerEditor: this.state.layerEditor,
+      paperDoll: this.state.paperDoll,
+      preview: this.state.preview,
+      assetCreator: this.state.assetCreator,
+      layerAdder: this.state.layerAdder,
+      modelFeaturesWindow: this.state.modelFeaturesWindow
+    } as Partial<SavedSession>);
+    localStorage.setItem('savedSession', serialized);
+  };
+
+  loadSession = async () => {
+    const serialized = localStorage.getItem('savedSession');
+    if (!serialized) return Promise.reject(new Error('No saved session.'));
+
+    const session = JSON.parse(serialized) as Partial<SavedSession>;
+
+    const defaultState = this.defaultState(this.state.prefMan);
+    const stateUpdate: Partial<AState> = {
+      slim: session.slim ?? defaultState.slim,
+      modelFeatures: session.modelFeatures ?? defaultState.modelFeatures,
+      layerManager: session.layerManager ?? defaultState.layerManager,
+      layerEditor: session.layerEditor ?? defaultState.layerEditor,
+      paperDoll: session.paperDoll ?? defaultState.paperDoll,
+      preview: session.preview ?? defaultState.preview,
+      assetCreator: session.assetCreator ?? defaultState.assetCreator,
+      layerAdder: session.layerAdder ?? defaultState.layerAdder,
+      modelFeaturesWindow: session.modelFeaturesWindow ?? defaultState.modelFeaturesWindow
+    };
+    stateUpdate.skin = this.state.prefMan.get().showPlaceholderSkins
+      ? stateUpdate.slim
+        ? alex
+        : steve
+      : ImgMod.EMPTY_IMAGE_SOURCE;
+
+    Util.setSlim(!!stateUpdate.slim);
+
+    if (session.layers) {
+      this.layers = await ImgMod.Layer.CODEC.deserialize(session.layers);
+      await this.layers.color();
+      await this.layers.render(true);
+      stateUpdate.skin = this.layers.src;
+    }
+
+    this.setState(stateUpdate as Pick<AState, keyof AState>);
+
+    return Promise.resolve();
+  };
+
   render() {
     return (
-      <div className="appRoot">
+      <div className="appRoot" key={this.state.sessionKey}>
         <MenuBar
+          newSession={this.newSession}
           uploadSkin={this.uploadSkin}
           uploadDynamicSkin={this.uploadDynamicSkin}
           downloadSkin={this.downloadSkin}
