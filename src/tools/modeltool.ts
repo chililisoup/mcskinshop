@@ -197,12 +197,15 @@ export class Model {
 
   createCuboidUVQuad = (x: number, y: number, w: number, h: number, mirrored: boolean) => {
     const mod = (mirrored ? 1 : 0) * w;
+    const xErr = (w > 0 ? 1 : -1) * 0.01;
+    const yErr = (h > 0 ? 1 : -1) * 0.01;
 
+    // prettier-ignore
     return [
-      [x + mod, y],
-      [x + w - mod, y],
-      [x + mod, y + h],
-      [x + w - mod, y + h]
+      [x + xErr + mod,     y + yErr],
+      [x - xErr - mod + w, y + yErr],
+      [x + xErr + mod,     y - yErr + h],
+      [x - xErr - mod + w, y - yErr + h]
     ];
   };
 
