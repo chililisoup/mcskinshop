@@ -38,8 +38,8 @@ export default class PoseMode extends AbstractMode<AState> {
       const savedPoses = this.getSavedPoses();
 
       this.state = {
-        control: 'Simple',
-        mode: 'Rotation',
+        control: 'Controlled',
+        mode: 'Position',
         space: 'Local',
         savedPoses: savedPoses,
         selectedPose: savedPoses[0]
@@ -216,17 +216,15 @@ export default class PoseMode extends AbstractMode<AState> {
       const norm = (this.handle.userData.normal as THREE.Vector3).clone();
       if (this.state.space === 'Local') norm.applyQuaternion(worldQuat);
 
+      const start = this.clipToWorldSpace(this.mousePos, 0.5 * camMult);
+      const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9 * camMult)
+        .sub(start)
+        .normalize();
+      start.sub(this.selectedStartWorldPos);
+      const line = new THREE.Line3(start, start.clone().addScaledVector(lineDirection, 500));
+
       let movement;
-
       if (this.handle.parent?.name === 'positionAxisHandles') {
-        const start = this.clipToWorldSpace(this.mousePos, 0.5 * camMult);
-        const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9 * camMult)
-          .sub(start)
-          .normalize();
-        start.sub(this.selectedStartWorldPos);
-
-        const line = new THREE.Line3(start, start.clone().addScaledVector(lineDirection, 500));
-
         const plane = new THREE.Plane();
         plane.setFromCoplanarPoints(
           new THREE.Vector3(),
@@ -252,14 +250,6 @@ export default class PoseMode extends AbstractMode<AState> {
           movement.normalize().multiplyScalar(Math.round(length));
         }
       } else {
-        const start = this.clipToWorldSpace(this.mousePos, 0.5 * camMult);
-        const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9 * camMult)
-          .sub(start)
-          .normalize();
-        start.sub(this.selectedStartWorldPos);
-
-        const line = new THREE.Line3(start, start.clone().addScaledVector(lineDirection, 500));
-
         const plane = new THREE.Plane(norm);
 
         const intersect = plane.intersectLine(line, new THREE.Vector3());
@@ -325,63 +315,82 @@ export default class PoseMode extends AbstractMode<AState> {
         .sub(start)
         .normalize();
       start.sub(this.selectedStartWorldPos);
-
       const line = new THREE.Line3(start, start.clone().addScaledVector(lineDirection, 500));
 
-      const plane = new THREE.Plane();
-      plane.setFromCoplanarPoints(
-        new THREE.Vector3(),
-        this.clipToWorldSpace(this.mousePos, clipZ).sub(this.selectedStartWorldPos),
-        norm
-      );
+      let change;
+      if (this.handle.parent?.name === 'scaleAxisHandles') {
+        const plane = new THREE.Plane();
+        plane.setFromCoplanarPoints(
+          new THREE.Vector3(),
+          this.clipToWorldSpace(this.mousePos, clipZ).sub(this.selectedStartWorldPos),
+          norm
+        );
 
-      const intersect = plane.intersectLine(line, new THREE.Vector3());
-      if (!intersect) return;
+        const intersect = plane.intersectLine(line, new THREE.Vector3());
+        if (!intersect) return;
 
-      const axis = new THREE.Line3(new THREE.Vector3(), norm);
-      axis.closestPointToPoint(intersect, false, intersect);
+        const axis = new THREE.Line3(new THREE.Vector3(), norm);
+        axis.closestPointToPoint(intersect, false, intersect);
 
-      if (!this.oldHandlePos) {
-        this.oldHandlePos = intersect;
-        return;
+        if (!this.oldHandlePos) {
+          this.oldHandlePos = intersect;
+          return;
+        }
+
+        change = intersect.sub(this.oldHandlePos);
+      } else if (this.handle.parent?.name === 'scalePlaneHandles') {
+        const plane = new THREE.Plane(norm);
+
+        const intersect = plane.intersectLine(line, new THREE.Vector3());
+        if (!intersect) return;
+
+        if (!this.oldHandlePos) {
+          this.oldHandlePos = intersect;
+          return;
+        }
+
+        change = intersect.sub(this.oldHandlePos);
+      } else {
+        const plane = new THREE.Plane(
+          this.props.instance.activeCam?.getWorldDirection(new THREE.Vector3())
+        );
+
+        const intersect = plane.intersectLine(line, new THREE.Vector3());
+        if (!intersect) return;
+
+        let diff = 8 * Math.log(intersect.distanceTo(new THREE.Vector3()) / 1.5);
+        if (this.activeKeys.Control) diff = Math.round(diff);
+        change = new THREE.Vector3(diff, diff, diff);
       }
 
-      const change = intersect.sub(this.oldHandlePos);
+      if (this.handle.parent?.name !== 'scaleCenterHandles') {
+        if (this.activeKeys.Control) {
+          if (this.state.space === 'Local') {
+            change.applyQuaternion(worldQuat.clone().invert());
+            change.round();
+            change.applyQuaternion(worldQuat);
+          } else change.round();
+        }
 
-      if (this.activeKeys.Control) {
-        const length = change.length();
-        change.normalize().multiplyScalar(Math.round(length));
+        change.add(this.props.instance.selectedObject.getWorldPosition(new THREE.Vector3()));
+        this.props.instance.selectedObject.worldToLocal(change);
       }
-
-      const reverse = this.handle.name.startsWith('-');
-      if (reverse) change.negate();
-
-      change.add(this.props.instance.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
-      this.props.instance.selectedObject.parent.worldToLocal(change);
 
       const scaleOffset = this.selectedStartScaleOffset.clone().add(change);
       this.props.instance.applyScaleOffset(this.props.instance.selectedObject, scaleOffset);
-
-      if (this.activeKeys.Shift)
-        this.props.instance.selectedObject.position.setFromMatrixPosition(this.selectedStartMatrix);
-      else
-        this.props.instance.selectedObject.position.copy(
-          new THREE.Vector3()
-            .setFromMatrixPosition(this.selectedStartMatrix)
-            .add(change.clone().multiplyScalar(reverse ? -0.5 : 0.5))
-        );
     } else {
-      // Simple mode (this one is not very good)
+      // Simple mode
       const scaleOffset =
         (this.props.instance.selectedObject.userData.scaleOffset as THREE.Vector3 | undefined) ??
         new THREE.Vector3();
-      
+
       const change = this.clipToWorldSpace(this.mousePos, clipZ);
       change.sub(this.clipToWorldSpace(this.oldMousePos, clipZ));
       change.add(this.props.instance.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
       this.props.instance.selectedObject.parent.worldToLocal(change);
-      scaleOffset.add(change);
 
+      const avg = (change.x + change.y + change.z) / 3;
+      scaleOffset.add(new THREE.Vector3(avg, avg, avg));
       this.props.instance.applyScaleOffset(this.props.instance.selectedObject, scaleOffset);
     }
   };
@@ -461,7 +470,8 @@ export default class PoseMode extends AbstractMode<AState> {
           }
 
           if (this.hoveredHandle) {
-            if ('opacity' in this.hoveredHandle.material) this.hoveredHandle.material.opacity = 1;
+            if ('opacity' in this.hoveredHandle.material)
+              this.hoveredHandle.material.opacity = 0.85;
             this.hoveredHandle.renderOrder = 1000;
           }
         }
@@ -521,9 +531,11 @@ export default class PoseMode extends AbstractMode<AState> {
   filterOutline = (part: THREE.Object3D) => {
     let children: THREE.Object3D[] = [];
 
-    if (part.children.length > 0) {
+    if (part.children.length > 0)
       part.children.forEach(child => children.push(...this.filterOutline(child)));
-    } else if (
+    
+    if (
+      (part.children.length === 0 || part.name === 'base') &&
       (part.userData.renderType !== 'cutout' || part.userData.forceOutline) &&
       part.visible &&
       !part.userData.noOutline

@@ -124,6 +124,26 @@ export const createPlaneHandle = (
   return handle;
 };
 
+export const createCenterHandle = (color: THREE.ColorRepresentation, name: string) => {
+  const handle = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(1.5, 3),
+    new THREE.MeshBasicMaterial({
+      color: color,
+      depthTest: false,
+      transparent: true,
+      opacity: 0.5,
+      side: THREE.DoubleSide
+    })
+  );
+
+  handle.name = name;
+  handle.userData.normal = new THREE.Vector3(0, 0, 0);
+  handle.renderOrder = 999;
+  handle.userData.noOutline = true;
+
+  return handle;
+};
+
 export const createRotationHandles = () => {
   const rotationHandles = new THREE.Object3D();
   rotationHandles.name = 'rotationHandles';
@@ -165,13 +185,22 @@ export const createScaleHandles = () => {
 
   const scaleAxisHandles = new THREE.Object3D();
   scaleAxisHandles.name = 'scaleAxisHandles';
-  scaleAxisHandles.add(createAxisHandle(0xff0000, '+x', [1, 0, 0], [0, 0, -1], 'block'));
-  scaleAxisHandles.add(createAxisHandle(0x00ff00, '+y', [0, 1, 0], [0, 0, 0], 'block'));
-  scaleAxisHandles.add(createAxisHandle(0x0000ff, '+z', [0, 0, 1], [1, 0, 0], 'block'));
-  scaleAxisHandles.add(createAxisHandle(0xff0000, '-x', [-1, 0, 0], [0, 0, 1], 'block'));
-  scaleAxisHandles.add(createAxisHandle(0x00ff00, '-y', [0, -1, 0], [0, 0, 2], 'block'));
-  scaleAxisHandles.add(createAxisHandle(0x0000ff, '-z', [0, 0, -1], [-1, 0, 0], 'block'));
+  scaleAxisHandles.add(createAxisHandle(0xff0000, 'x', [1, 0, 0], [0, 0, -1], 'block'));
+  scaleAxisHandles.add(createAxisHandle(0x00ff00, 'y', [0, 1, 0], [0, 0, 0], 'block'));
+  scaleAxisHandles.add(createAxisHandle(0x0000ff, 'z', [0, 0, 1], [1, 0, 0], 'block'));
   scaleHandles.add(scaleAxisHandles);
+
+  const scalePlaneHandles = new THREE.Object3D();
+  scalePlaneHandles.name = 'scalePlaneHandles';
+  scalePlaneHandles.add(createPlaneHandle(0xff0000, 'x', [1, 0, 0], [0, 1, 0]));
+  scalePlaneHandles.add(createPlaneHandle(0x00ff00, 'y', [0, 1, 0], [1, 0, -1]));
+  scalePlaneHandles.add(createPlaneHandle(0x0000ff, 'z', [0, 0, 1], [0, 0, -1]));
+  scaleHandles.add(scalePlaneHandles);
+
+  const scaleCenterHandles = new THREE.Object3D();
+  scaleCenterHandles.name = 'scaleCenterHandles';
+  scaleCenterHandles.add(createCenterHandle(0xffffff, 'root'));
+  scaleHandles.add(scaleCenterHandles);
 
   return scaleHandles;
 };

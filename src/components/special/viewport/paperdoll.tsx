@@ -496,8 +496,8 @@ export default class PaperDoll extends Component<AProps, AState> {
     pivots.leftArm.children[0].visible = !this.props.slim;
     pivots.leftArm.children[1].visible = this.props.slim;
 
-    pivots.rightArm.children[this.props.slim ? 1 : 0].children[2].add(pivots.rightItem);
-    pivots.leftArm.children[this.props.slim ? 1 : 0].children[2].add(pivots.leftItem);
+    pivots.rightArm.children[this.props.slim ? 1 : 0].children[1].add(pivots.rightItem);
+    pivots.leftArm.children[this.props.slim ? 1 : 0].children[1].add(pivots.leftItem);
   };
 
   updatePartToggles = () => {
@@ -512,10 +512,18 @@ export default class PaperDoll extends Component<AProps, AState> {
           : pivots[pivot];
       if (!usedPivot) continue;
 
-      const base = usedPivot.getObjectByName('base');
-      if (base) base.visible = this.state.partToggles[pivot as keyof AState['partToggles']].base;
-      const hat = usedPivot.getObjectByName('hat');
-      if (hat) hat.visible = this.state.partToggles[pivot as keyof AState['partToggles']].hat;
+      const base = usedPivot.getObjectByName('base')?.userData.materialIndex as number | undefined;
+      if (base !== undefined) {
+        const visible = this.state.partToggles[pivot as keyof AState['partToggles']].base;
+        this.doll.materials.shaded[base].visible = visible;
+        this.doll.materials.flat[base].visible = visible;
+      }
+      const hat = usedPivot.getObjectByName('hat')?.userData.materialIndex as number | undefined;
+      if (hat !== undefined) {
+        const visible = this.state.partToggles[pivot as keyof AState['partToggles']].hat;
+        this.doll.materials.shaded[hat].visible = visible;
+        this.doll.materials.flat[hat].visible = visible;
+      }
     }
   };
 
@@ -529,11 +537,15 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.doll.updatePartTexture(feature, part);
   };
 
-  updateFeature = (name: keyof Features, parts: THREE.Object3D[], deselect?: boolean) => {
+  updateFeature = (
+    name: keyof Features,
+    parts: (THREE.Object3D | undefined)[],
+    deselect?: boolean
+  ) => {
     const feature = this.props.modelFeatures[name];
 
     for (const part of Object.values(parts)) {
-      this.updateFeaturePart(feature.value, part, deselect);
+      if (part) this.updateFeaturePart(feature.value, part, deselect);
     }
   };
 
@@ -550,33 +562,36 @@ export default class PaperDoll extends Component<AProps, AState> {
   };
 
   updateHelmet = () => {
-    this.updateFeature('helmet', [this.doll.pivots.head.children[2]]);
+    this.updateFeature('helmet', [this.doll.pivots.head.getObjectByName('helmet')]);
   };
 
   updateChestplate = () => {
     this.updateFeature('chestplate', [
-      this.doll.pivots.torso.children[2],
-      this.doll.pivots.rightArm.children[2],
-      this.doll.pivots.leftArm.children[2]
+      this.doll.pivots.torso.getObjectByName('chestplate'),
+      this.doll.pivots.rightArm.children[0].getObjectByName('chestplate'),
+      this.doll.pivots.leftArm.children[0].getObjectByName('chestplate'),
+      this.doll.pivots.rightArm.children[1].getObjectByName('chestplate'),
+      this.doll.pivots.leftArm.children[1].getObjectByName('chestplate')
     ]);
   };
 
   updateLeggings = () => {
     this.updateFeature('leggings', [
-      this.doll.pivots.torso.children[3],
-      this.doll.pivots.rightLeg.children[2],
-      this.doll.pivots.leftLeg.children[2]
+      this.doll.pivots.torso.getObjectByName('leggings'),
+      this.doll.pivots.rightLeg.getObjectByName('leggings'),
+      this.doll.pivots.leftLeg.getObjectByName('leggings')
     ]);
   };
 
   updateBoots = () => {
     this.updateFeature('boots', [
-      this.doll.pivots.rightLeg.children[3],
-      this.doll.pivots.leftLeg.children[3]
+      this.doll.pivots.rightLeg.getObjectByName('boots'),
+      this.doll.pivots.leftLeg.getObjectByName('boots')
     ]);
   };
 
   updateItem: (name: keyof Features, item: THREE.Object3D) => void = async (name, item) => {
+    if (this.selectedObject === item) this.selectedObject = undefined;
     item.clear();
     const feature = this.props.modelFeatures[name];
     if (!feature.value) return;
@@ -642,8 +657,12 @@ export default class PaperDoll extends Component<AProps, AState> {
     part.userData.scaleOffset = scaleOffset;
     for (const child of this.findScaleableDescendants(part)) {
       const shape = child.userData.defaultShape as THREE.Vector3;
-      const partChange = shape.clone().add(scaleOffset).divide(shape);
-      child.scale.copy(partChange);
+      const shapeChange = shape.clone().add(scaleOffset).divide(shape);
+      child.scale.copy(shapeChange);
+
+      const pos = child.userData.defaultPosition as THREE.Vector3;
+      const posChange = pos.clone().multiply(shapeChange);
+      child.position.copy(posChange);
     }
   };
 
@@ -660,6 +679,7 @@ export default class PaperDoll extends Component<AProps, AState> {
       for (const child of part.children) {
         if (child.userData.poseable) continue;
         if (child.userData.defaultShape) children.push(child);
+        if (child.name === 'base') continue;
         for (const grandchild of child.children)
           if (grandchild.userData.defaultShape) children.push(grandchild);
       }

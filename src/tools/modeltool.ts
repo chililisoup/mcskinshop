@@ -119,10 +119,10 @@ export class Model {
     if (child.poseable) {
       part.userData.poseable = true;
       part.userData.defaultRotation = rotation;
-      part.userData.defaultPosition = part.position.clone();
       this.pivots[name] = part;
     }
 
+    part.userData.defaultPosition = part.position.clone();
     part.name = name;
 
     return part;
@@ -197,7 +197,7 @@ export class Model {
 
   createCuboidUVQuad = (x: number, y: number, w: number, h: number, mirrored: boolean) => {
     const mod = (mirrored ? 1 : 0) * w;
-    const xErr = (w > 0 ? 1 : -1) * 0.01;
+    const xErr = (w > 0 ? 1 : -1) * 0.01 * (mirrored ? -1 : 1);
     const yErr = (h > 0 ? 1 : -1) * 0.01;
 
     // prettier-ignore
@@ -375,11 +375,19 @@ export const buildItemModel = async (item: THREE.Object3D, url: string, extra?: 
   const part = new THREE.Mesh(geometry);
 
   if (extra === 'handheld') {
-    part.setRotationFromEuler(new THREE.Euler(0, -Math.PI / 2, (55 * Math.PI) / 180));
-    part.position.set(0, 4, 0.5);
-  } else part.position.set(0, 3, 1);
+    item.setRotationFromEuler(new THREE.Euler(0, -Math.PI / 2, (55 * Math.PI) / 180));
+    item.position.set(0, 4, 0.5);
+  } else {
+    item.rotation.set(0, 0, 0);
+    item.position.set(0, 3, 1);
+  }
+
+  item.userData.defaultPosition = item.position.clone();
+  item.userData.defaultRotation = item.rotation.clone();
+  delete item.userData.scaleOffset;
 
   part.userData.defaultShape = new THREE.Vector3(16, 16, 1);
+  part.userData.defaultPosition = new THREE.Vector3();
   part.userData.materialIndex = item.userData.materialIndex as number;
   part.userData.renderType = 'cutout';
   part.userData.forceOutline = true;
