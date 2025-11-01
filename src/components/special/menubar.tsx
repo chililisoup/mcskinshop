@@ -96,7 +96,13 @@ export default class MenuBar extends Component<AProps, AState> {
   render() {
     const editTabChildren =
       this.props.editTab &&
-      [<hr />].concat(this.props.editTab.map(tab => <button onClick={tab[1]}>{tab[0]}</button>));
+      [<hr key="hr" />].concat(
+        this.props.editTab.map(tab => (
+          <button onClick={tab[1]} key={tab[0]}>
+            {tab[0]}
+          </button>
+        ))
+      );
 
     const viewTabChildren = this.props.viewTab ? (
       this.props.viewTab.map(tab => (

@@ -86,8 +86,10 @@ const defaultLighting = {
 
 export default class PaperDoll extends Component<AProps, AState> {
   canvasRef: RefObject<HTMLCanvasElement | null> = React.createRef();
+  panelRef: RefObject<ViewportPanel | null> = React.createRef();
   clock = new THREE.Clock();
   doll = new ModelTool.Model('doll', skinmodel as ModelTool.ModelDefinition);
+  activeKeys: Record<string, true> = {};
 
   modeProps = {
     instance: this,
@@ -193,6 +195,8 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.startAnimationLoop();
 
     window.addEventListener('resize', this.handleWindowResize);
+    document.addEventListener('keydown', this.onKeyDown);
+    document.addEventListener('keyup', this.onKeyUp);
     this.props.manager.registerListener(this.updateThemedMaterials);
   }
 
@@ -200,6 +204,8 @@ export default class PaperDoll extends Component<AProps, AState> {
     if (!this.canvasRef.current) return;
 
     window.removeEventListener('resize', this.handleWindowResize);
+    document.removeEventListener('keydown', this.onKeyDown);
+    document.removeEventListener('keyup', this.onKeyUp);
     this.props.manager.unregisterListener(this.updateThemedMaterials);
 
     window.cancelAnimationFrame(this.requestID);
@@ -402,23 +408,21 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.grid.material.opacity = gridColor[3] / 255;
 
     if (this.hoveredOutlinePass) {
-      const outline = ImgMod.rgbaToHex(
-        ImgMod.cssVariableColor('--viewport-part-hovered-outline'),
-        false
-      );
+      const rgba = ImgMod.cssVariableColor('--viewport-part-hovered-outline');
+      const outline = ImgMod.rgbaToHex(rgba, false);
       this.hoveredOutlinePass.visibleEdgeColor.set(outline);
-      this.hoveredOutlinePass.hiddenEdgeColor.set(outline);
-      this.hoveredOutlinePass.usePatternTexture = outline === '#000000';
+      this.hoveredOutlinePass.hiddenEdgeColor.set(
+        outline === '#000000' ? 0xffffff : outline
+      );
     }
 
     if (this.selectedOutlinePass) {
-      const outline = ImgMod.rgbaToHex(
-        ImgMod.cssVariableColor('--viewport-part-selected-outline'),
-        false
-      );
+      const rgba = ImgMod.cssVariableColor('--viewport-part-selected-outline');
+      const outline = ImgMod.rgbaToHex(rgba, false);
       this.selectedOutlinePass.visibleEdgeColor.set(outline);
-      this.selectedOutlinePass.hiddenEdgeColor.set(outline);
-      this.selectedOutlinePass.usePatternTexture = outline === '#000000';
+      this.selectedOutlinePass.hiddenEdgeColor.set(
+        outline === '#000000' ? 0xffffff : outline
+      );
     }
   };
 
@@ -743,6 +747,20 @@ export default class PaperDoll extends Component<AProps, AState> {
     }
   };
 
+  onKeyDown = (e: KeyboardEvent) => {
+    if (this.activeKeys[e.key]) return;
+    this.activeKeys[e.key] = true;
+
+    if (this.canvasRef.current?.closest('.window')?.classList.contains('active')) {
+      this.state.mode?.onKeyDown?.(e);
+      this.panelRef.current?.onKeyDown(e);
+    }
+  };
+
+  onKeyUp = (e: KeyboardEvent) => {
+    delete this.activeKeys[e.key];
+  };
+
   saveRender = () => {
     if (
       !this.canvasRef.current?.parentNode ||
@@ -839,6 +857,7 @@ export default class PaperDoll extends Component<AProps, AState> {
             resetCameraPosition={this.resetCameraPosition}
             resetLighting={() => this.setState(defaultLighting)}
             addEdit={this.props.addEdit}
+            ref={this.panelRef}
           />
           {this.state.modeElement}
           <div className="bottom left">

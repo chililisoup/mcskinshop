@@ -56,21 +56,28 @@ export default abstract class AbstractMode<State = {}> extends Component<Props, 
     return () => this.settingEdit(setting, to, from);
   };
 
+  onKeyDown?: (e: KeyboardEvent) => void;
+
   renderFrame?: (delta: number) => void;
 
   abstract renderRibbon: () => React.JSX.Element;
 
+  renderToolbar?: () => React.JSX.Element;
+
   render() {
     return (
-      <span className="top left">
-        <div>
-          <label htmlFor="editorMode">Editor Mode</label>
-          <button id="editorMode" onClick={this.props.instance.nextMode}>
-            {this.name}
-          </button>
-        </div>
-        {this.renderRibbon()}
-      </span>
+      <div className="viewport-mode-ui">
+        <span className="top left">
+          <div>
+            <label htmlFor="editorMode">Editor Mode</label>
+            <button id="editorMode" onClick={this.props.instance.nextMode}>
+              {this.name}
+            </button>
+          </div>
+          {this.renderRibbon()}
+        </span>
+        {this.renderToolbar && <div className="top left">{this.renderToolbar()}</div>}
+      </div>
     );
   }
 }

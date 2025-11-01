@@ -187,6 +187,9 @@ export const colorAsHsla = (color: string) => hexToHsla(colorAsHex(color));
 
 export const cssVariableColor = (variable: string) => colorAsRgba(Util.getCssVariable(variable));
 
+export const invertRgba = (rgba: Rgba) =>
+  [255 - rgba[0], 255 - rgba[1], 255 - rgba[2], rgba[3]] as Rgba;
+
 type SerializedAbstractLayer = {
   blendInternal: GlobalCompositeOperation;
   filterInternal: string;

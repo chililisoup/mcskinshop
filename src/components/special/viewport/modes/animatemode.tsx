@@ -1,8 +1,8 @@
 import React from 'react';
 import * as THREE from 'three';
 import skinmodel from '@/skinmodel.json';
-import SettingsRibbon from '@components/basic/settingsribbon';
 import AbstractMode, { Props } from '@components/special/viewport/modes/abstractmode';
+import PropertiesList from '@components/basic/propertieslist';
 
 const ANIMATIONS = ['Walk', 'Crouch Walk'] as const;
 
@@ -79,6 +79,10 @@ export default class AnimateMode extends AbstractMode<AState> {
     this.props.instance.clearSavedPose();
     this.props.instance.savePose();
     this.props.instance.setState({ modeElement: this.props.instance.modes.pose });
+  };
+
+  onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === ' ') this.updateSetting('animate', !this.state.animate);
   };
 
   renderFrame = (delta: number) => {
@@ -174,7 +178,8 @@ export default class AnimateMode extends AbstractMode<AState> {
 
   renderRibbon = () => {
     return (
-      <SettingsRibbon
+      <PropertiesList
+        type="ribbon"
         booleanFallback={(id, value) => {
           if (id === 'explode') this.updateSetting(id, value, true);
           if (id === 'animate') this.updateSetting('animate', value);

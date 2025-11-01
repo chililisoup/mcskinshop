@@ -85,8 +85,7 @@ body {
 button,
 input,
 select,
-label:has(> img),
-label:has(> svg) {
+label:has(> *:is(img, svg)) {
   font-weight: bolder;
   background-color: var(--input);
   box-shadow: var(--box-shadow);
@@ -112,7 +111,8 @@ input[type='checkbox'] {
   height: 20px;
 }
 
-input[type='checkbox']:checked {
+input[type='checkbox']:checked,
+button.selected {
   background-color: var(--accent);
 }
 
@@ -139,8 +139,7 @@ input[type='checkbox']:checked::after {
 button:hover:enabled,
 input:hover:enabled,
 select:hover:enabled,
-label:has(> img):has(+ input:enabled):hover,
-label:has(> svg):has(+ input:enabled):hover {
+label:has(> *:is(img, svg)):has(+ input:enabled):hover {
   outline: 2px solid var(--highlight);
   outline-offset: 1px;
   cursor: pointer;
@@ -156,30 +155,22 @@ label > img {
   image-rendering: auto;
 }
 
-button > img,
-label > img,
-button > svg,
-label > svg {
+*:is(button, label) > *:is(img, svg) {
   margin: 0;
   padding: 0;
   background: none;
 }
 
-button:has(> img),
-label:has(> img),
-button:has(> svg),
-label:has(> svg) {
+*:is(button, label):has(> *:is(img, svg)) {
   display: inline-flex;
   padding: 0;
 }
 
-label:has(+ input:disabled) > img,
-label:has(+ input:disabled) > svg {
+label:has(+ input:disabled) > *:is(img, svg) {
   filter: brightness(0.4);
 }
 
-label:has(+ input:checked) > img,
-label:has(+ input:checked) > svg {
+label:has(+ input:checked) > *:is(img, svg) {
   /* https://codepen.io/sosuke/pen/Pjoqqp for #4fc3ff (--accent) */
   /* Not a permanent solution */
   filter: brightness(0) saturate(100%) invert(74%) sepia(10%) saturate(7451%) hue-rotate(172deg)
@@ -432,30 +423,24 @@ hr {
   pointer-events: initial;
 }
 
-.viewport-ui button > img,
-.viewport-ui label > img,
-.viewport-ui button > svg,
-.viewport-ui label > svg {
+.viewport-ui *:is(button, label) > *:is(img, svg) {
   width: 32px;
   height: 32px;
 }
 
-.viewport-ui button:has(> img),
-.viewport-ui label:has(> img),
-.viewport-ui button:has(> svg),
-.viewport-ui label:has(> svg) {
+.viewport-ui *:is(button, label):has(> *:is(img, svg)) {
   display: inline-flex;
   padding: 4px;
 }
 
-.viewport-ui > span {
+.viewport-mode-ui > span {
   flex-wrap: nowrap;
   pointer-events: initial;
   overflow: auto hidden;
   height: 48px;
 }
 
-.viewport-ui > span > div:first-child {
+.viewport-mode-ui > span > div:first-child {
   background-color: var(--viewport-ui);
   border-bottom-right-radius: var(--curvature);
   box-shadow: var(--box-shadow);
@@ -463,14 +448,19 @@ hr {
   margin-right: 8px;
 }
 
-.viewport-ui > span > * {
+.viewport-mode-ui > span > * {
   max-height: 28px;
   padding: 4px 0;
 }
 
-.viewport-ui > span * {
+.viewport-mode-ui > span * {
   white-space: nowrap;
   min-width: max-content;
+}
+
+.viewport-mode-ui > div {
+  margin-top: 48px;
+  margin-left: 10px;
 }
 
 .settings-ribbon {
@@ -485,10 +475,37 @@ hr {
   width: min-content;
 }
 
+.toolbar {
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar button > svg {
+  stroke-width: 8.1px;
+}
+
+.toolbar button > svg > g:first-child {
+  stroke: var(--input);
+  fill: var(--input);
+}
+
+.toolbar button > svg > g:nth-child(2) {
+  stroke: var(--input-text);
+  fill: var(--input-text);
+}
+
 .panel {
   margin: 52px 0 0;
   filter: drop-shadow(var(--drop-shadow));
   height: 100%;
+  width: 316px;
+  right: -316px;
+  transition-property: right;
+  transition-duration: 0.15s;
+}
+
+.panel.open {
+  right: 0;
 }
 
 .panel > button {
@@ -510,7 +527,7 @@ hr {
 .panel-content {
   padding: 8px;
   background-color: var(--panel);
-  width: 300px;
+  width: calc(100% - 16px);
   display: flex;
   flex-direction: column;
   gap: 12px;

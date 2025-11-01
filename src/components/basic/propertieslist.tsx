@@ -39,7 +39,8 @@ type SelectProperty = BaseProperty & {
 
 type ButtonProperty = BaseProperty & {
   type: 'button';
-  label?: string;
+  selected?: boolean;
+  label?: string | React.JSX.Element;
   onClick?: () => void;
 };
 
@@ -63,6 +64,8 @@ type SectionProperty = BaseProperty & {
   properties: Property[];
 };
 
+type DividerProperty = { id: string; type: 'divider'; siblings?: Property[] };
+
 export type Property =
   | RangeProperty
   | BoolProperty
@@ -70,7 +73,8 @@ export type Property =
   | ButtonProperty
   | FileProperty
   | ColorProperty
-  | SectionProperty;
+  | SectionProperty
+  | DividerProperty;
 
 type AProps = {
   numberFallback?: (id: string, value: number) => void;
@@ -78,6 +82,7 @@ type AProps = {
   stringFallback?: (id: string, value: string) => void;
   buttonFallback?: (id: string) => void;
   fileFallback?: (id: string, value: File, name: string) => void;
+  type?: 'list' | 'ribbon' | 'toolbar';
   properties: Property[];
 };
 
@@ -97,6 +102,7 @@ export default class PropertiesList extends Component<AProps> {
               property.onChange ?? (value => this.props.numberFallback?.(property.id, value))
             }
             id={id}
+            key={property.id}
             value={property.value}
             min={property.min}
             max={property.max}
@@ -108,9 +114,10 @@ export default class PropertiesList extends Component<AProps> {
         ];
       case 'checkbox':
         return [
-          <span>
+          this.props.type === 'ribbon' ? (
             <input
               id={id}
+              key={property.id}
               type="checkbox"
               checked={property.value}
               disabled={property.disabled}
@@ -120,12 +127,28 @@ export default class PropertiesList extends Component<AProps> {
                   : this.props.booleanFallback?.(property.id, e.target.checked)
               }
             />
-          </span>
+          ) : (
+            <span key={property.id}>
+              <input
+                id={id}
+                type="checkbox"
+                checked={property.value}
+                disabled={property.disabled}
+                onChange={e =>
+                  property.onChange
+                    ? property.onChange(e.target.checked)
+                    : this.props.booleanFallback?.(property.id, e.target.checked)
+                }
+              />
+            </span>
+          )
         ];
+
       case 'select':
         return [
           <select
             id={id}
+            key={property.id}
             value={property.value}
             disabled={property.disabled}
             onChange={e =>
@@ -159,8 +182,11 @@ export default class PropertiesList extends Component<AProps> {
         return [
           <button
             id={id}
+            key={property.id}
             disabled={property.disabled}
             onClick={property.onClick ?? (() => this.props.buttonFallback?.(property.id))}
+            className={property.selected ? 'selected' : ''}
+            title={property.name}
           >
             {property.label ?? property.name}
           </button>
@@ -169,6 +195,7 @@ export default class PropertiesList extends Component<AProps> {
         return [
           <FileInput
             id={id}
+            key={property.id}
             accept={property.accept}
             disabled={property.disabled}
             callback={
@@ -183,6 +210,7 @@ export default class PropertiesList extends Component<AProps> {
         return [
           <ColorPicker
             id={id}
+            key={property.id}
             disabled={property.disabled}
             default={property.value}
             alpha={property.alpha}
@@ -194,7 +222,7 @@ export default class PropertiesList extends Component<AProps> {
         return property.disabled
           ? []
           : [
-              <Dropdown title={property.name}>
+              <Dropdown title={property.name} key={property.id}>
                 <PropertiesList
                   numberFallback={this.props.numberFallback}
                   booleanFallback={this.props.booleanFallback}
@@ -206,6 +234,8 @@ export default class PropertiesList extends Component<AProps> {
                 <hr />
               </Dropdown>
             ];
+      case 'divider':
+        return [<hr key={property.id} />];
     }
   }
 
@@ -224,42 +254,69 @@ export default class PropertiesList extends Component<AProps> {
     return `${property.id}-${property.type}-${this.key}`;
   };
 
-  isLabeled = (property: Property) => {
+  isLabeled = (
+    property: Property
+  ): property is Exclude<Property, { type: 'divider' }> & boolean => {
     return (
+      property.type !== 'divider' &&
       !property.unlabeled &&
       property.type !== 'section' &&
-      ((property.type !== 'button' && property.type !== 'file') || property.label)
+      ((property.type !== 'button' && property.type !== 'file') ||
+        typeof property.label === 'string')
     );
   };
 
   addProperty = (property: Property): React.JSX.Element | React.JSX.Element[] => {
     const id = this.getId(property);
     const labeled = this.isLabeled(property);
+    const input = this.getInputSet(property, id);
 
-    return (
-      <tr key={property.id}>
-        {labeled && (
-          <th scope="row">
+    switch (this.props.type) {
+      case 'ribbon':
+      case 'toolbar':
+        return labeled ? (
+          <span key={`${property.id}-span`}>
             <label htmlFor={id}>{property.name}</label>
-          </th>
-        )}
-        <td colSpan={labeled ? 1 : 2}>{this.getInputSet(property, id)}</td>
-      </tr>
-    );
+            {input}
+          </span>
+        ) : (
+          input
+        );
+      default:
+        return (
+          <tr key={`${property.id}-row`}>
+            {labeled && (
+              <th scope="row">
+                <label htmlFor={id}>{property.name}</label>
+              </th>
+            )}
+            <td colSpan={labeled ? 1 : 2}>{input}</td>
+          </tr>
+        );
+    }
   };
 
   render() {
-    return (
-      <table
-        className="properties-list"
-        draggable={true}
-        onDragStart={e => {
-          e.stopPropagation();
-          e.preventDefault();
-        }}
-      >
-        <tbody>{this.props.properties.map(this.addProperty)}</tbody>
-      </table>
-    );
+    const properties = this.props.properties.map(this.addProperty);
+
+    switch (this.props.type) {
+      case 'ribbon':
+        return <span className="settings-ribbon">{properties}</span>;
+      case 'toolbar':
+        return <div className="toolbar">{properties}</div>;
+      default:
+        return (
+          <table
+            className="properties-list"
+            draggable={true}
+            onDragStart={e => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+          >
+            <tbody>{properties}</tbody>
+          </table>
+        );
+    }
   }
 }

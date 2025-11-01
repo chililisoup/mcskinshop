@@ -124,14 +124,14 @@ export const createPlaneHandle = (
   return handle;
 };
 
-export const createCenterHandle = (color: THREE.ColorRepresentation, name: string) => {
+export const createCenterHandle = (color: THREE.ColorRepresentation, name: string, radius?: number) => {
   const handle = new THREE.Mesh(
-    new THREE.IcosahedronGeometry(1.5, 3),
+    new THREE.IcosahedronGeometry(radius ?? 1.5, 3),
     new THREE.MeshBasicMaterial({
       color: color,
       depthTest: false,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.25,
       side: THREE.DoubleSide
     })
   );
@@ -155,6 +155,11 @@ export const createRotationHandles = () => {
   rotationAxisHandles.add(createRotationAxisHandle(0x0000ff, 'z', [0, 0, 1], [0, 0, 0]));
   rotationHandles.add(rotationAxisHandles);
 
+  const rotationCenterHandles = new THREE.Object3D();
+  rotationCenterHandles.name = 'rotationCenterHandles';
+  rotationCenterHandles.add(createCenterHandle(0xffffff, 'root', 2.5));
+  rotationHandles.add(rotationCenterHandles);
+
   return rotationHandles;
 };
 
@@ -175,6 +180,11 @@ export const createPositionHandles = () => {
   positionPlaneHandles.add(createPlaneHandle(0x00ff00, 'y', [0, 1, 0], [1, 0, -1]));
   positionPlaneHandles.add(createPlaneHandle(0x0000ff, 'z', [0, 0, 1], [0, 0, -1]));
   positionHandles.add(positionPlaneHandles);
+
+  const positionCenterHandles = new THREE.Object3D();
+  positionCenterHandles.name = 'positionCenterHandles';
+  positionCenterHandles.add(createCenterHandle(0xffffff, 'root'));
+  positionHandles.add(positionCenterHandles);
 
   return positionHandles;
 };

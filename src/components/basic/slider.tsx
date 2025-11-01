@@ -183,7 +183,10 @@ export default class Slider extends Component<AProps, AState> {
               }}
               onFocus={e => e.target.select()}
               onBlur={() => this.setFromText()}
-              onKeyDown={e => e.key === 'Enter' && this.setFromText()}
+              onKeyDown={e => {
+                if (e.key === 'Enter') this.setFromText();
+                e.stopPropagation();
+              }}
             />
           )}
         </div>
