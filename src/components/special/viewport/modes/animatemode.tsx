@@ -2,7 +2,7 @@ import React from 'react';
 import * as THREE from 'three';
 import skinmodel from '@/skinmodel.json';
 import SettingsRibbon from '@components/basic/settingsribbon';
-import AbstractMode, { Props } from './abstractmode';
+import AbstractMode, { Props } from '@components/special/viewport/modes/abstractmode';
 
 const ANIMATIONS = ['Walk', 'Crouch Walk'] as const;
 

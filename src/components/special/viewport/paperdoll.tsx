@@ -19,6 +19,12 @@ import PoseMode from '@components/special/viewport/modes/posemode';
 import ViewportPanel from '@components/special/viewport/viewportpanel';
 import AbstractMode from './modes/abstractmode';
 
+export type PoseEntry = {
+  rotation?: THREE.EulerTuple;
+  position?: THREE.Vector3Tuple;
+  scaleOffset?: THREE.Vector3Tuple;
+};
+
 type AProps = {
   skin: string;
   slim: boolean;
@@ -367,7 +373,10 @@ export default class PaperDoll extends Component<AProps, AState> {
     const arrowGeometry = new THREE.BufferGeometry();
     arrowGeometry.setAttribute(
       'position',
-      new THREE.BufferAttribute(new Float32Array([-1.5, 0, 0, 1.5, 0, 0, 0, 0, 1.5 * Math.sqrt(3)]), 3)
+      new THREE.BufferAttribute(
+        new Float32Array([-1.5, 0, 0, 1.5, 0, 0, 0, 0, 1.5 * Math.sqrt(3)]),
+        3
+      )
     );
     this.gridArrow.geometry = arrowGeometry;
     this.gridArrow.material = gridMaterial;
@@ -393,13 +402,21 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.grid.material.opacity = gridColor[3] / 255;
 
     if (this.hoveredOutlinePass) {
-      const outline = ImgMod.rgbaToHex(ImgMod.cssVariableColor('--viewport-part-hovered-outline'), false);
+      const outline = ImgMod.rgbaToHex(
+        ImgMod.cssVariableColor('--viewport-part-hovered-outline'),
+        false
+      );
+      this.hoveredOutlinePass.visibleEdgeColor.set(outline);
       this.hoveredOutlinePass.hiddenEdgeColor.set(outline);
       this.hoveredOutlinePass.usePatternTexture = outline === '#000000';
     }
 
     if (this.selectedOutlinePass) {
-      const outline = ImgMod.rgbaToHex(ImgMod.cssVariableColor('--viewport-part-selected-outline'), false);
+      const outline = ImgMod.rgbaToHex(
+        ImgMod.cssVariableColor('--viewport-part-selected-outline'),
+        false
+      );
+      this.selectedOutlinePass.visibleEdgeColor.set(outline);
       this.selectedOutlinePass.hiddenEdgeColor.set(outline);
       this.selectedOutlinePass.usePatternTexture = outline === '#000000';
     }
@@ -566,7 +583,7 @@ export default class PaperDoll extends Component<AProps, AState> {
 
     const model = await ModelTool.buildItemModel(item, feature.value, feature.extra);
     if (!model) return;
-    
+
     item.add(model);
     this.updateFeature(name, item.children);
     this.propagateShade(item);
@@ -577,45 +594,56 @@ export default class PaperDoll extends Component<AProps, AState> {
     if (left ?? true) this.updateItem('leftItem', this.doll.pivots.leftItem);
   };
 
+  buildPoseEntry = (part: THREE.Object3D) => {
+    const entry: PoseEntry = {};
+    if (!part.rotation.equals(part.userData.defaultRotation as THREE.Euler))
+      entry.rotation = part.rotation.toArray();
+    if (!part.position.equals(part.userData.defaultPosition as THREE.Vector3Like))
+      entry.position = part.position.toArray();
+    const scaleOffset = part.userData.scaleOffset as THREE.Vector3 | undefined;
+    if (scaleOffset && !scaleOffset.equals(new THREE.Vector3()))
+      entry.scaleOffset = scaleOffset.toArray();
+    return entry;
+  };
+
+  applyPoseEntry = (part: THREE.Object3D, entry?: PoseEntry, additive?: boolean) => {
+    entry ??= {};
+    if (entry.position) part.position.fromArray(entry.position);
+    else if (!additive) part.position.copy(part.userData.defaultPosition as THREE.Vector3Like);
+    if (entry.rotation) part.setRotationFromEuler(new THREE.Euler().fromArray(entry.rotation));
+    else if (!additive) part.setRotationFromEuler(part.userData.defaultRotation as THREE.Euler);
+    if (entry.scaleOffset)
+      this.applyScaleOffset(part, new THREE.Vector3().fromArray(entry.scaleOffset));
+    else if (!additive) this.applyScaleOffset(part, new THREE.Vector3());
+  };
+
   resetPose = () => {
-    for (const pivot of Object.values(this.doll.pivots)) {
-      pivot.setRotationFromEuler(pivot.userData.defaultRotation as THREE.Euler);
-      pivot.position.copy(pivot.userData.defaultPosition as THREE.Vector3Like);
-      // pivot.scale.copy(pivot.userData.defaultScale as THREE.Vector3Like);
-    }
+    for (const pivot of Object.values(this.doll.pivots)) this.applyPoseEntry(pivot);
   };
 
   savePose = () => {
     for (const pivot of Object.values(this.doll.pivots)) {
-      if (!pivot.rotation.equals(pivot.userData.defaultRotation as THREE.Euler))
-        pivot.userData.savedRotation = pivot.rotation.clone();
-      if (!pivot.position.equals(pivot.userData.defaultPosition as THREE.Vector3Like))
-        pivot.userData.savedPosition = pivot.position.clone();
-      // if (!pivot.scale.equals(pivot.userData.defaultScale as THREE.Vector3Like))
-      //   pivot.userData.savedScale = pivot.scale.clone();
+      const entry = this.buildPoseEntry(pivot);
+      if (Object.keys(entry).length > 0) pivot.userData.savedPoseEntry = entry;
+      else delete pivot.userData.savedPoseEntry;
     }
   };
 
   loadPose = () => {
-    for (const pivot of Object.values(this.doll.pivots)) {
-      if (!pivot.userData.savedRotation)
-        pivot.setRotationFromEuler(pivot.userData.defaultRotation as THREE.Euler);
-      else pivot.setRotationFromEuler(pivot.userData.savedRotation as THREE.Euler);
-
-      if (!pivot.userData.savedPosition)
-        pivot.position.copy(pivot.userData.defaultPosition as THREE.Vector3Like);
-      else pivot.position.copy(pivot.userData.savedPosition as THREE.Vector3Like);
-
-      // if (!pivot.userData.savedScale)
-      //   pivot.scale.copy(pivot.userData.defaultScale as THREE.Vector3Like);
-      // else pivot.scale.copy(pivot.userData.savedScale as THREE.Vector3Like);
-    }
+    for (const pivot of Object.values(this.doll.pivots))
+      this.applyPoseEntry(pivot, pivot.userData.savedPoseEntry as PoseEntry | undefined);
   };
 
   clearSavedPose = () => {
-    for (const pivot of Object.values(this.doll.pivots)) {
-      delete pivot.userData.savedPosition;
-      delete pivot.userData.savedRotation;
+    for (const pivot of Object.values(this.doll.pivots)) delete pivot.userData.savedPoseEntry;
+  };
+
+  applyScaleOffset = (part: THREE.Object3D, scaleOffset: THREE.Vector3) => {
+    part.userData.scaleOffset = scaleOffset;
+    for (const child of this.findScaleableDescendants(part)) {
+      const shape = child.userData.defaultShape as THREE.Vector3;
+      const partChange = shape.clone().add(scaleOffset).divide(shape);
+      child.scale.copy(partChange);
     }
   };
 
@@ -623,6 +651,21 @@ export default class PaperDoll extends Component<AProps, AState> {
     if (part.userData.poseable) return part;
     if (part.parent) return this.findSelectableAncestor(part.parent);
     return false;
+  };
+
+  findScaleableDescendants = (part: THREE.Object3D) => {
+    const children = [];
+
+    if (!children.length) {
+      for (const child of part.children) {
+        if (child.userData.poseable) continue;
+        if (child.userData.defaultShape) children.push(child);
+        for (const grandchild of child.children)
+          if (grandchild.userData.defaultShape) children.push(grandchild);
+      }
+    }
+
+    return children;
   };
 
   deselect = () => {

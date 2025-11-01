@@ -165,17 +165,13 @@ export const createScaleHandles = () => {
 
   const scaleAxisHandles = new THREE.Object3D();
   scaleAxisHandles.name = 'scaleAxisHandles';
-  scaleAxisHandles.add(createAxisHandle(0xff0000, 'x', [1, 0, 0], [0, 0, -1], 'block'));
-  scaleAxisHandles.add(createAxisHandle(0x00ff00, 'y', [0, 1, 0], [0, 0, 0], 'block'));
-  scaleAxisHandles.add(createAxisHandle(0x0000ff, 'z', [0, 0, 1], [1, 0, 0], 'block'));
+  scaleAxisHandles.add(createAxisHandle(0xff0000, '+x', [1, 0, 0], [0, 0, -1], 'block'));
+  scaleAxisHandles.add(createAxisHandle(0x00ff00, '+y', [0, 1, 0], [0, 0, 0], 'block'));
+  scaleAxisHandles.add(createAxisHandle(0x0000ff, '+z', [0, 0, 1], [1, 0, 0], 'block'));
+  scaleAxisHandles.add(createAxisHandle(0xff0000, '-x', [-1, 0, 0], [0, 0, 1], 'block'));
+  scaleAxisHandles.add(createAxisHandle(0x00ff00, '-y', [0, -1, 0], [0, 0, 2], 'block'));
+  scaleAxisHandles.add(createAxisHandle(0x0000ff, '-z', [0, 0, -1], [-1, 0, 0], 'block'));
   scaleHandles.add(scaleAxisHandles);
-
-  const scalePlaneHandles = new THREE.Object3D();
-  scalePlaneHandles.name = 'scalePlaneHandles';
-  scalePlaneHandles.add(createPlaneHandle(0xff0000, 'x', [1, 0, 0], [0, 1, 0]));
-  scalePlaneHandles.add(createPlaneHandle(0x00ff00, 'y', [0, 1, 0], [1, 0, -1]));
-  scalePlaneHandles.add(createPlaneHandle(0x0000ff, 'z', [0, 0, 1], [0, 0, -1]));
-  scaleHandles.add(scalePlaneHandles);
 
   return scaleHandles;
 };

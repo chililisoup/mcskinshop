@@ -2,15 +2,10 @@ import React from 'react';
 import * as THREE from 'three';
 import * as Util from '@tools/util';
 import SettingsRibbon from '@components/basic/settingsribbon';
-import AbstractMode, { Props } from './abstractmode';
+import AbstractMode, { Props } from '@components/special/viewport/modes/abstractmode';
+import { PoseEntry } from '@components/special/viewport/paperdoll';
 
 const POSE_MODES = ['Rotation', 'Position', 'Scale'] as const;
-
-type PoseEntry = {
-  rotation?: THREE.EulerTuple;
-  position?: THREE.Vector3Tuple;
-  scale?: THREE.Vector3Tuple;
-};
 
 type AState = {
   control: 'Simple' | 'Controlled';
@@ -31,6 +26,7 @@ export default class PoseMode extends AbstractMode<AState> {
   oldHandlePos?: THREE.Vector3;
   hoveredObject?: THREE.Object3D;
   selectedStartMatrix?: THREE.Matrix4;
+  selectedStartScaleOffset?: THREE.Vector3;
   selectedStartWorldPos?: THREE.Vector3;
   posePivot?: THREE.Vector2Like;
   queuedPoseEdit?: THREE.Vector3;
@@ -311,6 +307,9 @@ export default class PoseMode extends AbstractMode<AState> {
       if (!this.handle) return;
 
       this.selectedStartMatrix ??= this.props.instance.selectedObject.matrix.clone();
+      this.selectedStartScaleOffset ??=
+        (this.props.instance.selectedObject.userData.scaleOffset as THREE.Vector3 | undefined) ??
+        new THREE.Vector3();
       this.selectedStartWorldPos ??= this.props.instance.selectedObject.getWorldPosition(
         new THREE.Vector3()
       );
@@ -321,86 +320,69 @@ export default class PoseMode extends AbstractMode<AState> {
       const norm = (this.handle.userData.normal as THREE.Vector3).clone();
       if (this.state.space === 'Local') norm.applyQuaternion(worldQuat);
 
-      let change;
+      const start = this.clipToWorldSpace(this.mousePos, 0.5 * camMult);
+      const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9 * camMult)
+        .sub(start)
+        .normalize();
+      start.sub(this.selectedStartWorldPos);
 
-      if (this.handle.parent?.name === 'scaleAxisHandles') {
-        const start = this.clipToWorldSpace(this.mousePos, 0.5 * camMult);
-        const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9 * camMult)
-          .sub(start)
-          .normalize();
-        start.sub(this.selectedStartWorldPos);
+      const line = new THREE.Line3(start, start.clone().addScaledVector(lineDirection, 500));
 
-        const line = new THREE.Line3(start, start.clone().addScaledVector(lineDirection, 500));
+      const plane = new THREE.Plane();
+      plane.setFromCoplanarPoints(
+        new THREE.Vector3(),
+        this.clipToWorldSpace(this.mousePos, clipZ).sub(this.selectedStartWorldPos),
+        norm
+      );
 
-        const plane = new THREE.Plane();
-        plane.setFromCoplanarPoints(
-          new THREE.Vector3(),
-          this.clipToWorldSpace(this.mousePos, clipZ).sub(this.selectedStartWorldPos),
-          norm
-        );
+      const intersect = plane.intersectLine(line, new THREE.Vector3());
+      if (!intersect) return;
 
-        const intersect = plane.intersectLine(line, new THREE.Vector3());
-        if (!intersect) return;
+      const axis = new THREE.Line3(new THREE.Vector3(), norm);
+      axis.closestPointToPoint(intersect, false, intersect);
 
-        const axis = new THREE.Line3(new THREE.Vector3(), norm);
-        axis.closestPointToPoint(intersect, false, intersect);
-
-        if (!this.oldHandlePos) {
-          this.oldHandlePos = intersect;
-          return;
-        }
-
-        change = intersect.sub(this.oldHandlePos);
-
-        if (this.activeKeys.Control) {
-          const length = change.length();
-          change.normalize().multiplyScalar(Math.round(length));
-        }
-      } else {
-        const start = this.clipToWorldSpace(this.mousePos, 0.5 * camMult);
-        const lineDirection = this.clipToWorldSpace(this.mousePos, 0.9 * camMult)
-          .sub(start)
-          .normalize();
-        start.sub(this.selectedStartWorldPos);
-
-        const line = new THREE.Line3(start, start.clone().addScaledVector(lineDirection, 500));
-
-        const plane = new THREE.Plane(norm);
-
-        const intersect = plane.intersectLine(line, new THREE.Vector3());
-        if (!intersect) return;
-
-        if (!this.oldHandlePos) {
-          this.oldHandlePos = intersect;
-          return;
-        }
-
-        change = intersect.sub(this.oldHandlePos);
-
-        if (this.activeKeys.Control) {
-          if (this.state.space === 'Local') {
-            change.applyQuaternion(worldQuat.clone().invert());
-            change.round();
-            change.applyQuaternion(worldQuat);
-          } else change.round();
-        }
+      if (!this.oldHandlePos) {
+        this.oldHandlePos = intersect;
+        return;
       }
+
+      const change = intersect.sub(this.oldHandlePos);
+
+      if (this.activeKeys.Control) {
+        const length = change.length();
+        change.normalize().multiplyScalar(Math.round(length));
+      }
+
+      const reverse = this.handle.name.startsWith('-');
+      if (reverse) change.negate();
+
       change.add(this.props.instance.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
       this.props.instance.selectedObject.parent.worldToLocal(change);
 
-      for (const part of this.findScaleableDescendants(this.props.instance.selectedObject)) {
-        const shape = part.userData.defaultShape as THREE.Vector3;
-        const partChange = shape.clone().add(change).divide(shape);
-        part.scale.copy(partChange);
-      }
-    } else {
-      // Simple mode
-      const movement = this.clipToWorldSpace(this.mousePos, clipZ);
-      movement.sub(this.clipToWorldSpace(this.oldMousePos, clipZ));
-      movement.add(this.props.instance.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
-      this.props.instance.selectedObject.parent.worldToLocal(movement);
+      const scaleOffset = this.selectedStartScaleOffset.clone().add(change);
+      this.props.instance.applyScaleOffset(this.props.instance.selectedObject, scaleOffset);
 
-      this.props.instance.selectedObject.position.add(movement);
+      if (this.activeKeys.Shift)
+        this.props.instance.selectedObject.position.setFromMatrixPosition(this.selectedStartMatrix);
+      else
+        this.props.instance.selectedObject.position.copy(
+          new THREE.Vector3()
+            .setFromMatrixPosition(this.selectedStartMatrix)
+            .add(change.clone().multiplyScalar(reverse ? -0.5 : 0.5))
+        );
+    } else {
+      // Simple mode (this one is not very good)
+      const scaleOffset =
+        (this.props.instance.selectedObject.userData.scaleOffset as THREE.Vector3 | undefined) ??
+        new THREE.Vector3();
+      
+      const change = this.clipToWorldSpace(this.mousePos, clipZ);
+      change.sub(this.clipToWorldSpace(this.oldMousePos, clipZ));
+      change.add(this.props.instance.selectedObject.parent.getWorldPosition(new THREE.Vector3()));
+      this.props.instance.selectedObject.parent.worldToLocal(change);
+      scaleOffset.add(change);
+
+      this.props.instance.applyScaleOffset(this.props.instance.selectedObject, scaleOffset);
     }
   };
 
@@ -536,21 +518,6 @@ export default class PoseMode extends AbstractMode<AState> {
     }
   };
 
-  findScaleableDescendants = (part: THREE.Object3D) => {
-    const children = [];
-
-    if (!children.length) {
-      for (const child of part.children) {
-        if (child.userData.poseable) continue;
-        if (child.userData.defaultShape) children.push(child);
-        for (const grandchild of child.children)
-          if (grandchild.userData.defaultShape) children.push(grandchild);
-      }
-    }
-
-    return children;
-  };
-
   filterOutline = (part: THREE.Object3D) => {
     let children: THREE.Object3D[] = [];
 
@@ -558,7 +525,6 @@ export default class PoseMode extends AbstractMode<AState> {
       part.children.forEach(child => children.push(...this.filterOutline(child)));
     } else if (
       (part.userData.renderType !== 'cutout' || part.userData.forceOutline) &&
-      !part.userData.poseable &&
       part.visible &&
       !part.userData.noOutline
     )
@@ -594,14 +560,7 @@ export default class PoseMode extends AbstractMode<AState> {
     const poseJson: Record<string, PoseEntry> = {};
 
     for (const [name, pivot] of Object.entries(this.props.instance.doll.pivots)) {
-      const entry: PoseEntry = {};
-      if (!pivot.rotation.equals(pivot.userData.defaultRotation as THREE.Euler))
-        entry.rotation = pivot.rotation.toArray();
-      if (!pivot.position.equals(pivot.userData.defaultPosition as THREE.Vector3Like))
-        entry.position = pivot.position.toArray();
-      if (!pivot.scale.equals(pivot.userData.defaultScale as THREE.Vector3Like))
-        entry.scale = pivot.scale.toArray();
-
+      const entry = this.props.instance.buildPoseEntry(pivot);
       if (Object.keys(entry).length > 0) poseJson[name] = entry;
     }
 
@@ -609,16 +568,8 @@ export default class PoseMode extends AbstractMode<AState> {
   };
 
   loadPoseJson = (poseJson: Record<string, PoseEntry> = {}) => {
-    this.props.instance.resetPose();
-
-    for (const [name, transform] of Object.entries(poseJson)) {
-      const pivot = this.props.instance.doll.pivots[name];
-      if (!pivot) continue;
-
-      if (transform.position) pivot.position.fromArray(transform.position);
-      if (transform.rotation)
-        pivot.setRotationFromEuler(new THREE.Euler().fromArray(transform.rotation));
-    }
+    for (const [name, pivot] of Object.entries(this.props.instance.doll.pivots))
+      this.props.instance.applyPoseEntry(pivot, poseJson[name]);
   };
 
   savePoseJson = () => {
@@ -709,15 +660,11 @@ export default class PoseMode extends AbstractMode<AState> {
     reader.readAsText(file);
   };
 
-  poseUndo = (obj: THREE.Object3D, start: THREE.Object3D) => {
-    const redoStart = new THREE.Object3D();
-    redoStart.setRotationFromEuler(obj.rotation);
-    redoStart.position.copy(obj.position);
+  poseUndo = (part: THREE.Object3D, start: PoseEntry) => {
+    const redoStart = this.props.instance.buildPoseEntry(part);
 
-    const redoProphecy = () => this.poseUndo(obj, redoStart);
-    obj.setRotationFromEuler(start.rotation);
-    obj.position.copy(start.position);
-    obj.scale.copy(start.scale);
+    const redoProphecy = () => this.poseUndo(part, redoStart);
+    this.props.instance.applyPoseEntry(part, start);
 
     return redoProphecy;
   };
@@ -726,10 +673,7 @@ export default class PoseMode extends AbstractMode<AState> {
     if (!this.props.instance.selectedObject) return;
 
     const obj = this.props.instance.selectedObject;
-
-    const start = new THREE.Object3D();
-    start.setRotationFromEuler(obj.rotation);
-    start.position.copy(obj.position);
+    const start = this.props.instance.buildPoseEntry(obj);
 
     suffix = suffix === undefined ? '' : ' ' + suffix;
 
@@ -801,6 +745,7 @@ export default class PoseMode extends AbstractMode<AState> {
     this.oldMousePos = undefined;
     this.oldHandlePos = undefined;
     this.selectedStartMatrix = undefined;
+    this.selectedStartScaleOffset = undefined;
     this.selectedStartWorldPos = undefined;
     this.posePivot = undefined;
     this.queuedPoseEdit = undefined;
@@ -830,7 +775,7 @@ export default class PoseMode extends AbstractMode<AState> {
         obj.position.copy(obj.userData.defaultPosition as THREE.Vector3Like);
         break;
       case 'Scale':
-      // obj.scale.copy(obj.userData.defaultScale as THREE.Vector3Like);
+        this.props.instance.applyScaleOffset(obj, new THREE.Vector3());
     }
 
     e.preventDefault();
@@ -916,7 +861,7 @@ export default class PoseMode extends AbstractMode<AState> {
             name: 'Save New Pose',
             id: 'savePose',
             type: 'button',
-            onClick: this.props.instance.savePose
+            onClick: this.savePoseJson
           },
           {
             name: 'Download Pose',

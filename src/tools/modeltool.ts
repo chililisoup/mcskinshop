@@ -366,21 +366,18 @@ export const buildItemModel = async (item: THREE.Object3D, url: string, extra?: 
     iter++;
   }
 
+  const scale = extra === 'handheld' ? 0.85 : 0.55;
   const geometry = new THREE.BufferGeometry();
   geometry.setIndex(indices);
-  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices.map(num => num * scale)), 3));
   geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
 
   const part = new THREE.Mesh(geometry);
 
   if (extra === 'handheld') {
     part.setRotationFromEuler(new THREE.Euler(0, -Math.PI / 2, (55 * Math.PI) / 180));
-    part.scale.set(0.85, 0.85, 0.85);
     part.position.set(0, 4, 0.5);
-  } else {
-    part.scale.set(0.55, 0.55, 0.55);
-    part.position.set(0, 3, 1);
-  }
+  } else part.position.set(0, 3, 1);
 
   part.userData.defaultShape = new THREE.Vector3(16, 16, 1);
   part.userData.materialIndex = item.userData.materialIndex as number;
