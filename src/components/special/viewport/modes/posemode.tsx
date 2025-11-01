@@ -39,7 +39,7 @@ export default class PoseMode extends AbstractMode<AState> {
 
       this.state = {
         control: 'Controlled',
-        mode: 'Position',
+        mode: 'Rotation',
         space: 'Local',
         savedPoses: savedPoses,
         selectedPose: savedPoses[0]
@@ -533,7 +533,7 @@ export default class PoseMode extends AbstractMode<AState> {
 
     if (part.children.length > 0)
       part.children.forEach(child => children.push(...this.filterOutline(child)));
-    
+
     if (
       (part.children.length === 0 || part.name === 'base') &&
       (part.userData.renderType !== 'cutout' || part.userData.forceOutline) &&
