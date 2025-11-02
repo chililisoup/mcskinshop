@@ -63,6 +63,15 @@ export const isKeyOfObject = <T extends object>(key: unknown, obj: T): key is ke
 export const includes = <T, U extends T>(array: readonly U[] | U[], value: T): value is U =>
   (array as unknown[]).includes(value);
 
+// https://stackoverflow.com/a/16436975
+export const arraysEqual = (first: unknown[], second: unknown[]) => {
+  if (first === second) return true;
+  if (first === null || second === null) return false;
+  if (first.length !== second.length) return false;
+  for (let i = 0; i < first.length; ++i) if (first[i] !== second[i]) return false;
+  return true;
+};
+
 export const randomKey = () => Math.random().toString(16).slice(2);
 
 export const clamp = (value: number, min: number, max: number) =>

@@ -11,7 +11,7 @@ type AProps = {
   controlled?: boolean;
   linked?: boolean;
   unlink?: () => void;
-  update?: (color: string) => void;
+  update?: (color: string, finished: boolean) => void;
 };
 
 type AState = {
@@ -63,7 +63,7 @@ export default class ColorPicker extends Component<AProps, AState> {
       color: color,
       hex: hex ?? ImgMod.hslaToHex(hsla)
     });
-    if (this.props.update) this.props.update(color);
+    this.props.update?.(color, false);
   };
 
   updateHue = (hue: number) => {
@@ -108,6 +108,9 @@ export default class ColorPicker extends Component<AProps, AState> {
     });
   };
 
+  inputValue = (e: React.FormEvent<HTMLInputElement>) =>
+    Number((e.target as HTMLInputElement).value);
+
   render() {
     return (
       <div className="color-picker-parent">
@@ -127,7 +130,12 @@ export default class ColorPicker extends Component<AProps, AState> {
           onMouseDown={this.togglePicker}
         />
         {this.state.open && (
-          <PopUp close={() => this.setState({ open: false })}>
+          <PopUp
+            close={() => {
+              this.setState({ open: false });
+              this.props.update?.(this.state.color, true);
+            }}
+          >
             <div
               className={
                 'color-picker ' + (this.state.bottom ? 'color-picker-bottom' : 'color-picker-top')
@@ -149,7 +157,7 @@ export default class ColorPicker extends Component<AProps, AState> {
                   max={360}
                   step={1}
                   type="range"
-                  onInput={e => this.updateHue(Number((e.target as HTMLInputElement).value))}
+                  onInput={e => this.updateHue(this.inputValue(e))}
                   disabled={this.props.linked}
                   style={{
                     background:
@@ -170,7 +178,7 @@ export default class ColorPicker extends Component<AProps, AState> {
                   max={100}
                   step={1}
                   type="range"
-                  onInput={e => this.updateSaturation(Number((e.target as HTMLInputElement).value))}
+                  onInput={e => this.updateSaturation(this.inputValue(e))}
                   disabled={this.props.linked}
                   style={{
                     background:
@@ -186,7 +194,7 @@ export default class ColorPicker extends Component<AProps, AState> {
                   max={100}
                   step={1}
                   type="range"
-                  onInput={e => this.updateLightness(Number((e.target as HTMLInputElement).value))}
+                  onInput={e => this.updateLightness(this.inputValue(e))}
                   disabled={this.props.linked}
                   style={{
                     background:
@@ -204,7 +212,7 @@ export default class ColorPicker extends Component<AProps, AState> {
                     max={1}
                     step={0.01}
                     type="range"
-                    onInput={e => this.updateAlpha(Number((e.target as HTMLInputElement).value))}
+                    onInput={e => this.updateAlpha(this.inputValue(e))}
                     disabled={this.props.linked}
                     style={{
                       backgroundImage:
@@ -220,6 +228,7 @@ export default class ColorPicker extends Component<AProps, AState> {
                     placeholder="#ffffff"
                     value={this.state.hex}
                     onChange={e => this.setFromString(e.target.value)}
+                    onKeyDown={e => e.stopPropagation()}
                     disabled={this.props.linked}
                   />
                 </span>

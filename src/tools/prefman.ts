@@ -296,7 +296,7 @@ export class Manager {
         root.style.setProperty('--container', theme.mantle);
         root.style.setProperty('--container-selected', theme.base);
         root.style.setProperty('--container-selected-outline', theme.sky);
-        root.style.setProperty('--container-alt', theme.mantle);
+        root.style.setProperty('--container-alt', theme.base);
         root.style.setProperty('--container-alt-text', theme.text);
         root.style.setProperty('--viewport-ui', theme.crust);
         root.style.setProperty('--viewport-widget', theme.overlay2);

@@ -344,6 +344,9 @@ export default class SkinManager extends Component<AProps, AState> {
 
   newSession = () => {
     localStorage.removeItem('savedSession');
+    // having a separate thing will probably lead to spaghetti code.
+    // don't let it get bad.
+    localStorage.removeItem('savedLighting');
 
     this.layers = new ImgMod.Layer();
     this.editHistory = [];

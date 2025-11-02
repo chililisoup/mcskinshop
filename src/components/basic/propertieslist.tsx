@@ -77,9 +77,9 @@ export type Property =
   | DividerProperty;
 
 type AProps = {
-  numberFallback?: (id: string, value: number) => void;
+  numberFallback?: (id: string, value: number, finished: boolean) => void;
   booleanFallback?: (id: string, value: boolean) => void;
-  stringFallback?: (id: string, value: string) => void;
+  stringFallback?: (id: string, value: string, finished: boolean) => void;
   buttonFallback?: (id: string) => void;
   fileFallback?: (id: string, value: File, name: string) => void;
   type?: 'list' | 'ribbon' | 'toolbar';
@@ -99,7 +99,8 @@ export default class PropertiesList extends Component<AProps> {
         return [
           <Slider
             callback={
-              property.onChange ?? (value => this.props.numberFallback?.(property.id, value))
+              property.onChange ??
+              ((value, finished) => this.props.numberFallback?.(property.id, value, finished))
             }
             id={id}
             key={property.id}
@@ -154,7 +155,7 @@ export default class PropertiesList extends Component<AProps> {
             onChange={e =>
               property.onChange
                 ? property.onChange(e.target.value)
-                : this.props.stringFallback?.(property.id, e.target.value)
+                : this.props.stringFallback?.(property.id, e.target.value, true)
             }
           >
             {Array.isArray(property.options)
@@ -215,7 +216,10 @@ export default class PropertiesList extends Component<AProps> {
             default={property.value}
             alpha={property.alpha}
             controlled={property.controlled}
-            update={property.onChange ?? (value => this.props.stringFallback?.(property.id, value))}
+            update={
+              property.onChange ??
+              ((value, finished) => this.props.stringFallback?.(property.id, value, finished))
+            }
           />
         ];
       case 'section':

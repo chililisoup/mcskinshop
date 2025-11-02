@@ -4,7 +4,7 @@ import * as Util from '@tools/util';
 export type SubType = 'hidden' | 'number' | 'percent' | 'degrees' | 'radiansAsDegrees';
 
 type AProps = {
-  callback?: (value: number) => void;
+  callback?: (value: number, finished: boolean) => void;
   value: number;
   min?: number;
   max?: number;
@@ -97,16 +97,21 @@ export default class Slider extends Component<AProps, AState> {
     if (!this.props.allowExceed) value = this.clamp(value);
 
     this.prevValues = [value, value, value];
-    this.props.callback(value);
+    this.props.callback(value, true);
+  };
+
+  sendInputCallback = (e: React.FormEvent<HTMLInputElement>, finished: boolean) => {
+    const value = Number((e.target as HTMLInputElement).value);
+    this.props.callback?.(
+      this.clamp(this.alignValue(value, this.ctrlKey ? this.snap() : this.step())),
+      finished
+    );
   };
 
   onInput = (e: React.FormEvent<HTMLInputElement>) => {
     if (!this.firstInput) this.closeTimer();
     this.firstInput = false;
-    const value = Number((e.target as HTMLInputElement).value);
-    this.props.callback?.(
-      this.clamp(this.alignValue(value, this.ctrlKey ? this.snap() : this.step()))
-    );
+    this.sendInputCallback(e, false);
   };
 
   closeTimer = () => {
@@ -116,7 +121,7 @@ export default class Slider extends Component<AProps, AState> {
 
   startTyping = () => {
     this.closeTimer();
-    this.props.callback?.(this.prevValues[0]);
+    this.props.callback?.(this.prevValues[0], false);
     this.textVal = String(this.prevValues[0]);
     this.setState({ typing: true });
   };
@@ -157,6 +162,7 @@ export default class Slider extends Component<AProps, AState> {
           max={max + buffer}
           step={step}
           disabled={this.props.disabled}
+          onClick={e => this.sendInputCallback(e, true)}
           onInput={this.onInput}
           onKeyDown={e => (this.ctrlKey = e.ctrlKey)}
           onKeyUp={e => (this.ctrlKey = e.ctrlKey)}

@@ -1,6 +1,7 @@
 import React, { Component, RefObject } from 'react';
 import * as THREE from 'three';
 import * as ImgMod from '@tools/imgmod';
+import * as Util from '@tools/util';
 import * as PrefMan from '@tools/prefman';
 import * as ModelTool from '@tools/modeltool';
 import * as Handles from '@components/special/viewport/handles';
@@ -34,14 +35,8 @@ type AProps = {
   manager: PrefMan.Manager;
 };
 
-export type AState = {
+export type AState = typeof defaultLighting & {
   shade: boolean;
-  lightAngle: number;
-  lightFocus: number;
-  ambientLightColor: string;
-  ambientLightIntensity: number;
-  directionalLightColor: string;
-  directionalLightIntensity: number;
   mode?: AbstractMode;
   modeElement: React.JSX.Element;
   partToggles: {
@@ -73,9 +68,12 @@ export type AState = {
   fov: number;
   usePerspectiveCam: boolean;
   grid: boolean;
+  background?: boolean;
+  backgroundImage?: string;
 };
 
 const defaultLighting = {
+  shade: true,
   lightAngle: Math.PI / 4,
   lightFocus: Math.SQRT2,
   ambientLightColor: '#ffffff',
@@ -128,17 +126,21 @@ export default class PaperDoll extends Component<AProps, AState> {
   selectedOutlinePass?: OutlinePass;
   SMAAPass?: SMAAPass;
 
+  savedLighting: typeof defaultLighting;
+
   constructor(props: AProps) {
     super(props);
 
+    this.savedLighting = this.getSavedLighting();
+
     this.state = {
-      shade: true,
-      lightAngle: defaultLighting.lightAngle,
-      lightFocus: defaultLighting.lightFocus,
-      ambientLightColor: defaultLighting.ambientLightColor,
-      ambientLightIntensity: defaultLighting.ambientLightIntensity,
-      directionalLightColor: defaultLighting.directionalLightColor,
-      directionalLightIntensity: defaultLighting.directionalLightIntensity,
+      shade: this.savedLighting.shade,
+      lightAngle: this.savedLighting.lightAngle,
+      lightFocus: this.savedLighting.lightFocus,
+      ambientLightColor: this.savedLighting.ambientLightColor,
+      ambientLightIntensity: this.savedLighting.ambientLightIntensity,
+      directionalLightColor: this.savedLighting.directionalLightColor,
+      directionalLightIntensity: this.savedLighting.directionalLightIntensity,
       modeElement: this.modes.animate,
       partToggles: {
         head: {
@@ -411,18 +413,14 @@ export default class PaperDoll extends Component<AProps, AState> {
       const rgba = ImgMod.cssVariableColor('--viewport-part-hovered-outline');
       const outline = ImgMod.rgbaToHex(rgba, false);
       this.hoveredOutlinePass.visibleEdgeColor.set(outline);
-      this.hoveredOutlinePass.hiddenEdgeColor.set(
-        outline === '#000000' ? 0xffffff : outline
-      );
+      this.hoveredOutlinePass.hiddenEdgeColor.set(outline === '#000000' ? 0xffffff : outline);
     }
 
     if (this.selectedOutlinePass) {
       const rgba = ImgMod.cssVariableColor('--viewport-part-selected-outline');
       const outline = ImgMod.rgbaToHex(rgba, false);
       this.selectedOutlinePass.visibleEdgeColor.set(outline);
-      this.selectedOutlinePass.hiddenEdgeColor.set(
-        outline === '#000000' ? 0xffffff : outline
-      );
+      this.selectedOutlinePass.hiddenEdgeColor.set(outline === '#000000' ? 0xffffff : outline);
     }
   };
 
@@ -728,7 +726,7 @@ export default class PaperDoll extends Component<AProps, AState> {
       return;
 
     const width = this.canvasRef.current.parentNode.clientWidth;
-    const height = this.canvasRef.current.parentNode.clientHeight;
+    const height = this.canvasRef.current.parentNode.clientHeight - 36;
 
     this.renderer?.setSize(width, height);
     this.composer?.setSize(width, height);
@@ -752,6 +750,12 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.activeKeys[e.key] = true;
 
     if (this.canvasRef.current?.closest('.window')?.classList.contains('active')) {
+      if (e.key === 'Tab') {
+        this.nextMode();
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
       this.state.mode?.onKeyDown?.(e);
       this.panelRef.current?.onKeyDown(e);
     }
@@ -812,12 +816,49 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.updateSetting('modeElement', modes[next >= modes.length ? 0 : next]);
   };
 
+  getSavedLighting = () => {
+    const base = structuredClone(defaultLighting);
+    const serialized = localStorage.getItem('savedLighting');
+    if (!serialized) return base;
+    const deserialized = JSON.parse(serialized) as Partial<typeof base>;
+
+    const updateBase = <KKey extends keyof typeof defaultLighting>(
+      lighting: typeof defaultLighting,
+      setting: KKey,
+      value: (typeof defaultLighting)[KKey]
+    ) => {
+      lighting[setting] = value;
+    };
+
+    for (const [key, value] of Object.entries(deserialized))
+      if (Util.isKeyOfObject(key, base)) updateBase(base, key, value);
+
+    return base;
+  };
+
+  updateSavedLighting = <KKey extends keyof typeof defaultLighting>(
+    setting: KKey,
+    value: (typeof defaultLighting)[KKey]
+  ) => {
+    const from = this.savedLighting[setting] as AState[KKey];
+    this.savedLighting[setting] = value;
+    localStorage.setItem('savedLighting', JSON.stringify(this.savedLighting));
+    return from;
+  };
+
   updateSetting = <KKey extends keyof AState>(
     setting: KKey,
     value: AState[KKey],
     saveEdit?: boolean
   ) => {
-    const from = this.state[setting];
+    const from =
+      saveEdit && Util.isKeyOfObject(setting, this.savedLighting)
+        ? (this.updateSavedLighting(
+            setting,
+            value as (typeof defaultLighting)[typeof setting]
+          ) as AState[KKey])
+        : this.state[setting];
+
     this.setState({ [setting]: value } as Pick<AState, KKey>);
     if (saveEdit)
       this.props.addEdit('change ' + setting, () => this.settingEdit(setting, from, value));
@@ -849,13 +890,17 @@ export default class PaperDoll extends Component<AProps, AState> {
               partToggles: this.state.partToggles,
               fov: this.state.fov,
               usePerspectiveCam: this.state.usePerspectiveCam,
-              grid: this.state.grid
+              grid: this.state.grid,
+              background: this.state.background
             }}
             slim={this.props.slim}
             updateSetting={this.updateSetting}
             updateSlim={this.props.updateSlim}
             resetCameraPosition={this.resetCameraPosition}
-            resetLighting={() => this.setState(defaultLighting)}
+            resetLighting={() => {
+              localStorage.removeItem('savedLighting');
+              this.setState(defaultLighting);
+            }}
             addEdit={this.props.addEdit}
             ref={this.panelRef}
           />
@@ -867,7 +912,15 @@ export default class PaperDoll extends Component<AProps, AState> {
           </div>
         </span>
         <div className="paperdoll-canvas-container">
-          <canvas className="paperdoll-canvas" ref={this.canvasRef} />
+          <canvas
+            className="paperdoll-canvas"
+            ref={this.canvasRef}
+            style={
+              this.state.background && this.state.backgroundImage
+                ? { background: `center / contain no-repeat url("${this.state.backgroundImage}")` }
+                : {}
+            }
+          />
         </div>
       </div>
     );

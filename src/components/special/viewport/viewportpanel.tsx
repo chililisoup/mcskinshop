@@ -3,6 +3,7 @@ import * as PaperDoll from '@components/special/viewport/paperdoll';
 import { UndoCallback } from '@components/special/skinmanager';
 import Dropdown from '@components/basic/dropdown';
 import PropertiesList from '@components/basic/propertieslist';
+import FileInput from '@components/basic/fileinput';
 
 type AProps = {
   settings: {
@@ -17,6 +18,7 @@ type AProps = {
     fov: number;
     usePerspectiveCam: boolean;
     grid: boolean;
+    background?: boolean;
   };
 
   slim: boolean;
@@ -46,6 +48,24 @@ export default class ViewportPanel extends Component<AProps, AState> {
 
   onKeyDown = (e: KeyboardEvent) => {
     if (e.key.toUpperCase() === 'N') this.setState({ panel: !this.state.panel });
+  };
+
+  setBackgroundImage = (file: File) => {
+    // const name = file.name;
+    // const image = new ImgMod.Img();
+    // image.size = ASSET_TYPE_RESOLUTIONS[FEATURE_LIST_ASSET_TYPES[feature[0]]];
+
+    // await image.loadUrl(URL.createObjectURL(file));
+    // const blobSrc = await image.getImageBlobSrc();
+    // if (!blobSrc) return;
+
+    // const save = this.loadCustomFeatures();
+    // const updated = save[feature[0]] ?? [];
+    // updated.push([name, blobSrc, true]);
+    // save[feature[0]] = updated;
+
+    this.props.updateSetting('backgroundImage', URL.createObjectURL(file));
+    this.props.updateSetting('background', true);
   };
 
   resetLighting = () => {
@@ -93,20 +113,41 @@ export default class ViewportPanel extends Component<AProps, AState> {
   render() {
     const panelItems = [
       <span key="head">
-        <label htmlFor="slimToggle">Slim</label>
-        <input
-          type="checkbox"
-          id="slimToggle"
-          checked={this.props.slim}
-          onChange={e => this.props.updateSlim(e.target.checked)}
-        />
-        <label htmlFor="gridToggle">Grid</label>
-        <input
-          type="checkbox"
-          id="gridToggle"
-          checked={this.props.settings.grid}
-          onChange={e => this.props.updateSetting('grid', e.target.checked)}
-        />
+        <span>
+          <span>
+            <label htmlFor="slimToggle">Slim</label>
+            <input
+              type="checkbox"
+              id="slimToggle"
+              checked={this.props.slim}
+              onChange={e => this.props.updateSlim(e.target.checked)}
+            />
+          </span>
+          <span>
+            <label htmlFor="gridToggle">Grid</label>
+            <input
+              type="checkbox"
+              id="gridToggle"
+              checked={this.props.settings.grid}
+              onChange={e => this.props.updateSetting('grid', e.target.checked)}
+            />
+          </span>
+        </span>
+        <span>
+          <span>
+            <label htmlFor="backgroundToggle">Background</label>
+            <input
+              type="checkbox"
+              id="backgroundToggle"
+              checked={this.props.settings.background}
+              onChange={e => this.props.updateSetting('background', e.target.checked)}
+              disabled={this.props.settings.background === undefined}
+            />
+            <FileInput accept="image/png" callback={this.setBackgroundImage}>
+              Upload...
+            </FileInput>
+          </span>
+        </span>
       </span>,
       <Dropdown title="Camera" key="camera">
         <PropertiesList
@@ -119,8 +160,8 @@ export default class ViewportPanel extends Component<AProps, AState> {
               );
             else if (id === 'resetCameraPosition') this.props.resetCameraPosition();
           }}
-          numberFallback={(id, value) => {
-            if (id === 'fov') this.props.updateSetting('fov', value);
+          numberFallback={(id, value, finished) => {
+            if (id === 'fov') this.props.updateSetting('fov', value, finished);
           }}
           properties={[
             {
@@ -152,21 +193,23 @@ export default class ViewportPanel extends Component<AProps, AState> {
           booleanFallback={(id, value) => {
             if (id === 'shade') this.props.updateSetting('shade', value, true);
           }}
-          numberFallback={(id, value) => {
-            if (id === 'lightFocus') this.props.updateSetting('lightFocus', (value / 10) ** 2);
-            else if (id === 'lightAngle') this.props.updateSetting('lightAngle', value);
+          numberFallback={(id, value, finished) => {
+            if (id === 'lightFocus')
+              this.props.updateSetting('lightFocus', (value / 10) ** 2, finished);
+            else if (id === 'lightAngle') this.props.updateSetting('lightAngle', value, finished);
             else if (id === 'ambientLightIntensity')
-              this.props.updateSetting('ambientLightIntensity', value);
+              this.props.updateSetting('ambientLightIntensity', value, finished);
             else if (id === 'directionalLightIntensity')
-              this.props.updateSetting('directionalLightIntensity', value);
+              this.props.updateSetting('directionalLightIntensity', value, finished);
           }}
           buttonFallback={id => {
             if (id === 'resetLighting') this.resetLighting();
           }}
-          stringFallback={(id, value) => {
-            if (id === 'ambientLightColor') this.props.updateSetting('ambientLightColor', value);
+          stringFallback={(id, value, finished) => {
+            if (id === 'ambientLightColor')
+              this.props.updateSetting('ambientLightColor', value, finished);
             else if (id === 'directionalLightColor')
-              this.props.updateSetting('directionalLightColor', value);
+              this.props.updateSetting('directionalLightColor', value, finished);
           }}
           properties={[
             {
