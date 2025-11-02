@@ -35,8 +35,7 @@ type AProps = {
   manager: PrefMan.Manager;
 };
 
-export type AState = typeof defaultLighting & {
-  shade: boolean;
+export type AState = typeof defaultViewOptions & {
   mode?: AbstractMode;
   modeElement: React.JSX.Element;
   partToggles: {
@@ -65,9 +64,6 @@ export type AState = typeof defaultLighting & {
       hat: boolean;
     };
   };
-  fov: number;
-  usePerspectiveCam: boolean;
-  grid: boolean;
   background?: boolean;
   backgroundImage?: string;
 };
@@ -80,6 +76,13 @@ const defaultLighting = {
   ambientLightIntensity: 1,
   directionalLightColor: '#ffffff',
   directionalLightIntensity: 2.5
+};
+
+const defaultViewOptions = {
+  ...defaultLighting,
+  fov: 80,
+  usePerspectiveCam: true,
+  grid: true
 };
 
 export default class PaperDoll extends Component<AProps, AState> {
@@ -126,21 +129,15 @@ export default class PaperDoll extends Component<AProps, AState> {
   selectedOutlinePass?: OutlinePass;
   SMAAPass?: SMAAPass;
 
-  savedLighting: typeof defaultLighting;
+  savedViewOptions: typeof defaultViewOptions;
 
   constructor(props: AProps) {
     super(props);
 
-    this.savedLighting = this.getSavedLighting();
+    this.savedViewOptions = this.getSavedLighting();
 
     this.state = {
-      shade: this.savedLighting.shade,
-      lightAngle: this.savedLighting.lightAngle,
-      lightFocus: this.savedLighting.lightFocus,
-      ambientLightColor: this.savedLighting.ambientLightColor,
-      ambientLightIntensity: this.savedLighting.ambientLightIntensity,
-      directionalLightColor: this.savedLighting.directionalLightColor,
-      directionalLightIntensity: this.savedLighting.directionalLightIntensity,
+      ...this.savedViewOptions,
       modeElement: this.modes.animate,
       partToggles: {
         head: {
@@ -167,10 +164,7 @@ export default class PaperDoll extends Component<AProps, AState> {
           base: true,
           hat: true
         }
-      },
-      fov: 80,
-      usePerspectiveCam: true,
-      grid: true
+      }
     };
 
     this.scene = new THREE.Scene();
@@ -816,33 +810,26 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.updateSetting('modeElement', modes[next >= modes.length ? 0 : next]);
   };
 
-  getSavedLighting = () => {
-    const base = structuredClone(defaultLighting);
-    const serialized = localStorage.getItem('savedLighting');
-    if (!serialized) return base;
-    const deserialized = JSON.parse(serialized) as Partial<typeof base>;
-
-    const updateBase = <KKey extends keyof typeof defaultLighting>(
-      lighting: typeof defaultLighting,
-      setting: KKey,
-      value: (typeof defaultLighting)[KKey]
-    ) => {
-      lighting[setting] = value;
-    };
-
-    for (const [key, value] of Object.entries(deserialized))
-      if (Util.isKeyOfObject(key, base)) updateBase(base, key, value);
-
-    return base;
+  resetLighting = () => {
+    Object.assign(this.savedViewOptions, defaultLighting);
+    localStorage.setItem('savedViewportOptions', JSON.stringify(this.savedViewOptions));
+    this.setState(defaultLighting);
   };
 
-  updateSavedLighting = <KKey extends keyof typeof defaultLighting>(
+  getSavedLighting = () => {
+    const base = structuredClone(defaultViewOptions);
+    const serialized = localStorage.getItem('savedViewportOptions');
+    if (!serialized) return base;
+    return Object.assign(base, JSON.parse(serialized) as Partial<typeof base>);
+  };
+
+  updateSavedLighting = <KKey extends keyof typeof defaultViewOptions>(
     setting: KKey,
-    value: (typeof defaultLighting)[KKey]
+    value: (typeof defaultViewOptions)[KKey]
   ) => {
-    const from = this.savedLighting[setting] as AState[KKey];
-    this.savedLighting[setting] = value;
-    localStorage.setItem('savedLighting', JSON.stringify(this.savedLighting));
+    const from = this.savedViewOptions[setting] as AState[KKey];
+    this.savedViewOptions[setting] = value;
+    localStorage.setItem('savedViewportOptions', JSON.stringify(this.savedViewOptions));
     return from;
   };
 
@@ -852,10 +839,10 @@ export default class PaperDoll extends Component<AProps, AState> {
     saveEdit?: boolean
   ) => {
     const from =
-      saveEdit && Util.isKeyOfObject(setting, this.savedLighting)
+      saveEdit && Util.isKeyOfObject(setting, this.savedViewOptions)
         ? (this.updateSavedLighting(
             setting,
-            value as (typeof defaultLighting)[typeof setting]
+            value as (typeof defaultViewOptions)[typeof setting]
           ) as AState[KKey])
         : this.state[setting];
 
@@ -897,10 +884,7 @@ export default class PaperDoll extends Component<AProps, AState> {
             updateSetting={this.updateSetting}
             updateSlim={this.props.updateSlim}
             resetCameraPosition={this.resetCameraPosition}
-            resetLighting={() => {
-              localStorage.removeItem('savedLighting');
-              this.setState(defaultLighting);
-            }}
+            resetLighting={this.resetLighting}
             addEdit={this.props.addEdit}
             ref={this.panelRef}
           />
