@@ -580,11 +580,13 @@ hr {
   height: 100%;
   overflow: hidden;
   background-color: var(--container-alt);
-  border-bottom-left-radius: calc(var(--curvature) - 2.5px);
-  border-bottom-right-radius: calc(var(--curvature) - 2.5px);
+  border-bottom-left-radius: calc(var(--curvature) - 5px);
+  border-bottom-right-radius: calc(var(--curvature) - 5px);
 }
 
 .paperdoll-canvas {
+  border-bottom-left-radius: calc(var(--curvature) - 5px);
+  border-bottom-right-radius: calc(var(--curvature) - 5px);
   box-shadow: inset var(--box-shadow);
   image-rendering: pixelated;
 }
