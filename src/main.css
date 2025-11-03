@@ -305,11 +305,10 @@ label:has(+ input:checked) > *:is(img, svg) {
   position: absolute;
   display: block;
   margin-left: -12px;
-  margin-top: 6px;
-  height: 0;
+  margin-top: 4px;
+  height: 4px;
   width: 100%;
-  outline: 1px solid var(--menu-bar-alt);
-  outline-offset: -1px;
+  background: var(--menu-bar-alt);
   z-index: 101;
 }
 
