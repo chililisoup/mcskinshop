@@ -722,7 +722,7 @@ export default class PaperDoll extends Component<AProps, AState> {
       return;
 
     const width = this.canvasRef.current.parentNode.clientWidth;
-    const height = this.canvasRef.current.parentNode.clientHeight - 36;
+    const height = this.canvasRef.current.parentNode.clientHeight - 32;
 
     this.renderer?.setSize(width, height);
     this.composer?.setSize(width, height);
