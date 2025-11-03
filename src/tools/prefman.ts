@@ -3,6 +3,7 @@ import * as Util from '@tools/util';
 export const SELECT_PREFS = {
   theme: {
     user: 'User',
+    highContrast: 'High Contrast',
     dark: 'Dark (default)',
     darker: 'Darker',
     light: 'Light',
@@ -95,6 +96,7 @@ const CATPPUCCIN_THEMES = {
     lavender: '#b4befe',
     blue: '#89b4fa',
     sky: '#89dceb',
+    teal: '#94e2d5',
     green: '#a6e3a1',
     yellow: '#f9e2af',
     peach: '#fab387',
@@ -116,6 +118,7 @@ const CATPPUCCIN_THEMES = {
     lavender: '#b7bdf8',
     blue: '#8aadf4',
     sky: '#91d7e3',
+    teal: '#8bd5ca',
     green: '#a6da95',
     yellow: '#eed49f',
     peach: '#f5a97f',
@@ -137,6 +140,7 @@ const CATPPUCCIN_THEMES = {
     lavender: '#babbf1',
     blue: '#8caaee',
     sky: '#99d1db',
+    teal: '#81c8be',
     green: '#a6d189',
     yellow: '#e5c890',
     peach: '#ef9f76',
@@ -158,6 +162,7 @@ const CATPPUCCIN_THEMES = {
     lavender: '#7287fd',
     blue: '#1e66f5',
     sky: '#04a5e5',
+    teal: '#179299',
     green: '#40a02b',
     yellow: '#df8e1d',
     peach: '#fe640b',
@@ -265,6 +270,31 @@ export class Manager {
         root.style.setProperty('--box-shadow', `0 0 2px 2px ${this.prefs['--shadow']}`);
         root.style.setProperty('--drop-shadow', `0 0 4px ${this.prefs['--shadow']}`);
         break;
+      case 'highContrast':
+        root.style.setProperty('--main-bg', 'black');
+        root.style.setProperty('--container', 'black');
+        root.style.setProperty('--container-selected', '#44004d');
+        root.style.setProperty('--container-alt', 'black');
+        root.style.setProperty('--panel', 'var(--container-selected)');
+        root.style.setProperty('--empty-area', 'black');
+        root.style.setProperty('--menu-bar', 'black');
+        root.style.setProperty('--menu-bar-text', 'white');
+        root.style.setProperty('--menu-bar-outline', '#ff00ff');
+        root.style.setProperty('--highlight', '#ffff00');
+        root.style.setProperty('--outline', 'none');
+        root.style.setProperty('--line', '#00ff00');
+        root.style.setProperty('--accent', '#00ffff');
+        root.style.setProperty('--no-accent', '#27d335');
+        root.style.setProperty('--hovered-accent', '#ffff00');
+        root.style.setProperty('--danger', '#ff0000');
+        root.style.setProperty('--input', 'black');
+        root.style.setProperty('--input-text', 'white');
+        root.style.setProperty('--box-shadow', '0 0 0 2px #00ffff');
+        root.style.setProperty('--active-draggable-window-outline', '#ff00ff');
+        root.style.setProperty('--inactive-draggable-window-outline', 'var(--no-accent)');
+        root.style.setProperty('--viewport-widget', 'white');
+        root.style.setProperty('--viewport-part-selected-outline', '#ff00ff');
+        break;
       case 'darker':
         root.style.setProperty('--main-bg', 'rgb(23, 26, 32)');
         root.style.setProperty('--container', 'var(--main-bg)');
@@ -282,6 +312,7 @@ export class Manager {
         root.style.setProperty('--menu-bar', 'rgb(194, 212, 255)');
         root.style.setProperty('--highlight', 'black');
         root.style.setProperty('--outline', 'rgb(232, 239, 255)');
+        root.style.setProperty('--no-accent', 'rgba(64, 64, 64)');
         root.style.setProperty('--input', 'white');
         root.style.setProperty('--light-shadow', 'rgba(64, 94, 128, 0.25)');
         root.style.setProperty('--medium-shadow', 'rgba(32, 47, 64, 0.15)');
@@ -318,6 +349,7 @@ export class Manager {
         root.style.setProperty('--outline', 'none');
         root.style.setProperty('--line', theme.overlay0);
         root.style.setProperty('--accent', theme.blue);
+        root.style.setProperty('--no-accent', theme.overlay2);
         root.style.setProperty('--danger', theme.red);
         root.style.setProperty('--input', theme.surface0);
         root.style.setProperty('--input-text', theme.text);

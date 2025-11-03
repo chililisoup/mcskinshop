@@ -40,7 +40,8 @@
   --half-curvature: calc(var(--curvature) * 0.5);
 
   --accent: rgb(79, 195, 255);
-  --no-accent: rgb(255, 255, 255, 0.25);
+  --no-accent: rgb(180, 180, 180);
+  --hovered-accent: var(--accent);
   --danger: rgb(255, 91, 79);
   --highlight: white;
   --outline: black;
@@ -87,10 +88,18 @@ input,
 select {
   min-height: 22px;
   min-width: 22px;
+  padding: 0;
 }
 
-button:not(:has(*)) {
+button,
+select {
+  padding: 2px 6px;
+}
+
+button:not(:has(*)),
+select {
   height: 22px;
+  max-height: 22px;
 }
 
 button,
@@ -102,9 +111,10 @@ label:has(> *:is(img, svg)) {
   box-shadow: var(--box-shadow);
   color: var(--input-text);
   outline: 2px solid var(--input-outline);
-  border-radius: calc(var(--half-curvature) + 1px);
-  outline-offset: -1px;
+  border-radius: calc(var(--curvature) - 3px);
+  outline-offset: -2px;
   margin: 3px;
+  overflow: visible;
   font-family: var(--main-font);
 }
 
@@ -125,6 +135,11 @@ input[type='checkbox'] {
 input[type='checkbox']:checked,
 button.selected {
   background-color: var(--accent);
+}
+
+input[type='checkbox']:checked:hover,
+button.selected:hover {
+  background-color: var(--hovered-accent);
 }
 
 input[type='checkbox']:checked::before {
@@ -152,8 +167,14 @@ input:hover:enabled,
 select:hover:enabled,
 label:has(> *:is(img, svg)):has(+ input:enabled):hover {
   outline: 2px solid var(--highlight);
-  outline-offset: 1px;
+  box-shadow: inset 0 0 0 2px var(--input-outline);
+  outline-offset: 0px;
   cursor: pointer;
+}
+
+button:hover:enabled:not(:has(img, svg)) {
+  background-color: var(--hovered-accent);
+  text-shadow: var(--input-text-outline);
 }
 
 input::placeholder {
@@ -179,13 +200,6 @@ label > img {
 
 label:has(+ input:disabled) > *:is(img, svg) {
   filter: brightness(0.4);
-}
-
-label:has(+ input:checked) > *:is(img, svg) {
-  /* https://codepen.io/sosuke/pen/Pjoqqp for #4fc3ff (--accent) */
-  /* Not a permanent solution */
-  filter: brightness(0) saturate(100%) invert(74%) sepia(10%) saturate(7451%) hue-rotate(172deg)
-    brightness(101%) contrast(101%);
 }
 
 .appRoot {
@@ -228,7 +242,7 @@ label:has(+ input:checked) > *:is(img, svg) {
   gap: 2px;
 }
 
-.MenuBar {
+#MenuBar {
   width: 100%;
   height: 32px;
   background: var(--menu-bar);
@@ -239,15 +253,16 @@ label:has(+ input:checked) > *:is(img, svg) {
   padding: 2px;
 }
 
-.MenuBar * {
+#MenuBar * {
   user-select: none;
 }
 
-.MenuBar button,
-.MenuBar span,
-.MenuBar span p {
+#MenuBar > div > button,
+#MenuBar span,
+#MenuBar span p {
   background: none;
   height: 30px;
+  max-height: none;
   margin: 0;
   padding: 0 12px;
   outline: none;
@@ -255,28 +270,30 @@ label:has(+ input:checked) > *:is(img, svg) {
   color: var(--menu-bar-text);
 }
 
-.MenuBar span {
+#MenuBar span {
   display: flex;
   flex-flow: nowrap;
   margin: 0;
   padding: 0;
+  height: 24px;
 }
 
-.MenuBar span button {
+#MenuBar span button {
   flex: 1;
 }
 
-.MenuBar span p {
+#MenuBar span p {
   text-align: center;
-  padding: 3px 0;
+  padding: 0;
   aspect-ratio: 1 / 1;
+  font-weight: 900;
 }
 
-.MenuBar > * {
+#MenuBar > * {
   height: 32px;
 }
 
-.MenuBar > img {
+#MenuBar > img {
   width: 32px;
   padding: 0;
   margin: 0 6px;
@@ -284,57 +301,82 @@ label:has(+ input:checked) > *:is(img, svg) {
   pointer-events: none;
 }
 
-.MenuBar > div {
+#MenuBar > div {
   width: min-content;
 }
 
-.MenuBar > div > button {
+#MenuBar > div > button {
   height: 100%;
+  margin: 0 1px;
 }
 
-.MenuBar button.active {
+#MenuBar button.active {
   position: relative;
-  background: var(--container-alt);
+  background: var(--menu-bar-alt);
+  text-shadow: none;
   outline: 2px solid var(--menu-bar-outline);
   border-radius: 0;
   outline-offset: 0;
+  box-shadow: none;
+  margin: 0 1px;
 }
 
-.MenuBar button.active::after {
+#MenuBar button.active::after {
   content: '';
   position: absolute;
   display: block;
   margin-left: -12px;
-  margin-top: 4px;
+  margin-top: 5px;
   height: 4px;
   width: 100%;
   background: var(--menu-bar-alt);
   z-index: 101;
 }
 
-.MenuBar .popup {
+#MenuBar .popup {
   position: absolute;
   padding: 0;
 }
 
-.MenuBar .popup > div {
-  position: absolute;
+#MenuBar .popup button {
+  height: 24px;
+  max-height: none;
   margin: 0;
+  padding: 0 12px;
+}
+
+#MenuBar .popup button:not(:hover),
+#MenuBar .popup button:disabled {
+  background: none;
+  outline: none;
+  box-shadow: none;
+}
+
+#MenuBar .popup > div {
+  position: absolute;
+  margin: 1px;
+  padding: 4px;
   z-index: 100;
   background: var(--menu-bar-alt);
   display: flex;
   flex-direction: column;
+  gap: 4px;
   outline: 2px solid var(--menu-bar-outline);
   border-bottom-left-radius: var(--half-curvature);
   border-bottom-right-radius: var(--half-curvature);
 }
 
-.MenuBar button:enabled:hover:not(.active) {
-  background: var(--light-shadow);
-  outline: none;
+#MenuBar .popup > div > hr {
+  margin-top: 2px;
 }
 
-.MenuBar button {
+#MenuBar > div > button:enabled:hover:not(.active) {
+  outline: 2px solid var(--highlight);
+  outline-offset: -4px;
+  text-shadow: none;
+}
+
+#MenuBar button {
   white-space: nowrap;
   text-align: left;
 }
@@ -396,6 +438,10 @@ hr {
 .container label {
   margin: 3px;
   overflow: hidden;
+}
+
+.container label {
+  margin: auto 3px;
 }
 
 .container span {
@@ -532,6 +578,8 @@ hr {
   position: absolute;
   left: -24px;
   height: 24px;
+  max-width: 100%;
+  max-height: 100%;
   width: min-content;
   aspect-ratio: 1/1;
   float: right;
@@ -580,8 +628,7 @@ hr {
   height: 100%;
   overflow: hidden;
   background-color: var(--container-alt);
-  border-bottom-left-radius: calc(var(--curvature) - 5px);
-  border-bottom-right-radius: calc(var(--curvature) - 5px);
+  border-radius: calc(var(--curvature) - 5px);
 }
 
 .paperdoll-canvas {
@@ -592,7 +639,7 @@ hr {
 }
 
 .model-toggles {
-  border-spacing: 10px;
+  border-spacing: 6px;
   margin: auto;
 }
 
@@ -613,6 +660,7 @@ hr {
   width: 100%;
   height: 100%;
   background: none !important;
+  border-radius: var(--curvature);
 }
 
 .model-toggles input::after,
@@ -620,21 +668,36 @@ hr {
   display: none;
 }
 
+.model-toggles input:not(:checked) {
+  box-shadow: none;
+  outline: 2px dashed var(--no-accent);
+}
+
 .model-toggles input:checked {
   outline: 2px solid var(--accent);
 }
 
+.model-toggles input:not(:checked):hover {
+  border: 2px dashed var(--no-accent);
+}
+
 .model-toggles input:checked:hover {
-  border: 2px solid var(--highlight);
+  border: 2px solid var(--hovered-accent);
+}
+
+.model-toggles input:hover {
+  outline: 2px solid var(--highlight);
+  outline-offset: 2px;
 }
 
 .model-toggles input.inner {
   position: absolute;
-  width: calc(100% - 20px);
-  height: calc(100% - 20px);
-  margin: 10px;
+  min-width: 0;
+  width: calc(100% - 24px);
+  height: calc(100% - 24px);
+  margin: 12px;
   background: var(--input);
-  border-radius: calc(var(--curvature) * 0.25);
+  border-radius: var(--half-curvature);
 }
 
 .layereditor-canvas {
@@ -868,13 +931,14 @@ span.layer-title button {
 
 .properties-list {
   table-layout: fixed;
-  border-spacing: 0 4px;
+  border-spacing: 0 5px;
   width: calc(100% - 32px);
   margin: auto;
+  --label-width: 40%;
 }
 
 .properties-list tr {
-  height: 100%;
+  height: 22px;
 }
 
 .properties-list tr * {
@@ -888,7 +952,7 @@ span.layer-title button {
 .properties-list th {
   padding: 0;
   padding-right: 12px;
-  width: 40%;
+  width: var(--label-width);
   text-align: end;
   font-weight: normal;
   white-space: nowrap;
@@ -896,18 +960,23 @@ span.layer-title button {
   text-overflow: ellipsis;
 }
 
-.properties-list td {
-  height: 100%;
-}
-
 .properties-list td > * {
   width: 100%;
-  height: 100%;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .properties-list div.dropdown {
   box-shadow: none;
   outline: none;
+  padding: 0;
+}
+
+.properties-list div.dropdown > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .asset-layer-list {
@@ -1130,6 +1199,10 @@ h3 {
   margin: 3px;
 }
 
+.slider:hover {
+  --accent: var(--hovered-accent);
+}
+
 .slider-label {
   position: absolute;
   width: 100%;
@@ -1137,10 +1210,15 @@ h3 {
   text-align: center;
   font-size: smaller;
   font-weight: bolder;
+}
+
+.slider-label {
   text-shadow: var(--input-text-outline);
   color: var(--input-text);
   user-select: none;
   pointer-events: none;
+  margin: 0;
+  padding: 0;
 }
 
 .slider-label > * {
@@ -1152,9 +1230,14 @@ h3 {
   border-radius: var(--half-curvature);
 }
 
+.dropdown > div > hr:last-of-type {
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
 .dropdown > div > hr:first-of-type {
   margin-top: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
 }
 
 .dropdown-bar {
@@ -1180,8 +1263,9 @@ h3 {
   width: min-content;
 }
 
-.dropdown-bar > span > button:hover {
+.dropdown-bar:hover > span > button {
   outline: none;
+  box-shadow: none;
 }
 
 .draggable {
@@ -1235,7 +1319,7 @@ h3 {
 }
 
 .draggable > hr {
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
 .draggable > div {
@@ -1331,20 +1415,19 @@ h3 {
   background: none;
 }
 
-*:disabled {
+*:disabled,
+.disabled,
+label:has(+ input:disabled) {
   cursor: default;
   font-style: italic;
   font-weight: normal;
+  color: var(--no-accent);
 }
 
 label {
   user-select: none;
   cursor: pointer;
   margin: 10px 5px 0 10px;
-}
-
-label:has(+ input:disabled) {
-  cursor: default;
 }
 
 .left {

@@ -62,9 +62,14 @@ type ColorProperty = BaseProperty & {
 type SectionProperty = BaseProperty & {
   type: 'section';
   properties: Property[];
+  labelWidth?: string;
 };
 
-type DividerProperty = { id: string; type: 'divider'; siblings?: Property[] };
+type DividerProperty = {
+  id: string;
+  type: 'divider';
+  siblings?: Property[];
+};
 
 export type Property =
   | RangeProperty
@@ -76,13 +81,21 @@ export type Property =
   | SectionProperty
   | DividerProperty;
 
-type AProps = {
+type ListType =
+  | {
+      type?: 'list';
+      labelWidth?: string;
+    }
+  | {
+      type: 'ribbon' | 'toolbar';
+    };
+
+type AProps = ListType & {
   numberFallback?: (id: string, value: number, finished: boolean) => void;
   booleanFallback?: (id: string, value: boolean) => void;
   stringFallback?: (id: string, value: string, finished: boolean) => void;
   buttonFallback?: (id: string) => void;
   fileFallback?: (id: string, value: File, name: string) => void;
-  type?: 'list' | 'ribbon' | 'toolbar';
   properties: Property[];
 };
 
@@ -234,8 +247,13 @@ export default class PropertiesList extends Component<AProps> {
                   buttonFallback={this.props.buttonFallback}
                   fileFallback={this.props.fileFallback}
                   properties={property.properties}
+                  labelWidth={
+                    property.labelWidth ??
+                    (!this.props.type || this.props.type === 'list'
+                      ? this.props.labelWidth
+                      : undefined)
+                  }
                 />
-                <hr />
               </Dropdown>
             ];
       case 'divider':
@@ -274,6 +292,7 @@ export default class PropertiesList extends Component<AProps> {
     const id = this.getId(property);
     const labeled = this.isLabeled(property);
     const input = this.getInputSet(property, id);
+    if (input.length === 0) return [];
 
     switch (this.props.type) {
       case 'ribbon':
@@ -291,7 +310,9 @@ export default class PropertiesList extends Component<AProps> {
           <tr key={`${property.id}-row`}>
             {labeled && (
               <th scope="row">
-                <label htmlFor={id}>{property.name}</label>
+                <label htmlFor={id} className={property.disabled ? 'disabled' : ''}>
+                  {property.name}
+                </label>
               </th>
             )}
             <td colSpan={labeled ? 1 : 2}>{input}</td>
@@ -317,6 +338,11 @@ export default class PropertiesList extends Component<AProps> {
               e.stopPropagation();
               e.preventDefault();
             }}
+            style={
+              this.props.labelWidth
+                ? ({ '--label-width': this.props.labelWidth } as React.CSSProperties)
+                : {}
+            }
           >
             <tbody>{properties}</tbody>
           </table>

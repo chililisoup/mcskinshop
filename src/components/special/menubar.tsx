@@ -119,7 +119,7 @@ export default class MenuBar extends Component<AProps, AState> {
     const redoHint = this.props.editHints[1] !== '' ? 'Redo ' + this.props.editHints[1] : false;
 
     return (
-      <div className="MenuBar">
+      <div id="MenuBar">
         <img alt="Logo" src={icon} />
         <div>
           <button

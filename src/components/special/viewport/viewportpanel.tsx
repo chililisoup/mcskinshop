@@ -304,7 +304,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
             <tr>
               <td />
               <td colSpan={2}>
-                <div className="stack" style={{ width: '56px', height: '56px' }}>
+                <div className="stack" style={{ width: '63px', height: '63px' }}>
                   <input
                     type="checkbox"
                     checked={this.props.settings.partToggles.head.hat}
@@ -323,7 +323,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
               <td>
                 <div
                   className="stack"
-                  style={{ width: '32px', height: '72px', marginRight: '-8px' }}
+                  style={{ width: '36px', height: '81px', marginRight: '-9px' }}
                 >
                   <input
                     type="checkbox"
@@ -339,7 +339,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
                 </div>
               </td>
               <td colSpan={2}>
-                <div className="stack" style={{ width: '56px', height: '72px' }}>
+                <div className="stack" style={{ width: '63px', height: '81px' }}>
                   <input
                     type="checkbox"
                     checked={this.props.settings.partToggles.torso.hat}
@@ -356,7 +356,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
               <td>
                 <div
                   className="stack"
-                  style={{ width: '32px', height: '72px', marginLeft: '-8px' }}
+                  style={{ width: '36px', height: '81px', marginLeft: '-9px' }}
                 >
                   <input
                     type="checkbox"
@@ -375,7 +375,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
             <tr>
               <td />
               <td>
-                <div className="stack" style={{ width: '32px', height: '72px' }}>
+                <div className="stack" style={{ width: '36px', height: '81px' }}>
                   <input
                     type="checkbox"
                     checked={this.props.settings.partToggles.rightLeg.hat}
@@ -390,7 +390,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
                 </div>
               </td>
               <td>
-                <div className="stack" style={{ width: '32px', height: '72px' }}>
+                <div className="stack" style={{ width: '36px', height: '81px' }}>
                   <input
                     type="checkbox"
                     checked={this.props.settings.partToggles.leftLeg.hat}

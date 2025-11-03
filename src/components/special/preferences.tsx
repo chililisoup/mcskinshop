@@ -20,6 +20,7 @@ export default class Preferences extends Component<AProps> {
     return (
       <div className="preferences">
         <PropertiesList
+          labelWidth="50%"
           stringFallback={(id, value) => {
             if (id === 'theme')
               this.props.manager.setPrefs({ theme: value as PrefMan.Prefs['theme'] });
@@ -84,6 +85,10 @@ export default class Preferences extends Component<AProps> {
               }) as Property[]
             },
             {
+              id: 'themingDivider',
+              type: 'divider'
+            },
+            {
               name: 'Autosave Session',
               id: 'autosaveSession',
               type: 'checkbox',
@@ -106,6 +111,10 @@ export default class Preferences extends Component<AProps> {
               id: 'showPlaceholderSkins',
               type: 'checkbox',
               value: values.showPlaceholderSkins
+            },
+            {
+              id: 'startupDivider',
+              type: 'divider'
             },
             {
               name: 'Startup',

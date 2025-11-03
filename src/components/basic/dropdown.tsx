@@ -32,6 +32,7 @@ export default class Dropdown extends Component<AProps, AState> {
           <div>
             <hr />
             {this.props.children}
+            <hr />
           </div>
         )}
       </div>
