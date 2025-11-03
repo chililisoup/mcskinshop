@@ -237,7 +237,10 @@ export class Manager {
 
     const root = document.documentElement;
     root.style = '';
-    root.style.setProperty('--curvature', this.prefs.curvature + 'px');
+    root.style.setProperty(
+      '--curvature',
+      (this.prefs.curvature === 0 ? -10 : this.prefs.curvature) + 'px'
+    );
 
     switch (this.prefs.theme) {
       case 'purple':

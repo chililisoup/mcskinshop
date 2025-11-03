@@ -219,12 +219,12 @@ export default class DraggableWindow extends Component<AProps, AState> {
           top: this.state.pos.y + this.anchorOffset.y
         }}
       >
+        <div>{this.props.children}</div>
+        <hr />
         <span ref={this.handleRef}>
           <p>{this.props.title}</p>
           {this.props.close && <button onClick={this.props.close}>X</button>}
         </span>
-        <hr />
-        <div>{this.props.children}</div>
       </div>
     );
   }

@@ -692,8 +692,6 @@ class Layer extends Component<CProps, CState> {
             >
               &#10006;
             </button>
-          </div>
-          <div className="manager-layer-buttons">
             <button onClick={() => this.props.flattenLayer(this.props.index)} title="Flatten Layer">
               &#8676;
             </button>
@@ -703,8 +701,8 @@ class Layer extends Component<CProps, CState> {
             >
               &#10515;
             </button>
+            {colors}
           </div>
-          <div className="manager-layer-colors">{colors}</div>
         </span>
         {this.state.layersOpen && this.props.layer instanceof ImgMod.Layer && (
           <div className="sublayers">

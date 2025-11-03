@@ -84,6 +84,17 @@ body {
 
 button,
 input,
+select {
+  min-height: 22px;
+  min-width: 22px;
+}
+
+button:not(:has(*)) {
+  height: 22px;
+}
+
+button,
+input,
 select,
 label:has(> *:is(img, svg)) {
   font-weight: bolder;
@@ -106,9 +117,9 @@ input[type='checkbox'] {
   appearance: none;
   display: grid;
   place-content: center;
-  margin: 4px;
-  width: 20px;
-  height: 20px;
+  margin: 3px;
+  width: 22px;
+  height: 22px;
 }
 
 input[type='checkbox']:checked,
@@ -119,7 +130,7 @@ button.selected {
 input[type='checkbox']:checked::before {
   position: absolute;
   content: '';
-  margin: 2px;
+  margin: 3px;
   width: 16px;
   height: 16px;
   background-color: var(--input);
@@ -129,7 +140,7 @@ input[type='checkbox']:checked::before {
 input[type='checkbox']:checked::after {
   position: absolute;
   content: '';
-  margin: 2px;
+  margin: 3px;
   width: 16px;
   height: 16px;
   background-color: var(--input-text);
@@ -415,11 +426,7 @@ hr {
   overflow: hidden;
 }
 
-.viewport-ui input,
-.viewport-ui button,
-.viewport-ui label,
-.viewport-ui select,
-.viewport-ui option {
+.viewport-ui *:is(input, button, label, select, option) {
   pointer-events: initial;
 }
 
@@ -433,6 +440,10 @@ hr {
   padding: 4px;
 }
 
+.viewport-ui > .bottom.left {
+  margin: 4px;
+}
+
 .viewport-mode-ui > span {
   flex-wrap: nowrap;
   pointer-events: initial;
@@ -442,7 +453,7 @@ hr {
 
 .viewport-mode-ui > span > div:first-child {
   background-color: var(--viewport-ui);
-  border-bottom-right-radius: var(--curvature);
+  border-bottom-right-radius: calc(var(--curvature) + 5px);
   box-shadow: var(--box-shadow);
   padding: 10px;
 }
@@ -466,6 +477,7 @@ hr {
   background-color: var(--viewport-ui);
   box-shadow: var(--box-shadow);
   clip-path: inset(-5px -5px -5px 0);
+  padding-top: 0;
 }
 
 .settings-ribbon {
@@ -514,6 +526,11 @@ hr {
   right: 0;
 }
 
+.panel:not(.open) > .panel-content {
+  border-radius: 0;
+  height: 8px;
+}
+
 .panel > button {
   position: absolute;
   left: -24px;
@@ -534,6 +551,7 @@ hr {
   padding: 8px;
   background-color: var(--panel);
   width: calc(100% - 16px);
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -565,6 +583,7 @@ hr {
   height: 100%;
   overflow: hidden;
   background-color: var(--container-alt);
+  border-radius: calc(var(--curvature) - 2.5px);
 }
 
 .paperdoll-canvas {
@@ -749,20 +768,13 @@ hr {
 .manager-layer-buttons {
   display: flex;
   flex-direction: column;
-}
-
-.manager-layer-buttons > button,
-.manager-layer-colors > .color-picker-parent {
-  width: 20px;
-  height: 20px;
-  margin: 2px;
-}
-
-.manager-layer-colors {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
   flex-wrap: wrap;
+  gap: 4px;
+  margin: 1px 2px 0;
+}
+
+.manager-layer-buttons > *:is(button, .color-picker-parent) {
+  margin: 0;
 }
 
 .manager-layer > span {
@@ -777,6 +789,7 @@ hr {
 .manager-layer > span > img {
   pointer-events: none;
   border-radius: var(--half-curvature);
+  margin: 0 4px 0 2px;
 }
 
 .manager-layer > hr {
@@ -920,12 +933,11 @@ h3 {
 }
 
 .color-picker-parent {
-  display: flex;
-  flex-direction: column;
-  width: min-content;
-  min-width: 18px;
+  box-sizing: border-box;
   padding: 0;
-  margin: 5px;
+  margin: 3px;
+  width: 22px;
+  height: 22px;
 }
 
 .color-label {
@@ -936,8 +948,6 @@ h3 {
   height: 100%;
   outline: 2px solid var(--input-outline);
   image-rendering: pixelated;
-  /* this is needed on chrome, again, and im dumb or somethin */
-  min-height: 18px;
 }
 
 .color-label.linked::before,
@@ -1118,9 +1128,8 @@ h3 {
   appearance: none;
   image-rendering: pixelated;
   width: 100%;
-  height: 100%;
-  /* this is needed on chrome and im dumb or somethin */
-  min-height: 22px;
+  height: 22px;
+  margin: 3px;
 }
 
 .slider-label {
@@ -1180,6 +1189,10 @@ h3 {
 .draggable {
   position: absolute;
   z-index: 80;
+  max-width: calc(100% - 100px);
+  max-height: calc(100% - 100px);
+  flex-direction: column-reverse;
+  overflow: hidden;
 }
 
 .draggable.container.draggable.active {
@@ -1203,8 +1216,9 @@ h3 {
   cursor: grab;
   display: flex;
   flex-direction: row;
-  padding: 0;
-  margin-bottom: 4px;
+  padding: 0 0 6px;
+  background: var(--container);
+  margin-bottom: 1px;
 }
 
 .draggable > span:active {
@@ -1224,6 +1238,12 @@ h3 {
 
 .draggable > hr {
   margin-bottom: 4px;
+}
+
+.draggable > div {
+  margin: -4px -4px -8px;
+  padding: 6px 4px 8px;
+  overflow: auto;
 }
 
 .grid-select {

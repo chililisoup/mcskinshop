@@ -190,6 +190,8 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.textureSetup();
     this.startAnimationLoop();
 
+    if (!this.state.usePerspectiveCam && this.orthoCam) this.changeCamera(this.orthoCam);
+
     window.addEventListener('resize', this.handleWindowResize);
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
