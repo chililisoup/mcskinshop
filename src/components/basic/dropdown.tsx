@@ -25,7 +25,7 @@ export default class Dropdown extends Component<AProps, AState> {
         <span onClick={() => this.setState({ open: !this.state.open })} className="dropdown-bar">
           <p>{this.props.title}</p>
           <span>
-            <button>{this.state.open ? '/\\' : '\\/'}</button>
+            <button>{this.state.open ? '▲' : '▼'}</button>
           </span>
         </span>
         {this.state.open && (

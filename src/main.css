@@ -16,7 +16,7 @@
 
   --active-window-outline: none;
   --inactive-window-outline: var(--main-bg);
-  --active-draggable-window-outline: var(--outline);
+  --active-draggable-window-outline: var(--highlight);
   --inactive-draggable-window-outline: var(--outline);
 
   --panel: color-mix(in srgb, var(--container) 36%, black);
@@ -165,14 +165,16 @@ input[type='checkbox']:checked::after {
 button:hover:enabled,
 input:hover:enabled,
 select:hover:enabled,
-label:has(> *:is(img, svg)):has(+ input:enabled):hover {
+label:has(> *:is(img, svg)):has(+ input:enabled):hover,
+.dropdown-bar:hover > span > button:enabled {
   outline: 2px solid var(--highlight);
   box-shadow: inset 0 0 0 2px var(--input-outline);
   outline-offset: 0px;
   cursor: pointer;
 }
 
-button:hover:enabled:not(:has(img, svg)) {
+button:hover:enabled:not(:has(img, svg)),
+.dropdown-bar:hover > span > button:enabled {
   background-color: var(--hovered-accent);
   text-shadow: var(--input-text-outline);
 }
@@ -362,12 +364,13 @@ label:has(+ input:disabled) > *:is(img, svg) {
   flex-direction: column;
   gap: 4px;
   outline: 2px solid var(--menu-bar-outline);
-  border-bottom-left-radius: var(--half-curvature);
-  border-bottom-right-radius: var(--half-curvature);
+  border-bottom-left-radius: var(--curvature);
+  border-bottom-right-radius: var(--curvature);
 }
 
 #MenuBar .popup > div > hr {
-  margin-top: 2px;
+  margin-top: 1px;
+  margin-bottom: 1px;
 }
 
 #MenuBar > div > button:enabled:hover:not(.active) {
@@ -599,8 +602,8 @@ hr {
   max-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  border-bottom-left-radius: var(--curvature);
+  gap: 8px;
+  border-bottom-left-radius: calc(var(--curvature) + 8px);
   max-height: calc(100% - 104px);
   overflow-y: auto;
   pointer-events: initial;
@@ -914,6 +917,7 @@ span.layer-title p {
 
 span.layer-title button {
   white-space: nowrap;
+  padding: 0;
 }
 
 .layer-adder {
@@ -939,6 +943,10 @@ span.layer-title button {
 
 .properties-list tr {
   height: 22px;
+}
+
+.properties-list tr:has(> td > hr) {
+  height: 10px;
 }
 
 .properties-list tr * {
@@ -967,8 +975,6 @@ span.layer-title button {
 }
 
 .properties-list div.dropdown {
-  box-shadow: none;
-  outline: none;
   padding: 0;
 }
 
@@ -1227,7 +1233,9 @@ h3 {
 }
 
 .dropdown {
-  border-radius: var(--half-curvature);
+  border-radius: var(--curvature);
+  box-shadow: none;
+  outline: none;
 }
 
 .dropdown > div > hr:last-of-type {
@@ -1246,11 +1254,20 @@ h3 {
   cursor: pointer;
   justify-content: space-around;
   flex-wrap: nowrap;
-  border-radius: calc(var(--curvature) * 0.25);
+  height: 22px;
+  padding: 0;
+  align-items: center;
 }
 
-.dropdown-bar:hover {
+.dropdown-bar:hover::after {
+  position: absolute;
+  content: '';
+  width: 100%;
+  height: 100%;
+  border-radius: calc(var(--curvature) - 3px);
   outline: 2px solid var(--highlight);
+  outline-offset: 4px;
+  z-index: 1;
 }
 
 .dropdown-bar > * {
@@ -1263,9 +1280,9 @@ h3 {
   width: min-content;
 }
 
-.dropdown-bar:hover > span > button {
-  outline: none;
-  box-shadow: none;
+.dropdown-bar > span > button {
+  padding: 0;
+  margin: 0;
 }
 
 .draggable {
@@ -1309,7 +1326,7 @@ h3 {
 
 .draggable > span > p {
   flex: 1;
-  margin: 0;
+  margin: 0 4px;
   padding: 0;
   font-weight: bold;
 }

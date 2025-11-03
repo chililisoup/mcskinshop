@@ -312,13 +312,14 @@ export class Manager {
         root.style.setProperty('--menu-bar', 'rgb(194, 212, 255)');
         root.style.setProperty('--highlight', 'black');
         root.style.setProperty('--outline', 'rgb(232, 239, 255)');
-        root.style.setProperty('--no-accent', 'rgba(64, 64, 64)');
+        root.style.setProperty('--line', 'var(--empty-area)');
+        root.style.setProperty('--no-accent', 'rgb(64, 64, 64)');
         root.style.setProperty('--input', 'white');
         root.style.setProperty('--light-shadow', 'rgba(64, 94, 128, 0.25)');
         root.style.setProperty('--medium-shadow', 'rgba(32, 47, 64, 0.15)');
         root.style.setProperty('--dark-shadow', 'rgba(16, 24, 32, 0.25)');
         root.style.setProperty('--box-shadow', '0 0 2px 2px var(--dark-shadow)');
-        root.style.setProperty('--drop-shadow', '0 0 4px var(--dark-shadow)');
+        root.style.setProperty('--drop-shadow', '0 0 4px rgba(16, 24, 32, 0.5)');
         break;
       case 'catppuccinMocha':
       case 'catppuccinMacchiato':

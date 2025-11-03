@@ -672,7 +672,7 @@ class Layer extends Component<CProps, CState> {
               e.stopPropagation();
             }}
           >
-            {this.state.fxOpen ? '/\\' : '\\/'}
+            {this.state.fxOpen ? '▲' : '▼'}
           </button>
         </span>
         <hr />
