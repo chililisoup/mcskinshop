@@ -83,6 +83,8 @@ export const degToRad = (deg: number) => deg * d2r;
 const r2d = 180 / Math.PI;
 export const radToDeg = (rad: number) => rad * r2d;
 
+export const lerp = (factor: number, from: number, to: number) => (1 - factor) * from + factor * to;
+
 let slim = false;
 export const setSlim = (set: boolean) => (slim = set);
 export const getSlim = () => slim;

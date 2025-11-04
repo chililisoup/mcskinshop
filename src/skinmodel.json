@@ -280,12 +280,12 @@
       },
       "leftElytraWing": {
         "poseable": true,
-        "position": [0, 0, -2],
+        "position": [5, 0, -2],
         "children": {
           "base": {
             "renderType": "cutout",
             "forceOutline": true,
-            "position": [-0.1875, -11, 0],
+            "position": [-5, -10, -1],
             "shape": [12, 22, 4],
             "uniqueMaterial": true,
             "textureSize": [64, 32],
@@ -296,12 +296,12 @@
       },
       "rightElytraWing": {
         "poseable": true,
-        "position": [0, 0, -2],
+        "position": [-5, 0, -2],
         "children": {
           "base": {
             "renderType": "cutout",
             "forceOutline": true,
-            "position": [0.1875, -11, 0],
+            "position": [5, -10, -1],
             "shape": [12, 22, 4],
             "uniqueMaterial": true,
             "textureSize": [64, 32],

@@ -1,11 +1,12 @@
 import React from 'react';
 import * as THREE from 'three';
+import * as Util from '@tools/util';
 import skinmodel from '@/skinmodel.json';
 import AbstractMode, { Props } from '@components/special/viewport/modes/abstractmode';
 import PropertiesList from '@components/basic/propertieslist';
 import { MANAGER } from '@tools/prefman';
 
-const ANIMATIONS = ['Walk', 'Crouch Walk', 'Swim'] as const;
+const ANIMATIONS = ['Walk', 'Crouch Walk', 'Swim', 'Fly'] as const;
 
 type AState = {
   explode: boolean;
@@ -111,10 +112,10 @@ export default class AnimateMode extends AbstractMode<AState> {
     pivots.rightLeg.rotation.x = rotation * 1.4;
     pivots.leftLeg.rotation.x = -rotation * 1.4;
 
-    pivots.rightLeg.rotation.y = 0.005;
-    pivots.leftLeg.rotation.y = -0.005;
-    pivots.rightLeg.rotation.z = 0.005;
-    pivots.leftLeg.rotation.z = -0.005;
+    pivots.rightLeg.rotation.y = -0.005;
+    pivots.leftLeg.rotation.y = 0.005;
+    pivots.rightLeg.rotation.z = -0.005;
+    pivots.leftLeg.rotation.z = 0.005;
 
     pivots.leftArm.rotation.z = Math.sin(this.data.idleTime / 4) * 0.075 + 0.075;
     pivots.rightArm.rotation.z = -pivots.leftArm.rotation.z;
@@ -128,9 +129,11 @@ export default class AnimateMode extends AbstractMode<AState> {
     switch (this.state.animation) {
       case 'Walk':
         break;
-      case 'Crouch Walk':
+      case 'Crouch Walk': {
         pivots.head.position.y -= 4.0;
         pivots.torso.position.y -= 3.0;
+
+        const worldPos = pivots.leftElytraWing.getWorldPosition(new THREE.Vector3());
 
         pivots.torso.rotation.x = 0.5;
 
@@ -152,15 +155,18 @@ export default class AnimateMode extends AbstractMode<AState> {
         pivots.leftLeg.position.z += 0.8;
         pivots.rightLeg.position.z += 0.8;
 
-        pivots.leftElytraWing.position.y = -3.0;
-        pivots.rightElytraWing.position.y = -3.0;
+        const localPos = pivots.leftElytraWing.parent?.worldToLocal(worldPos);
+        if (localPos) pivots.leftElytraWing.position.copy(localPos);
+        pivots.rightElytraWing.position.copy(
+          new THREE.Vector3(-1, 1, 1).multiply(pivots.leftElytraWing.position)
+        );
 
-        // subtract 0.5 to undo torso rotation to match MC
         newWingRotation.x = (Math.PI * 2) / 9 - 0.5;
-        newWingRotation.y = Math.PI / 9;
-        newWingRotation.z = Math.PI / 4;
+        newWingRotation.y = Math.PI / 8;
+        newWingRotation.z = (Math.PI * 2) / 9;
 
         break;
+      }
       case 'Swim': {
         pivots.torso.rotation.x = Math.PI / 2;
         pivots.torso.position.y = 2;
@@ -202,6 +208,23 @@ export default class AnimateMode extends AbstractMode<AState> {
           pivots.leftArm.rotation.z = Math.PI;
           pivots.rightArm.rotation.z = Math.PI;
         }
+
+        break;
+      }
+      case 'Fly': {
+        pivots.torso.rotation.x = Math.PI / 2;
+        pivots.torso.position.y = 2;
+        pivots.torso.position.z = 4.8;
+
+        pivots.head.rotation.x = Math.PI / 4;
+        pivots.head.position.y = 2;
+        pivots.head.position.z = 4.8;
+
+        const factor = 1.0 - Math.pow(this.state.speed / 6, 1.5);
+
+        newWingRotation.x = Util.lerp(factor, Math.PI / 12, Math.PI / 9) - Math.PI / 12;
+        newWingRotation.y += 0.0;
+        newWingRotation.z = Util.lerp(factor, Math.PI / 12, Math.PI / 2) - Math.PI / 12;
 
         break;
       }
