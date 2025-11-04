@@ -628,8 +628,9 @@ export default class PaperDoll extends Component<AProps, AState> {
     else if (!additive) this.applyScaleOffset(part, new THREE.Vector3());
   };
 
-  resetPose = () => {
-    for (const pivot of Object.values(this.doll.pivots)) this.applyPoseEntry(pivot);
+  resetPose = (...filters: THREE.Object3D[]) => {
+    for (const pivot of Object.values(this.doll.pivots))
+      if (!filters.includes(pivot)) this.applyPoseEntry(pivot);
   };
 
   savePose = () => {

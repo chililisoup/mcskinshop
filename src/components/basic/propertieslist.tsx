@@ -19,6 +19,7 @@ type RangeProperty = BaseProperty & {
   max?: number;
   step?: number;
   snap?: number;
+  allowExceed?: boolean;
   subtype?: SubType;
   onChange?: (value: number) => void;
 };
@@ -130,6 +131,7 @@ export default function PropertiesList(props: AProps) {
             max={property.max}
             step={property.step}
             snap={property.snap}
+            allowExceed={property.allowExceed}
             subtype={property.subtype}
             disabled={property.disabled}
           />

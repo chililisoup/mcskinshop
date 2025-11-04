@@ -5,7 +5,7 @@ import AbstractMode, { Props } from '@components/special/viewport/modes/abstract
 import PropertiesList from '@components/basic/propertieslist';
 import { MANAGER } from '@tools/prefman';
 
-const ANIMATIONS = ['Walk', 'Crouch Walk'] as const;
+const ANIMATIONS = ['Walk', 'Crouch Walk', 'Swim'] as const;
 
 type AState = {
   explode: boolean;
@@ -28,7 +28,7 @@ export default class AnimateMode extends AbstractMode<AState> {
       this.state = {
         explode: false,
         animate: MANAGER.get().animatePlayerOnStart,
-        speed: 0.5,
+        speed: 1,
         animation: 'Walk'
       };
 
@@ -90,17 +90,11 @@ export default class AnimateMode extends AbstractMode<AState> {
     const pivots = this.props.instance.doll.pivots;
 
     if (this.state.animate) {
-      this.data.time += delta * 8 * this.state.speed;
-      this.data.idleTime += delta * 8;
-      if (this.data.time > Math.PI * 20) this.data.time -= Math.PI * 20;
+      this.data.time = (this.data.time + delta * 8 * this.state.speed) % (24 * Math.PI);
+      this.data.idleTime = (this.data.idleTime + delta * 8) % (24 * Math.PI);
     }
 
-    pivots.head.position.copy(pivots.head.userData.defaultPosition as THREE.Vector3Like);
-    pivots.torso.position.copy(pivots.torso.userData.defaultPosition as THREE.Vector3Like);
-    pivots.leftArm.position.copy(pivots.leftArm.userData.defaultPosition as THREE.Vector3Like);
-    pivots.rightArm.position.copy(pivots.rightArm.userData.defaultPosition as THREE.Vector3Like);
-    pivots.leftLeg.position.copy(pivots.leftLeg.userData.defaultPosition as THREE.Vector3Like);
-    pivots.rightLeg.position.copy(pivots.rightLeg.userData.defaultPosition as THREE.Vector3Like);
+    this.props.instance.resetPose(pivots.leftElytraWing, pivots.rightElytraWing);
     pivots.leftElytraWing.position.copy(
       pivots.leftElytraWing.userData.defaultPosition as THREE.Vector3Like
     );
@@ -110,26 +104,29 @@ export default class AnimateMode extends AbstractMode<AState> {
 
     this.updateExplode();
 
-    const rotation = Math.sin(this.data.time) * this.state.speed;
+    const rotation = 0.3 * Math.cos(this.data.time / 3) * this.state.speed;
 
-    pivots.leftLeg.rotation.x = rotation;
-    pivots.rightLeg.rotation.x = -rotation;
-    pivots.leftArm.rotation.x = -rotation;
-    pivots.rightArm.rotation.x = rotation;
+    pivots.rightArm.rotation.x = -rotation;
+    pivots.leftArm.rotation.x = rotation;
+    pivots.rightLeg.rotation.x = rotation * 1.4;
+    pivots.leftLeg.rotation.x = -rotation * 1.4;
 
-    pivots.leftArm.rotation.z = Math.sin(this.data.idleTime * 0.3) * 0.075 + 0.075;
+    pivots.rightLeg.rotation.y = 0.005;
+    pivots.leftLeg.rotation.y = -0.005;
+    pivots.rightLeg.rotation.z = 0.005;
+    pivots.leftLeg.rotation.z = -0.005;
+
+    pivots.leftArm.rotation.z = Math.sin(this.data.idleTime / 4) * 0.075 + 0.075;
     pivots.rightArm.rotation.z = -pivots.leftArm.rotation.z;
 
     pivots.cape.rotation.x =
       Math.sin(this.data.idleTime * 0.1) * 0.05 + 0.75 * this.state.speed + 0.1;
 
     const oldWingRotation = pivots.leftElytraWing.rotation.clone();
-    let newWingRotation = new THREE.Euler(Math.PI / 12, Math.PI / 36, Math.PI / 12);
+    const newWingRotation = new THREE.Euler(Math.PI / 12, Math.PI / 36, Math.PI / 12);
 
     switch (this.state.animation) {
       case 'Walk':
-        pivots.torso.rotation.x = 0;
-
         break;
       case 'Crouch Walk':
         pivots.head.position.y -= 4.0;
@@ -155,13 +152,59 @@ export default class AnimateMode extends AbstractMode<AState> {
         pivots.leftLeg.position.z += 0.8;
         pivots.rightLeg.position.z += 0.8;
 
-        pivots.leftElytraWing.position.y -= 3.0;
+        pivots.leftElytraWing.position.y = -3.0;
+        pivots.rightElytraWing.position.y = -3.0;
 
-        pivots.rightElytraWing.position.y -= 3.0;
-
-        newWingRotation = new THREE.Euler((Math.PI * 2) / 9, Math.PI / 36, Math.PI / 4);
+        // subtract 0.5 to undo torso rotation to match MC
+        newWingRotation.x = (Math.PI * 2) / 9 - 0.5;
+        newWingRotation.y = Math.PI / 9;
+        newWingRotation.z = Math.PI / 4;
 
         break;
+      case 'Swim': {
+        pivots.torso.rotation.x = Math.PI / 2;
+        pivots.torso.position.y = 2;
+        pivots.torso.position.z = 4.8;
+
+        pivots.head.rotation.x = Math.PI / 4;
+        pivots.head.position.y = 2;
+        pivots.head.position.z = 4.8;
+
+        const quadraticArmUpdate = (rot: number) => {
+          return -65.0 * rot + rot * rot;
+        };
+
+        const swimPos = ((this.data.time % (8 * Math.PI)) * 26) / (8 * Math.PI);
+
+        if (swimPos < 14.0) {
+          pivots.leftArm.rotation.x = 0;
+          pivots.rightArm.rotation.x = 0;
+          pivots.leftArm.rotation.y = Math.PI;
+          pivots.rightArm.rotation.y = Math.PI;
+          pivots.leftArm.rotation.z =
+            Math.PI + (1.8707964 * quadraticArmUpdate(swimPos)) / quadraticArmUpdate(14.0);
+          pivots.rightArm.rotation.z =
+            Math.PI - (1.8707964 * quadraticArmUpdate(swimPos)) / quadraticArmUpdate(14.0);
+        } else if (swimPos >= 14.0 && swimPos < 22.0) {
+          const rotScale = (swimPos - 14.0) / 8.0;
+          pivots.leftArm.rotation.x = (Math.PI / 2) * rotScale;
+          pivots.rightArm.rotation.x = (Math.PI / 2) * rotScale;
+          pivots.leftArm.rotation.y = Math.PI;
+          pivots.rightArm.rotation.y = Math.PI;
+          pivots.leftArm.rotation.z = 5.012389 - 1.8707964 * rotScale;
+          pivots.rightArm.rotation.z = 1.2707963 + 1.8707964 * rotScale;
+        } else if (swimPos >= 22.0 && swimPos < 26.0) {
+          const rotScale = (swimPos - 22.0) / 4.0;
+          pivots.leftArm.rotation.x = Math.PI / 2 - (Math.PI / 2) * rotScale;
+          pivots.rightArm.rotation.x = Math.PI / 2 - (Math.PI / 2) * rotScale;
+          pivots.leftArm.rotation.y = Math.PI;
+          pivots.rightArm.rotation.y = Math.PI;
+          pivots.leftArm.rotation.z = Math.PI;
+          pivots.rightArm.rotation.z = Math.PI;
+        }
+
+        break;
+      }
     }
 
     const wingDelta = Math.min(delta * 6, 1);
@@ -211,8 +254,9 @@ export default class AnimateMode extends AbstractMode<AState> {
                 type: 'range',
                 value: this.state.speed,
                 min: 0,
-                max: 2,
-                step: 0.01
+                max: 5,
+                step: 0.01,
+                snap: 0.1
               }
             ]
           },
