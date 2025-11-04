@@ -1,4 +1,5 @@
 import * as Util from '@tools/util';
+import { useEffect, useState } from 'react';
 
 export const SELECT_PREFS = {
   theme: {
@@ -182,7 +183,7 @@ const CATPPUCCIN_THEMES = {
   }
 };
 
-type Listener = (prefs: Readonly<Prefs>) => void;
+type Listener = (prefs: Prefs) => void;
 
 export class Manager {
   private prefs: Prefs;
@@ -225,8 +226,8 @@ export class Manager {
     this.applyPrefs();
   };
 
-  get = () => {
-    return this.prefs as Readonly<Prefs>;
+  get = (): Prefs => {
+    return { ...this.prefs };
   };
 
   registerListener = (listener: Listener) => {
@@ -289,6 +290,7 @@ export class Manager {
         root.style.setProperty('--danger', '#ff0000');
         root.style.setProperty('--input', 'black');
         root.style.setProperty('--input-text', 'white');
+        root.style.setProperty('--popup-outline', '#ffff00');
         root.style.setProperty('--box-shadow', '0 0 0 2px #00ffff');
         root.style.setProperty('--active-draggable-window-outline', '#ff00ff');
         root.style.setProperty('--inactive-draggable-window-outline', 'var(--no-accent)');
@@ -407,4 +409,17 @@ export class Manager {
 
     this.listeners.forEach(listener => listener(this.get()));
   };
+}
+
+export const MANAGER = new Manager();
+
+export function usePrefs() {
+  const [prefs, updatePrefs] = useState(MANAGER.get());
+
+  useEffect(() => {
+    MANAGER.registerListener(updatePrefs);
+    return () => MANAGER.unregisterListener(updatePrefs);
+  });
+
+  return prefs;
 }

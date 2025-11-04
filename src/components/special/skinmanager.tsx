@@ -11,10 +11,10 @@ import MenuBar from '@components/special/menubar';
 import Preview from '@components/special/preview';
 import ModelFeatures, { Features } from '@components/special/modelfeatures';
 import Preferences from '@components/special/preferences';
-import * as PrefMan from '@tools/prefman';
 import DraggableWindow from '@components/basic/draggablewindow';
 import LayerEditor from '@components/special/layereditor';
 import AppWindow from '@components/basic/appwindow';
+import { MANAGER } from '@tools/prefman';
 
 export type UndoCallback = () => RedoCallback;
 export type RedoCallback = () => UndoCallback;
@@ -38,33 +38,28 @@ type SavedSession = {
   layers: ImgMod.FullSerializedLayer;
 } & StateCommon;
 
-type AProps = object;
-
 type AState = {
   skin: string;
   editHints: [string, string];
-  prefMan: PrefMan.Manager;
   preferences: boolean;
   selectedLayer?: ImgMod.AbstractLayer;
   selectedLayerPreview?: ImgMod.ImgPreview;
   sessionKey: string;
 } & StateCommon;
 
-export default class SkinManager extends Component<AProps, AState> {
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export default class SkinManager extends Component<{}, AState> {
   layers = new ImgMod.Layer();
   editHistory: UndoEdit[] = [];
   redoProphecy: RedoEdit[] = [];
 
-  constructor(props: AProps) {
-    super(props);
-    this.state = this.defaultState(new PrefMan.Manager());
-  }
+  state = this.defaultState();
 
-  defaultState(prefMan: PrefMan.Manager): AState {
-    const prefs = prefMan.get();
+  defaultState(): AState {
+    const prefs = MANAGER.get();
 
     return {
-      skin: prefMan.get().showPlaceholderSkins ? steve : ImgMod.EMPTY_IMAGE_SOURCE,
+      skin: prefs.showPlaceholderSkins ? steve : ImgMod.EMPTY_IMAGE_SOURCE,
       slim: false,
       editHints: ['', ''],
       modelFeatures: {
@@ -77,7 +72,6 @@ export default class SkinManager extends Component<AProps, AState> {
         rightItem: { value: false },
         leftItem: { value: false }
       },
-      prefMan: prefMan,
       layerManager: prefs.showLayerManagerOnStart,
       layerEditor: prefs.showLayerEditorOnStart,
       paperDoll: prefs.showPaperDollOnStart,
@@ -96,7 +90,7 @@ export default class SkinManager extends Component<AProps, AState> {
     document.addEventListener('keydown', this.onKeyDown);
 
     this.loadSession().catch(() => {
-      if (this.state.prefMan.get().addDefaultLayer) this.setDefaultLayers();
+      if (MANAGER.get().addDefaultLayer) this.setDefaultLayers();
     });
   }
 
@@ -106,7 +100,7 @@ export default class SkinManager extends Component<AProps, AState> {
 
   componentDidUpdate = () => {
     Util.setSlim(this.state.slim);
-    if (this.state.prefMan.get().autosaveSession) void this.saveSession();
+    if (MANAGER.get().autosaveSession) void this.saveSession();
   };
 
   setDefaultLayers: (add?: boolean) => void = async add => {
@@ -187,7 +181,7 @@ export default class SkinManager extends Component<AProps, AState> {
 
     await this.layers.render(slim !== this.state.slim);
     const stateUpdate = { skin: this.layers.src, slim: slim };
-    if (this.layers.getLayers().length === 0 && this.state.prefMan.get().showPlaceholderSkins)
+    if (this.layers.getLayers().length === 0 && MANAGER.get().showPlaceholderSkins)
       stateUpdate.skin = slim ? alex : steve;
     this.setState(stateUpdate);
   };
@@ -200,7 +194,7 @@ export default class SkinManager extends Component<AProps, AState> {
   getSkinFromUsername = async (username: string) => {
     const fallback = `https://minotar.net/skin/${username}`;
 
-    if (this.state.prefMan.get().useFallbackSkinSource) return fallback;
+    if (MANAGER.get().useFallbackSkinSource) return fallback;
 
     try {
       const uuidResponse = await fetch(
@@ -270,8 +264,7 @@ export default class SkinManager extends Component<AProps, AState> {
   processSkinUpload = (image: ImgMod.Img) => {
     this.addLayer(image);
     const slim = image.detectSlimModel();
-    if (this.state.prefMan.get().autosetImageForm)
-      image.form(slim ? 'slim-stretch' : 'full-squish-inner');
+    if (MANAGER.get().autosetImageForm) image.form(slim ? 'slim-stretch' : 'full-squish-inner');
     this.updateSkin(slim);
   };
 
@@ -352,8 +345,8 @@ export default class SkinManager extends Component<AProps, AState> {
     this.editHistory = [];
     this.redoProphecy = [];
 
-    this.setState(this.defaultState(this.state.prefMan));
-    if (this.state.prefMan.get().addDefaultLayer) this.setDefaultLayers();
+    this.setState(this.defaultState());
+    if (MANAGER.get().addDefaultLayer) this.setDefaultLayers();
     else this.updateSkin();
   };
 
@@ -381,7 +374,7 @@ export default class SkinManager extends Component<AProps, AState> {
 
     const session = JSON.parse(serialized) as Partial<SavedSession>;
 
-    const defaultState = this.defaultState(this.state.prefMan);
+    const defaultState = this.defaultState();
     const stateUpdate: Partial<AState> = {
       slim: session.slim ?? defaultState.slim,
       modelFeatures: session.modelFeatures ?? defaultState.modelFeatures,
@@ -393,7 +386,7 @@ export default class SkinManager extends Component<AProps, AState> {
       layerAdder: session.layerAdder ?? defaultState.layerAdder,
       modelFeaturesWindow: session.modelFeaturesWindow ?? defaultState.modelFeaturesWindow
     };
-    stateUpdate.skin = this.state.prefMan.get().showPlaceholderSkins
+    stateUpdate.skin = MANAGER.get().showPlaceholderSkins
       ? stateUpdate.slim
         ? alex
         : steve
@@ -466,7 +459,6 @@ export default class SkinManager extends Component<AProps, AState> {
                 layers={this.layers}
                 updateSkin={this.updateSkin}
                 slim={this.state.slim}
-                manager={this.state.prefMan}
                 selectForEdit={this.selectForEdit}
                 selectedLayer={this.state.selectedLayer}
               />
@@ -494,7 +486,6 @@ export default class SkinManager extends Component<AProps, AState> {
                 updateSlim={this.updateSkin}
                 modelFeatures={this.state.modelFeatures}
                 addEdit={this.addEdit}
-                manager={this.state.prefMan}
               />
             </AppWindow>
           )}
@@ -524,10 +515,7 @@ export default class SkinManager extends Component<AProps, AState> {
               anchor={{ vw: 0.5, vh: 0.5 }}
               close={() => this.updateState('preferences', false)}
             >
-              <Preferences
-                manager={this.state.prefMan}
-                updatePrefs={manager => this.setState({ prefMan: manager })}
-              />
+              <Preferences />
             </DraggableWindow>
           )}
         </div>

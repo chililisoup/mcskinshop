@@ -1,41 +1,29 @@
-import React, { Component, ReactNode } from 'react';
+import React, { useState } from 'react';
 
 type AProps = {
   title: string;
   defaultOpen?: boolean;
-  children: ReactNode;
+  children: React.ReactNode;
 };
 
-type AState = {
-  open: boolean;
-};
+export default function Dropdown(props: AProps) {
+  const [open, setOpen] = useState(props.defaultOpen ?? false);
 
-export default class Dropdown extends Component<AProps, AState> {
-  constructor(props: AProps) {
-    super(props);
-
-    this.state = {
-      open: this.props.defaultOpen ?? false
-    };
-  }
-
-  render() {
-    return (
-      <div className="dropdown container">
-        <span onClick={() => this.setState({ open: !this.state.open })} className="dropdown-bar">
-          <p>{this.props.title}</p>
-          <span>
-            <button>{this.state.open ? '▲' : '▼'}</button>
-          </span>
+  return (
+    <div className="dropdown container">
+      <span onClick={() => setOpen(!open)} className="dropdown-bar">
+        <p>{props.title}</p>
+        <span>
+          <button>{open ? '▲' : '▼'}</button>
         </span>
-        {this.state.open && (
-          <div>
-            <hr />
-            {this.props.children}
-            <hr />
-          </div>
-        )}
-      </div>
-    );
-  }
+      </span>
+      {open && (
+        <div>
+          <hr />
+          {props.children}
+          <hr />
+        </div>
+      )}
+    </div>
+  );
 }

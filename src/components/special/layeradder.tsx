@@ -1,4 +1,4 @@
-import React, { Component, ReactNode } from 'react';
+import React, { Component } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import * as Util from '@tools/util';
 import steve from '@assets/steve.png';
@@ -58,7 +58,7 @@ export default class LayerAdder extends Component<AProps, AState> {
   };
 
   render() {
-    let elem: ReactNode = <div />;
+    let elem: React.ReactNode = <div />;
     if (this.state.packs.length) {
       elem = this.state.packs.map(name => (
         <Dropdown title={name}>

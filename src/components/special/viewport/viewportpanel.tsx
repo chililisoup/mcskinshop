@@ -418,7 +418,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
     return (
       <div className={'top panel' + (this.state.panel ? ' open' : '')}>
         <button onClick={() => this.setState({ panel: !this.state.panel })}>
-          {this.state.panel ? '>' : '<'}
+          {this.state.panel ? '▶' : '◀'}
         </button>
         <div className="panel-content">{this.state.panel && panelItems}</div>
       </div>

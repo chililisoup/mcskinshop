@@ -1,4 +1,4 @@
-import React, { Component, RefObject } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import no from '@assets/no.png';
 
 export type Option = [entry: string, imageSrc: string, hasDeleteButton?: boolean] | false;
@@ -20,55 +20,42 @@ type AProps = {
   delete?: (option: Option) => void;
 };
 
-type AState = {
-  selected: Option;
-  width: number;
-};
+export default function GridSelect(props: AProps) {
+  const gridRef: React.RefObject<HTMLDivElement | null> = useRef(null);
+  const [selected, setSelected] = useState(props.default ?? false);
+  const [childWidth, setChildWidth] = useState(1);
 
-export default class GridSelect extends Component<AProps, AState> {
-  gridRef: RefObject<HTMLDivElement | null> = React.createRef();
+  useEffect(() => {
+    window.addEventListener('resize', handleWindowResize);
+    handleWindowResize();
+    return () => window.removeEventListener('resize', handleWindowResize);
+  });
 
-  constructor(props: AProps) {
-    super(props);
+  function handleWindowResize() {
+    if (!gridRef.current) return;
 
-    this.state = {
-      selected: this.props.default ?? false,
-      width: 1
-    };
+    const width = gridRef.current.clientWidth;
+    const columns = Math.max(1, Math.round(width / (props.targetWidth ?? 100)));
+
+    setChildWidth(width / columns);
   }
 
-  componentDidMount() {
-    window.addEventListener('resize', this.handleWindowResize);
-
-    this.handleWindowResize();
+  function select(option: Option) {
+    props.select(option);
+    setSelected(option);
   }
 
-  componentWillUnmount() {
-    window.removeEventListener('resize', this.handleWindowResize);
-  }
-
-  handleWindowResize = () => {
-    if (!this.gridRef.current) return;
-
-    const width = this.gridRef.current.clientWidth;
-    const columns = Math.max(1, Math.round(width / (this.props.targetWidth ?? 100)));
-
-    this.setState({ width: width / columns });
-  };
-
-  select = (option: Option) => {
-    this.props.select(option);
-    this.setState({ selected: option });
-  };
-
-  addOption = (option: Option, divStyle: React.CSSProperties, imgStyle?: React.CSSProperties) => {
+  function addOption(
+    option: Option,
+    divStyle: React.CSSProperties,
+    imgStyle?: React.CSSProperties
+  ) {
     return (
       <div
         style={divStyle}
-        onClick={() => this.select(option)}
+        onClick={() => select(option)}
         className={
-          (option ? 'true-option' : 'none-option') +
-          (this.state.selected === option ? ' highlighted' : '')
+          (option ? 'true-option' : 'none-option') + (selected === option ? ' highlighted' : '')
         }
       >
         {option ? (
@@ -83,8 +70,8 @@ export default class GridSelect extends Component<AProps, AState> {
               e.preventDefault();
               e.stopPropagation();
 
-              if (this.state.selected === option) this.select(false);
-              this.props.delete?.(option);
+              if (selected === option) select(false);
+              props.delete?.(option);
             }}
           >
             &#10006;
@@ -92,40 +79,37 @@ export default class GridSelect extends Component<AProps, AState> {
         )}
       </div>
     );
+  }
+
+  let divStyle: React.CSSProperties = {
+    width: childWidth - 6
   };
 
-  render() {
-    let divStyle: React.CSSProperties = {
-      width: this.state.width - 6
+  let imgStyle: React.CSSProperties | undefined = undefined;
+
+  if (props.crop) {
+    const divWidth = childWidth - 6;
+    const divHeight = (divWidth / props.crop.aspectRatio) * (props.crop.sy / props.crop.sx);
+
+    divStyle = {
+      width: divWidth,
+      height: divHeight
     };
 
-    let imgStyle: React.CSSProperties | undefined = undefined;
+    const imgWidth = divWidth / props.crop.sx;
+    const imgHeight = divHeight / props.crop.sy;
 
-    if (this.props.crop) {
-      const divWidth = this.state.width - 6;
-      const divHeight =
-        (divWidth / this.props.crop.aspectRatio) * (this.props.crop.sy / this.props.crop.sx);
-
-      divStyle = {
-        width: divWidth,
-        height: divHeight
-      };
-
-      const imgWidth = divWidth / this.props.crop.sx;
-      const imgHeight = divHeight / this.props.crop.sy;
-
-      imgStyle = {
-        width: imgWidth,
-        height: imgHeight,
-        marginLeft: -(imgWidth * this.props.crop.x),
-        marginTop: -(imgHeight * this.props.crop.y)
-      };
-    }
-
-    return (
-      <div className="grid-select" ref={this.gridRef}>
-        {this.props.options.map(option => this.addOption(option, divStyle, imgStyle))}
-      </div>
-    );
+    imgStyle = {
+      width: imgWidth,
+      height: imgHeight,
+      marginLeft: -(imgWidth * props.crop.x),
+      marginTop: -(imgHeight * props.crop.y)
+    };
   }
+
+  return (
+    <div className="grid-select" ref={gridRef}>
+      {props.options.map(option => addOption(option, divStyle, imgStyle))}
+    </div>
+  );
 }

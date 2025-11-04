@@ -1,9 +1,8 @@
-import React, { Component, ReactNode, RefObject } from 'react';
+import React, { Component } from 'react';
 
 type AProps = {
   close?: () => void;
-
-  children: ReactNode;
+  children: React.ReactNode;
 };
 
 type AState = {
@@ -11,7 +10,7 @@ type AState = {
 };
 
 export default class PopUp extends Component<AProps, AState> {
-  wrapperRef: RefObject<HTMLDivElement | null> = React.createRef();
+  wrapperRef: React.RefObject<HTMLDivElement | null> = React.createRef();
   first = false;
 
   constructor(props: AProps) {
@@ -45,6 +44,10 @@ export default class PopUp extends Component<AProps, AState> {
   };
 
   render() {
-    return <div ref={this.wrapperRef} className='popup'>{this.props.children}</div>;
+    return (
+      <div ref={this.wrapperRef} className="popup">
+        {this.props.children}
+      </div>
+    );
   }
 }

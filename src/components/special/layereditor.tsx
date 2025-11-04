@@ -1,4 +1,4 @@
-import React, { Component, RefObject } from 'react';
+import React, { Component } from 'react';
 import ColorPicker from '@components/basic/colorpicker';
 import checkerboard from '@assets/checkerboard.png';
 import fullref from '@assets/fullref.png';
@@ -28,7 +28,7 @@ export default class LayerEditor extends Component<AProps, AState> {
   previewCanvas = new OffscreenCanvas(64, 64);
   layerCtx;
   previewCtx;
-  canvasRef: RefObject<HTMLCanvasElement | null> = React.createRef();
+  canvasRef: React.RefObject<HTMLCanvasElement | null> = React.createRef();
 
   constructor(props: AProps) {
     super(props);

@@ -1,4 +1,4 @@
-import React, { Component, ReactNode, RefObject } from 'react';
+import React, { Component } from 'react';
 import * as Util from '@tools/util';
 
 type AProps = {
@@ -12,7 +12,7 @@ type AProps = {
     vh: number;
   };
   close?: () => void;
-  children: ReactNode;
+  children: React.ReactNode;
 };
 
 type AState = {
@@ -30,8 +30,8 @@ type AState = {
 };
 
 export default class DraggableWindow extends Component<AProps, AState> {
-  handleRef: RefObject<HTMLSpanElement | null> = React.createRef();
-  windowRef: RefObject<HTMLDivElement | null> = React.createRef();
+  handleRef: React.RefObject<HTMLSpanElement | null> = React.createRef();
+  windowRef: React.RefObject<HTMLDivElement | null> = React.createRef();
   resizeObserver;
   handleOffset = { x: 0, y: 0 };
   anchorOffset = { x: 0, y: 0 };

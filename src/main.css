@@ -839,6 +839,8 @@ hr {
 
 .manager-layer-buttons > *:is(button, .color-picker-parent) {
   margin: 0;
+  max-width: 22px;
+  max-height: 22px;
 }
 
 .manager-layer > span {

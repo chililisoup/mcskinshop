@@ -1,4 +1,4 @@
-import React, { Component, RefObject } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import PopUp from '@components/basic/popup';
 import checker from '@assets/checkerboard.png';
@@ -14,230 +14,203 @@ type AProps = {
   update?: (color: string, finished: boolean) => void;
 };
 
-type AState = {
-  open: boolean;
-  hsla: ImgMod.Hsla;
-  color: string;
-  hex: string;
-  bottom: boolean;
-};
+export default function ColorPicker(props: AProps) {
+  const pickerRef: React.RefObject<HTMLButtonElement | null> = useRef(null);
 
-export default class ColorPicker extends Component<AProps, AState> {
-  pickerRef: RefObject<HTMLButtonElement | null> = React.createRef();
+  const defaultHsla: ImgMod.Hsla = props.default
+    ? ImgMod.hexToHsla(ImgMod.colorAsHex(props.default))
+    : [0, 100, 50, 1];
+  const [hslaValue, setHslaValue] = useState(defaultHsla);
+  const [colorValue, setColorValue] = useState(ImgMod.hslaToString(defaultHsla));
+  const [hexValue, setHexValue] = useState(ImgMod.hslaToHex(defaultHsla));
 
-  constructor(props: AProps) {
-    super(props);
+  const [open, setOpen] = useState(false);
+  const [bottom, setBottom] = useState(false);
 
-    let hsla: ImgMod.Hsla = [0, 100, 50, 1];
-    if (props.default) hsla = ImgMod.hexToHsla(ImgMod.colorAsHex(props.default));
+  useEffect(() => {
+    if (!props.default || props.default === colorValue) return;
+    if (!props.controlled && !props.linked) return;
 
-    this.state = {
-      open: false,
-      hsla: hsla,
-      color: ImgMod.hslaToString(hsla),
-      hex: ImgMod.hslaToHex(hsla),
-      bottom: false
-    };
+    const hsla = ImgMod.hexToHsla(ImgMod.colorAsHex(props.default));
+    setHslaValue(hsla);
+    setColorValue(ImgMod.hslaToString(hsla));
+    setHexValue(ImgMod.hslaToHex(hsla));
+  }, [props.default, props.controlled, props.linked]);
+
+  function setHsla(hsla: ImgMod.Hsla, hex?: string) {
+    const color = ImgMod.hslaToString(hsla);
+    setHslaValue(hsla);
+    setColorValue(color);
+    setHexValue(hex ?? ImgMod.hslaToHex(hsla));
+    props.update?.(color, false);
   }
 
-  componentDidUpdate = (prevProps: Readonly<AProps>) => {
-    if (
-      this.props.default &&
-      prevProps.default !== this.props.default &&
-      this.props.default !== this.state.color &&
-      (this.props.controlled || this.props.linked)
-    ) {
-      const hsla = ImgMod.hexToHsla(ImgMod.colorAsHex(this.props.default));
-      this.setState({
-        hsla: hsla,
-        color: ImgMod.hslaToString(hsla),
-        hex: ImgMod.hslaToHex(hsla)
-      });
-    }
-  };
-
-  setHsla = (hsla: ImgMod.Hsla, hex?: string) => {
-    const color = ImgMod.hslaToString(hsla);
-    this.setState({
-      hsla: hsla,
-      color: color,
-      hex: hex ?? ImgMod.hslaToHex(hsla)
-    });
-    this.props.update?.(color, false);
-  };
-
-  updateHue = (hue: number) => {
-    const newHsla = this.state.hsla;
+  function updateHue(hue: number) {
+    const newHsla = hslaValue;
     newHsla[0] = hue;
-    this.setHsla(newHsla);
-  };
+    setHsla(newHsla);
+  }
 
-  updateSaturation = (saturation: number) => {
-    const newHsla = this.state.hsla;
+  function updateSaturation(saturation: number) {
+    const newHsla = hslaValue;
     newHsla[1] = saturation;
-    this.setHsla(newHsla);
-  };
+    setHsla(newHsla);
+  }
 
-  updateLightness = (lightness: number) => {
-    const newHsla = this.state.hsla;
+  function updateLightness(lightness: number) {
+    const newHsla = hslaValue;
     newHsla[2] = lightness;
-    this.setHsla(newHsla);
-  };
+    setHsla(newHsla);
+  }
 
-  updateAlpha = (alpha: number) => {
-    const newHsla = this.state.hsla;
+  function updateAlpha(alpha: number) {
+    const newHsla = hslaValue;
     newHsla[3] = alpha;
-    this.setHsla(newHsla);
-  };
+    setHsla(newHsla);
+  }
 
-  setFromString = (color: string) => {
+  function setFromString(color: string) {
     const newHsla = ImgMod.colorAsHsla(color);
-    if (!this.props.alpha) newHsla[3] = this.state.hsla[3];
-    this.setHsla(newHsla, color);
-  };
+    if (!props.alpha) newHsla[3] = hslaValue[3];
+    setHsla(newHsla, color);
+  }
 
-  togglePicker = () => {
-    if (!this.pickerRef.current) return;
+  function togglePicker() {
+    if (!pickerRef.current) return;
 
-    const rect = this.pickerRef.current.getBoundingClientRect();
+    const rect = pickerRef.current.getBoundingClientRect();
     const height = window.innerHeight;
 
-    this.setState({
-      open: !this.state.open,
-      bottom: rect.top > height / 2
-    });
-  };
+    setOpen(!open);
+    setBottom(rect.top > height / 2);
+  }
 
-  inputValue = (e: React.FormEvent<HTMLInputElement>) =>
+  const inputValue = (e: React.FormEvent<HTMLInputElement>) =>
     Number((e.target as HTMLInputElement).value);
 
-  render() {
-    return (
-      <div className="color-picker-parent">
-        <button
-          ref={this.pickerRef}
-          className={'color-label' + (this.props.linked ? ' linked' : '')}
-          style={{
-            backgroundImage:
-              'linear-gradient(to right,' +
-              this.state.color +
-              ',' +
-              ImgMod.hslToString(this.state.hsla) +
-              `),url(${checker})`
+  return (
+    <div className="color-picker-parent">
+      <button
+        ref={pickerRef}
+        className={'color-label' + (props.linked ? ' linked' : '')}
+        style={{
+          backgroundImage:
+            'linear-gradient(to right,' +
+            colorValue +
+            ',' +
+            ImgMod.hslToString(hslaValue) +
+            `),url(${checker})`
+        }}
+        id={props.id}
+        disabled={props.disabled}
+        onMouseDown={togglePicker}
+      />
+      {open && (
+        <PopUp
+          close={() => {
+            setOpen(false);
+            props.update?.(colorValue, true);
           }}
-          id={this.props.id}
-          disabled={this.props.disabled}
-          onMouseDown={this.togglePicker}
-        />
-        {this.state.open && (
-          <PopUp
-            close={() => {
-              this.setState({ open: false });
-              this.props.update?.(this.state.color, true);
+        >
+          <div
+            className={'color-picker ' + (bottom ? 'color-picker-bottom' : 'color-picker-top')}
+            style={{
+              display: open ? 'block' : 'none',
+              left: `${pickerRef.current ? pickerRef.current.clientWidth / 2 - 100 : -90}px`
+            }}
+            draggable={true}
+            onDragStart={e => {
+              e.stopPropagation();
+              e.preventDefault();
             }}
           >
-            <div
-              className={
-                'color-picker ' + (this.state.bottom ? 'color-picker-bottom' : 'color-picker-top')
-              }
-              style={{
-                display: this.state.open ? 'block' : 'none',
-                left: `${this.pickerRef.current ? this.pickerRef.current.clientWidth / 2 - 100 : -90}px`
-              }}
-              draggable={true}
-              onDragStart={e => {
-                e.stopPropagation();
-                e.preventDefault();
-              }}
-            >
-              <div className="container">
+            <div className="container">
+              <input
+                value={hslaValue[0]}
+                min={0}
+                max={360}
+                step={1}
+                type="range"
+                onInput={e => updateHue(inputValue(e))}
+                disabled={props.linked}
+                style={{
+                  background:
+                    'linear-gradient(to right,' +
+                    `hsl(0,${hslaValue[1]}%,${hslaValue[2]}%),` +
+                    `hsl(60,${hslaValue[1]}%,${hslaValue[2]}%),` +
+                    `hsl(120,${hslaValue[1]}%,${hslaValue[2]}%),` +
+                    `hsl(180,${hslaValue[1]}%,${hslaValue[2]}%),` +
+                    `hsl(240,${hslaValue[1]}%,${hslaValue[2]}%),` +
+                    `hsl(300,${hslaValue[1]}%,${hslaValue[2]}%),` +
+                    `hsl(360,${hslaValue[1]}%,${hslaValue[2]}%)` +
+                    ')'
+                }}
+              />
+              <input
+                value={hslaValue[1]}
+                min={0}
+                max={100}
+                step={1}
+                type="range"
+                onInput={e => updateSaturation(inputValue(e))}
+                disabled={props.linked}
+                style={{
+                  background:
+                    'linear-gradient(to right,' +
+                    `hsl(${hslaValue[0]},0%,${hslaValue[2]}%),` +
+                    `hsl(${hslaValue[0]},100%,${hslaValue[2]}%)` +
+                    ')'
+                }}
+              />
+              <input
+                value={hslaValue[2]}
+                min={0}
+                max={100}
+                step={1}
+                type="range"
+                onInput={e => updateLightness(inputValue(e))}
+                disabled={props.linked}
+                style={{
+                  background:
+                    'linear-gradient(to right,' +
+                    '#000000,' +
+                    `hsl(${hslaValue[0]}, ${hslaValue[1]}%, 50%),` +
+                    '#ffffff' +
+                    ')'
+                }}
+              />
+              {props.alpha && (
                 <input
-                  value={this.state.hsla[0]}
+                  value={hslaValue[3]}
                   min={0}
-                  max={360}
-                  step={1}
+                  max={1}
+                  step={0.01}
                   type="range"
-                  onInput={e => this.updateHue(this.inputValue(e))}
-                  disabled={this.props.linked}
+                  onInput={e => updateAlpha(inputValue(e))}
+                  disabled={props.linked}
                   style={{
-                    background:
+                    backgroundImage:
                       'linear-gradient(to right,' +
-                      `hsl(0,${this.state.hsla[1]}%,${this.state.hsla[2]}%),` +
-                      `hsl(60,${this.state.hsla[1]}%,${this.state.hsla[2]}%),` +
-                      `hsl(120,${this.state.hsla[1]}%,${this.state.hsla[2]}%),` +
-                      `hsl(180,${this.state.hsla[1]}%,${this.state.hsla[2]}%),` +
-                      `hsl(240,${this.state.hsla[1]}%,${this.state.hsla[2]}%),` +
-                      `hsl(300,${this.state.hsla[1]}%,${this.state.hsla[2]}%),` +
-                      `hsl(360,${this.state.hsla[1]}%,${this.state.hsla[2]}%)` +
-                      ')'
+                      'rgba(0,0,0,0),' +
+                      ImgMod.hslToString(hslaValue) +
+                      `),url(${checker})`
                   }}
                 />
+              )}
+              <span>
                 <input
-                  value={this.state.hsla[1]}
-                  min={0}
-                  max={100}
-                  step={1}
-                  type="range"
-                  onInput={e => this.updateSaturation(this.inputValue(e))}
-                  disabled={this.props.linked}
-                  style={{
-                    background:
-                      'linear-gradient(to right,' +
-                      `hsl(${this.state.hsla[0]},0%,${this.state.hsla[2]}%),` +
-                      `hsl(${this.state.hsla[0]},100%,${this.state.hsla[2]}%)` +
-                      ')'
-                  }}
+                  placeholder="#ffffff"
+                  value={hexValue}
+                  onChange={e => setFromString(e.target.value)}
+                  onKeyDown={e => e.stopPropagation()}
+                  disabled={props.linked}
                 />
-                <input
-                  value={this.state.hsla[2]}
-                  min={0}
-                  max={100}
-                  step={1}
-                  type="range"
-                  onInput={e => this.updateLightness(this.inputValue(e))}
-                  disabled={this.props.linked}
-                  style={{
-                    background:
-                      'linear-gradient(to right,' +
-                      '#000000,' +
-                      `hsl(${this.state.hsla[0]}, ${this.state.hsla[1]}%, 50%),` +
-                      '#ffffff' +
-                      ')'
-                  }}
-                />
-                {this.props.alpha && (
-                  <input
-                    value={this.state.hsla[3]}
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    type="range"
-                    onInput={e => this.updateAlpha(this.inputValue(e))}
-                    disabled={this.props.linked}
-                    style={{
-                      backgroundImage:
-                        'linear-gradient(to right,' +
-                        'rgba(0,0,0,0),' +
-                        ImgMod.hslToString(this.state.hsla) +
-                        `),url(${checker})`
-                    }}
-                  />
-                )}
-                <span>
-                  <input
-                    placeholder="#ffffff"
-                    value={this.state.hex}
-                    onChange={e => this.setFromString(e.target.value)}
-                    onKeyDown={e => e.stopPropagation()}
-                    disabled={this.props.linked}
-                  />
-                </span>
-                {this.props.unlink && <button onClick={this.props.unlink}>Unlink</button>}
-              </div>
+              </span>
+              {props.unlink && <button onClick={props.unlink}>Unlink</button>}
             </div>
-          </PopUp>
-        )}
-      </div>
-    );
-  }
+          </div>
+        </PopUp>
+      )}
+    </div>
+  );
 }

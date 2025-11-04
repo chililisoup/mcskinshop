@@ -1,58 +1,39 @@
-import React, { Component, ReactNode, RefObject } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 type AProps = {
   style?: React.CSSProperties;
-  children: ReactNode;
+  children: React.ReactNode;
 };
 
-type AState = {
-  active: boolean;
-};
+export default function AppWindow(props: AProps) {
+  const windowRef: React.RefObject<HTMLDivElement | null> = useRef(null);
+  const [active, setActive] = useState(false);
 
-export default class AppWindow extends Component<AProps, AState> {
-  windowRef: RefObject<HTMLDivElement | null> = React.createRef();
+  useEffect(() => {
+    if (windowRef.current) windowRef.current.addEventListener('mousedown', startFocus);
 
-  constructor(props: AProps) {
-    super(props);
+    document.addEventListener('mousedown', checkFocus);
 
-    this.state = {
-      active: false
+    return () => {
+      if (windowRef.current) windowRef.current.removeEventListener('mousedown', startFocus);
+
+      document.removeEventListener('mousedown', checkFocus);
     };
-  }
+  });
 
-  componentDidMount() {
-    if (this.windowRef.current)
-      this.windowRef.current.addEventListener('mousedown', this.startFocus);
-
-    document.addEventListener('mousedown', this.checkFocus);
-  }
-
-  componentWillUnmount() {
-    if (this.windowRef.current)
-      this.windowRef.current.removeEventListener('mousedown', this.startFocus);
-
-    document.removeEventListener('mousedown', this.checkFocus);
-  }
-
-  checkFocus = (e: MouseEvent) => {
+  function checkFocus(e: MouseEvent) {
     if (!(e.target instanceof Element)) return;
-    if (!this.windowRef.current?.contains(e.target)) this.setState({ active: false });
-  };
-
-  startFocus = () => {
-    this.setState({ active: true });
-    document.addEventListener('mousedown', this.checkFocus);
-  };
-
-  render() {
-    return (
-      <div
-        ref={this.windowRef}
-        className={'window' + (this.state.active ? ' active' : '')}
-        style={this.props.style}
-      >
-        {this.props.children}
-      </div>
-    );
+    if (!windowRef.current?.contains(e.target)) setActive(false);
   }
+
+  function startFocus() {
+    setActive(true);
+    document.addEventListener('mousedown', checkFocus);
+  }
+
+  return (
+    <div ref={windowRef} className={'window' + (active ? ' active' : '')} style={props.style}>
+      {props.children}
+    </div>
+  );
 }

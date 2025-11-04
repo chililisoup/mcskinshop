@@ -1,12 +1,10 @@
-import React, { Component, RefObject } from 'react';
-import * as PrefMan from '@tools/prefman';
+import React, { Component } from 'react';
 import PaperDoll from '../paperdoll';
 import { UndoCallback } from '@components/special/skinmanager';
 
 export type Props = {
   instance: PaperDoll;
-  canvasRef: RefObject<HTMLCanvasElement | null>;
-  manager: PrefMan.Manager;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
   addEdit: (name: string, undoCallback: UndoCallback) => void;
 };
 

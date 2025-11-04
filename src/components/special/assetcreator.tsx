@@ -1,4 +1,4 @@
-import React, { ChangeEvent, Component, ReactNode } from 'react';
+import React, { ChangeEvent, Component } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import ColorPicker from '@components/basic/colorpicker';
 
@@ -76,7 +76,7 @@ export default class AssetCreator extends Component<AProps, AState> {
   };
 
   render() {
-    let elem: ReactNode = <div />;
+    let elem: React.ReactNode = <div />;
     if (this.state.layers.getLayers().length) {
       elem = this.state.layers
         .getLayers()

@@ -1,14 +1,13 @@
-import React, { Component, ReactNode, RefObject } from 'react';
+import React, { Component } from 'react';
 import * as ImgMod from '@tools/imgmod';
-import * as PrefMan from '@tools/prefman';
 import ColorPicker from '@components/basic/colorpicker';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
+import { MANAGER } from '@tools/prefman';
 
 type AProps = {
   layers: ImgMod.Layer;
   updateSkin: (slim?: boolean) => void;
   slim: boolean;
-  manager: PrefMan.Manager;
   selectForEdit: (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => void;
   selectedLayer?: ImgMod.AbstractLayer;
 };
@@ -45,7 +44,6 @@ export default class LayerManager extends Component<AProps> {
           layers={this.props.layers}
           root={this.props.layers}
           isRoot={true}
-          manager={this.props.manager}
           updateSkin={this.props.updateSkin}
           selectForEdit={this.props.selectForEdit}
           selectedLayer={this.props.selectedLayer}
@@ -63,7 +61,6 @@ type BProps = {
   layers: ImgMod.Layer;
   root: ImgMod.Layer;
   isRoot?: boolean;
-  manager: PrefMan.Manager;
   updateSkin: () => void;
   selectForEdit: (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => void;
   selectedLayer?: ImgMod.AbstractLayer;
@@ -75,7 +72,7 @@ type BState = {
 };
 
 class LayerList extends Component<BProps, BState> {
-  listRef: RefObject<HTMLDivElement | null> = React.createRef();
+  listRef: React.RefObject<HTMLDivElement | null> = React.createRef();
 
   constructor(props: BProps) {
     super(props);
@@ -223,8 +220,7 @@ class LayerList extends Component<BProps, BState> {
       }
 
       const slim = image.detectSlimModel();
-      if (this.props.manager.get().autosetImageForm)
-        image.form(slim ? 'slim-stretch' : 'full-squish-inner');
+      if (MANAGER.get().autosetImageForm) image.form(slim ? 'slim-stretch' : 'full-squish-inner');
 
       this.props.layers.insertLayer(insertingIndex, image);
       this.props.updateSkin();
@@ -244,7 +240,7 @@ class LayerList extends Component<BProps, BState> {
     // const image = new ImgMod.Img();
     // await image.render(layer.src);
     // const slim = image.detectSlimModel();
-    // if (this.props.manager.get().autosetImageForm)
+    // if (MANAGER.get().autosetImageForm)
     //   image.form = slim ? 'slim-stretch' : 'full-squish-inner';
 
     this.props.layers.insertLayer(insertingIndex, layer);
@@ -280,7 +276,6 @@ class LayerList extends Component<BProps, BState> {
           index={i}
           root={this.props.root}
           path={this.props.path}
-          manager={this.props.manager}
           updateLayer={this.props.updateSkin}
           duplicateLayer={this.duplicateLayer}
           removeLayer={this.removeLayer}
@@ -338,7 +333,6 @@ type CProps = {
   root: ImgMod.Layer;
   index: number;
   path?: string;
-  manager: PrefMan.Manager;
   updateLayer: () => void;
   duplicateLayer: (index: number) => void;
   removeLayer: (index: number) => void;
@@ -362,7 +356,7 @@ type CState = {
 };
 
 class Layer extends Component<CProps, CState> {
-  layerRef: RefObject<HTMLDivElement | null> = React.createRef();
+  layerRef: React.RefObject<HTMLDivElement | null> = React.createRef();
 
   constructor(props: CProps) {
     super(props);
@@ -452,7 +446,7 @@ class Layer extends Component<CProps, CState> {
   };
 
   render() {
-    const colors: ReactNode[] = [];
+    const colors: React.ReactNode[] = [];
     if (this.props.layer instanceof ImgMod.Layer) {
       const layer = this.props.layer;
 
@@ -712,7 +706,6 @@ class Layer extends Component<CProps, CState> {
               updateSkin={this.props.updateLayer}
               selectForEdit={this.props.selectForEdit}
               selectedLayer={this.props.selectedLayer}
-              manager={this.props.manager}
               path={
                 this.props.path ? `${this.props.path}-${this.props.index}` : `${this.props.index}`
               }

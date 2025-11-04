@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import skinmodel from '@/skinmodel.json';
 import AbstractMode, { Props } from '@components/special/viewport/modes/abstractmode';
 import PropertiesList from '@components/basic/propertieslist';
+import { MANAGER } from '@tools/prefman';
 
 const ANIMATIONS = ['Walk', 'Crouch Walk'] as const;
 
@@ -26,7 +27,7 @@ export default class AnimateMode extends AbstractMode<AState> {
     if (!this.state)
       this.state = {
         explode: false,
-        animate: this.props.manager.get().animatePlayerOnStart,
+        animate: MANAGER.get().animatePlayerOnStart,
         speed: 0.5,
         animation: 'Walk'
       };

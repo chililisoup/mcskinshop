@@ -1,38 +1,30 @@
-import React, { ChangeEvent, Component, ReactNode, RefObject } from 'react';
+import React from 'react';
 
 type AProps = {
   callback?: (file: File, name: string) => void;
   id?: string;
   accept?: string;
   disabled?: boolean;
-  children: ReactNode;
+  children: React.ReactNode;
 };
 
-export default class FileInput extends Component<AProps> {
-  uploadRef: RefObject<HTMLInputElement | null> = React.createRef();
+export default function FileInput(props: AProps) {
+  const uploadRef: React.RefObject<HTMLInputElement | null> = React.useRef(null);
 
-  onFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    this.props.callback?.(e.target.files[0], e.target.files[0].name.replace(/\.[^/.]+$/, ''));
-    e.target.value = '';
-  };
-
-  render() {
-    return (
-      <button
-        id={this.props.id}
-        disabled={this.props.disabled}
-        onClick={() => this.uploadRef.current?.click()}
-      >
-        {this.props.children}
-        <input
-          type="file"
-          className="hidden"
-          ref={this.uploadRef}
-          accept={this.props.accept}
-          onChange={this.onFileUpload}
-        />
-      </button>
-    );
-  }
+  return (
+    <button id={props.id} disabled={props.disabled} onClick={() => uploadRef.current?.click()}>
+      {props.children}
+      <input
+        type="file"
+        className="hidden"
+        ref={uploadRef}
+        accept={props.accept}
+        onChange={e => {
+          if (!e.target.files) return;
+          props.callback?.(e.target.files[0], e.target.files[0].name.replace(/\.[^/.]+$/, ''));
+          e.target.value = '';
+        }}
+      />
+    </button>
+  );
 }

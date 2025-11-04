@@ -1,4 +1,4 @@
-import React, { Component, ReactNode } from 'react';
+import React, { Component } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import asset_map from '@/asset_map.json';
 import Dropdown from '@components/basic/dropdown';
@@ -355,7 +355,7 @@ type BProps = {
   changeFeature: (option: Option) => void;
   deleteCustomFeature: (option: Option) => void;
   crop?: Crop;
-  children?: ReactNode;
+  children?: React.ReactNode;
 };
 
 class FeatureEntry extends Component<BProps> {

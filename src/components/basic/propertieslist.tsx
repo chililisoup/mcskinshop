@@ -1,5 +1,4 @@
-import React, { Component } from 'react';
-import * as Util from '@tools/util';
+import React, { useId } from 'react';
 import Slider, { SubType } from '@components/basic/slider';
 import ColorPicker from '@components/basic/colorpicker';
 import Dropdown from '@components/basic/dropdown';
@@ -99,21 +98,30 @@ type AProps = ListType & {
   properties: Property[];
 };
 
-export default class PropertiesList extends Component<AProps> {
-  key = Util.randomKey();
+export default function PropertiesList(props: AProps) {
+  const key = useId();
 
-  constructor(props: AProps) {
-    super(props);
-  }
+  const getId = (property: Property) => `${property.id}-${property.type}-${key}`;
 
-  getInput(property: Property, id: string) {
+  const isLabeled = (
+    property: Property
+  ): property is Exclude<Property, { type: 'divider' }> & boolean =>
+    property.type !== 'divider' &&
+    !property.unlabeled &&
+    property.type !== 'section' &&
+    ((property.type !== 'button' && property.type !== 'file') ||
+      typeof property.label === 'string');
+
+  const propertyElements = props.properties.map(addProperty);
+
+  function getInput(property: Property, id: string) {
     switch (property.type) {
       case 'range':
         return [
           <Slider
             callback={
               property.onChange ??
-              ((value, finished) => this.props.numberFallback?.(property.id, value, finished))
+              ((value, finished) => props.numberFallback?.(property.id, value, finished))
             }
             id={id}
             key={property.id}
@@ -128,7 +136,7 @@ export default class PropertiesList extends Component<AProps> {
         ];
       case 'checkbox':
         return [
-          this.props.type === 'ribbon' ? (
+          props.type === 'ribbon' ? (
             <input
               id={id}
               key={property.id}
@@ -138,7 +146,7 @@ export default class PropertiesList extends Component<AProps> {
               onChange={e =>
                 property.onChange
                   ? property.onChange(e.target.checked)
-                  : this.props.booleanFallback?.(property.id, e.target.checked)
+                  : props.booleanFallback?.(property.id, e.target.checked)
               }
             />
           ) : (
@@ -151,7 +159,7 @@ export default class PropertiesList extends Component<AProps> {
                 onChange={e =>
                   property.onChange
                     ? property.onChange(e.target.checked)
-                    : this.props.booleanFallback?.(property.id, e.target.checked)
+                    : props.booleanFallback?.(property.id, e.target.checked)
                 }
               />
             </span>
@@ -168,7 +176,7 @@ export default class PropertiesList extends Component<AProps> {
             onChange={e =>
               property.onChange
                 ? property.onChange(e.target.value)
-                : this.props.stringFallback?.(property.id, e.target.value, true)
+                : props.stringFallback?.(property.id, e.target.value, true)
             }
           >
             {Array.isArray(property.options)
@@ -198,7 +206,7 @@ export default class PropertiesList extends Component<AProps> {
             id={id}
             key={property.id}
             disabled={property.disabled}
-            onClick={property.onClick ?? (() => this.props.buttonFallback?.(property.id))}
+            onClick={property.onClick ?? (() => props.buttonFallback?.(property.id))}
             className={property.selected ? 'selected' : ''}
             title={property.name}
           >
@@ -213,8 +221,7 @@ export default class PropertiesList extends Component<AProps> {
             accept={property.accept}
             disabled={property.disabled}
             callback={
-              property.onUpload ??
-              ((value, name) => this.props.fileFallback?.(property.id, value, name))
+              property.onUpload ?? ((value, name) => props.fileFallback?.(property.id, value, name))
             }
           >
             {property.label ?? property.name}
@@ -231,7 +238,7 @@ export default class PropertiesList extends Component<AProps> {
             controlled={property.controlled}
             update={
               property.onChange ??
-              ((value, finished) => this.props.stringFallback?.(property.id, value, finished))
+              ((value, finished) => props.stringFallback?.(property.id, value, finished))
             }
           />
         ];
@@ -241,17 +248,15 @@ export default class PropertiesList extends Component<AProps> {
           : [
               <Dropdown title={property.name} key={property.id}>
                 <PropertiesList
-                  numberFallback={this.props.numberFallback}
-                  booleanFallback={this.props.booleanFallback}
-                  stringFallback={this.props.stringFallback}
-                  buttonFallback={this.props.buttonFallback}
-                  fileFallback={this.props.fileFallback}
+                  numberFallback={props.numberFallback}
+                  booleanFallback={props.booleanFallback}
+                  stringFallback={props.stringFallback}
+                  buttonFallback={props.buttonFallback}
+                  fileFallback={props.fileFallback}
                   properties={property.properties}
                   labelWidth={
                     property.labelWidth ??
-                    (!this.props.type || this.props.type === 'list'
-                      ? this.props.labelWidth
-                      : undefined)
+                    (!props.type || props.type === 'list' ? props.labelWidth : undefined)
                   }
                 />
               </Dropdown>
@@ -261,40 +266,24 @@ export default class PropertiesList extends Component<AProps> {
     }
   }
 
-  getInputSet = (property: Property, id: string) => {
-    const input = this.getInput(property, id);
+  function getInputSet(property: Property, id: string) {
+    const input = getInput(property, id);
     return property.siblings
       ? input.concat(
           ...property.siblings.map(sibling =>
-            this.getInput(sibling, `${id}-${sibling.id}-${sibling.type}`)
+            getInput(sibling, `${id}-${sibling.id}-${sibling.type}`)
           )
         )
       : input;
-  };
+  }
 
-  getId = (property: Property) => {
-    return `${property.id}-${property.type}-${this.key}`;
-  };
-
-  isLabeled = (
-    property: Property
-  ): property is Exclude<Property, { type: 'divider' }> & boolean => {
-    return (
-      property.type !== 'divider' &&
-      !property.unlabeled &&
-      property.type !== 'section' &&
-      ((property.type !== 'button' && property.type !== 'file') ||
-        typeof property.label === 'string')
-    );
-  };
-
-  addProperty = (property: Property): React.JSX.Element | React.JSX.Element[] => {
-    const id = this.getId(property);
-    const labeled = this.isLabeled(property);
-    const input = this.getInputSet(property, id);
+  function addProperty(property: Property): React.JSX.Element | React.JSX.Element[] {
+    const id = getId(property);
+    const labeled = isLabeled(property);
+    const input = getInputSet(property, id);
     if (input.length === 0) return [];
 
-    switch (this.props.type) {
+    switch (props.type) {
       case 'ribbon':
       case 'toolbar':
         return labeled ? (
@@ -319,34 +308,28 @@ export default class PropertiesList extends Component<AProps> {
           </tr>
         );
     }
-  };
+  }
 
-  render() {
-    const properties = this.props.properties.map(this.addProperty);
-
-    switch (this.props.type) {
-      case 'ribbon':
-        return <span className="settings-ribbon">{properties}</span>;
-      case 'toolbar':
-        return <div className="toolbar">{properties}</div>;
-      default:
-        return (
-          <table
-            className="properties-list"
-            draggable={true}
-            onDragStart={e => {
-              e.stopPropagation();
-              e.preventDefault();
-            }}
-            style={
-              this.props.labelWidth
-                ? ({ '--label-width': this.props.labelWidth } as React.CSSProperties)
-                : {}
-            }
-          >
-            <tbody>{properties}</tbody>
-          </table>
-        );
-    }
+  switch (props.type) {
+    case 'ribbon':
+      return <span className="settings-ribbon">{propertyElements}</span>;
+    case 'toolbar':
+      return <div className="toolbar">{propertyElements}</div>;
+    default:
+      return (
+        <table
+          className="properties-list"
+          draggable={true}
+          onDragStart={e => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+          style={
+            props.labelWidth ? ({ '--label-width': props.labelWidth } as React.CSSProperties) : {}
+          }
+        >
+          <tbody>{propertyElements}</tbody>
+        </table>
+      );
   }
 }

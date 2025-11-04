@@ -1,8 +1,7 @@
-import React, { Component, RefObject } from 'react';
+import React, { Component } from 'react';
 import * as THREE from 'three';
 import * as ImgMod from '@tools/imgmod';
 import * as Util from '@tools/util';
-import * as PrefMan from '@tools/prefman';
 import * as ModelTool from '@tools/modeltool';
 import * as Handles from '@components/special/viewport/handles';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -19,6 +18,7 @@ import AnimateMode from '@components/special/viewport/modes/animatemode';
 import PoseMode from '@components/special/viewport/modes/posemode';
 import ViewportPanel from '@components/special/viewport/viewportpanel';
 import AbstractMode from './modes/abstractmode';
+import { MANAGER } from '@tools/prefman';
 
 export type PoseEntry = {
   rotation?: THREE.EulerTuple;
@@ -32,7 +32,6 @@ type AProps = {
   updateSlim: (slim: boolean) => void;
   modelFeatures: Features;
   addEdit: (name: string, undoCallback: UndoCallback) => void;
-  manager: PrefMan.Manager;
 };
 
 export type AState = typeof defaultViewOptions & {
@@ -86,8 +85,8 @@ const defaultViewOptions = {
 };
 
 export default class PaperDoll extends Component<AProps, AState> {
-  canvasRef: RefObject<HTMLCanvasElement | null> = React.createRef();
-  panelRef: RefObject<ViewportPanel | null> = React.createRef();
+  canvasRef: React.RefObject<HTMLCanvasElement | null> = React.createRef();
+  panelRef: React.RefObject<ViewportPanel | null> = React.createRef();
   clock = new THREE.Clock();
   doll = new ModelTool.Model('doll', skinmodel as ModelTool.ModelDefinition);
   activeKeys: Record<string, true> = {};
@@ -95,7 +94,6 @@ export default class PaperDoll extends Component<AProps, AState> {
   modeProps = {
     instance: this,
     canvasRef: this.canvasRef,
-    manager: this.props.manager,
     addEdit: this.props.addEdit
   };
 
@@ -195,7 +193,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     window.addEventListener('resize', this.handleWindowResize);
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
-    this.props.manager.registerListener(this.updateThemedMaterials);
+    MANAGER.registerListener(this.updateThemedMaterials);
   }
 
   componentWillUnmount() {
@@ -204,7 +202,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     window.removeEventListener('resize', this.handleWindowResize);
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('keyup', this.onKeyUp);
-    this.props.manager.unregisterListener(this.updateThemedMaterials);
+    MANAGER.unregisterListener(this.updateThemedMaterials);
 
     window.cancelAnimationFrame(this.requestID);
     if (this.controls) this.controls.dispose();
@@ -361,7 +359,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     const outputPass = new OutputPass();
     this.composer.addPass(outputPass);
 
-    this.SMAAPass = new SMAAPass(width, height);
+    this.SMAAPass = new SMAAPass();
     this.composer.addPass(this.SMAAPass);
 
     this.scene.add(this.ambientLight);
