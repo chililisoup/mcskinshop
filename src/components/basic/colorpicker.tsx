@@ -7,6 +7,7 @@ type AProps = {
   alpha?: boolean;
   default?: string;
   id?: string;
+  title?: string;
   disabled?: boolean;
   controlled?: boolean;
   linked?: boolean;
@@ -102,6 +103,7 @@ export default function ColorPicker(props: AProps) {
             `),url(${checker})`
         }}
         id={props.id}
+        title={props.title}
         disabled={props.disabled}
         onMouseDown={togglePicker}
       />

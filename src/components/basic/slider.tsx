@@ -11,6 +11,7 @@ type AProps = {
   step?: number;
   snap?: number;
   id?: string;
+  title?: string;
   subtype?: SubType;
   disabled?: boolean;
   allowExceed?: boolean;
@@ -157,6 +158,7 @@ export default class Slider extends Component<AProps, AState> {
           type="range"
           className="slider"
           id={this.props.id}
+          title={this.props.title}
           value={this.props.value}
           min={min - buffer}
           max={max + buffer}
@@ -179,6 +181,8 @@ export default class Slider extends Component<AProps, AState> {
           {this.state.typing && (
             <input
               type="number"
+              id={this.props.id}
+              title={this.props.title}
               autoFocus={true}
               defaultValue={this.textVal}
               min={min - buffer}

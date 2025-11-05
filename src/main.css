@@ -92,7 +92,9 @@ select {
 }
 
 button,
-select {
+select,
+input[type='number'],
+input[type='text'] {
   padding: 2px 6px;
 }
 
@@ -386,6 +388,40 @@ label:has(+ input:disabled) > *:is(img, svg) {
 
 .preferences {
   width: 500px;
+  max-width: calc(100vw - 150px);
+}
+
+.export-render {
+  display: flex;
+  flex-direction: row;
+  width: 800px;
+  height: 500px;
+  min-height: 200px;
+  max-height: calc(100vh - 150px);
+  max-width: calc(100vw - 150px);
+}
+
+.export-render > div {
+  flex: 1;
+  margin: 4px;
+  max-width: 50%;
+}
+
+.export-render > div:has(img) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.export-render > div > img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  image-rendering: auto;
+  user-select: none;
+  background: var(--container-alt);
+  border-radius: var(--half-curvature);
 }
 
 .Preview img {
@@ -425,6 +461,11 @@ hr {
   outline: 1px solid var(--line);
   width: calc(100% - 16px);
   margin: 0 auto;
+}
+
+hr.vr {
+  width: 0;
+  margin: 8px;
 }
 
 .container {
@@ -976,7 +1017,11 @@ span.layer-title button {
   padding-bottom: 0;
 }
 
-.properties-list div.dropdown {
+.properties-list td > *:is(input[type='number'], input[type='text']) {
+  width: calc(100% - 12px);
+}
+
+.properties-list div.inner-container {
   padding: 0;
 }
 
@@ -1234,7 +1279,7 @@ h3 {
   background-color: transparent;
 }
 
-.dropdown {
+.inner-container {
   border-radius: var(--curvature);
   box-shadow: none;
   outline: none;
@@ -1345,6 +1390,23 @@ h3 {
   margin: -4px -4px -8px;
   padding: 6px 4px 8px;
   overflow: auto;
+}
+
+.important {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 5000;
+  backdrop-filter: blur(4px) brightness(50%) grayscale(50%);
+  animation: backdrop-filter 0.5s;
+}
+
+@keyframes backdrop-filter {
+  0% {
+    backdrop-filter: none;
+  }
 }
 
 .grid-select {

@@ -11,6 +11,7 @@ type AProps = {
     vw: number;
     vh: number;
   };
+  important?: boolean;
   close?: () => void;
   children: React.ReactNode;
 };
@@ -42,10 +43,10 @@ export default class DraggableWindow extends Component<AProps, AState> {
 
     this.state = {
       pos: props.startPos ?? { x: 0, y: 0 },
-      anchor: props.anchor ?? { vw: 0, vh: 0 },
+      anchor: props.anchor ?? (props.startPos ? { vw: 0, vh: 0 } : { vw: 0.5, vh: 0.5 }),
       focused: false,
       fresh: true,
-      active: false
+      active: !!props.important
     };
 
     this.resizeObserver = new ResizeObserver(this.handleWindowRefResize);
@@ -91,10 +92,28 @@ export default class DraggableWindow extends Component<AProps, AState> {
     document.removeEventListener('touchmove', this.touchDrag);
   }
 
+  blinkImportant = () =>
+    this.windowRef.current?.animate(
+      [
+        { outline: '4px solid var(--danger)' },
+        { outline: '4px solid var(--danger)', offset: 0.49 },
+        { outline: '2px solid var(--highlight)', offset: 0.5 }
+      ],
+      {
+        duration: 250,
+        iterations: 3
+      }
+    );
+
   checkFocus = (e: Event) => {
     if (!(e.target instanceof Element)) return;
 
     const ref = this.windowRef.current;
+    if (this.props.important && !ref?.contains(e.target)) {
+      this.blinkImportant();
+      return;
+    }
+
     if (!ref?.contains(e.target) && e.target.closest('.draggable')) {
       this.setState({ focused: false, fresh: false, active: false });
       document.removeEventListener('mousedown', this.checkFocus);
@@ -205,7 +224,7 @@ export default class DraggableWindow extends Component<AProps, AState> {
   };
 
   render() {
-    return (
+    const container = (
       <div
         ref={this.windowRef}
         className={
@@ -227,5 +246,7 @@ export default class DraggableWindow extends Component<AProps, AState> {
         </span>
       </div>
     );
+
+    return this.props.important ? <div className="important">{container}</div> : container;
   }
 }

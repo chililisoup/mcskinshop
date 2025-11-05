@@ -3,6 +3,7 @@ import React from 'react';
 type AProps = {
   callback?: (file: File, name: string) => void;
   id?: string;
+  title?: string;
   accept?: string;
   disabled?: boolean;
   children: React.ReactNode;
@@ -17,6 +18,7 @@ export default function FileInput(props: AProps) {
       <input
         type="file"
         className="hidden"
+        title={props.title}
         ref={uploadRef}
         accept={props.accept}
         onChange={e => {

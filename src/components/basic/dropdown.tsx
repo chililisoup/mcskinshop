@@ -10,7 +10,7 @@ export default function Dropdown(props: AProps) {
   const [open, setOpen] = useState(props.defaultOpen ?? false);
 
   return (
-    <div className="dropdown container">
+    <div className="dropdown container inner-container">
       <span onClick={() => setOpen(!open)} className="dropdown-bar">
         <p>{props.title}</p>
         <span>

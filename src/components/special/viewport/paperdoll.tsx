@@ -19,6 +19,7 @@ import PoseMode from '@components/special/viewport/modes/posemode';
 import ViewportPanel from '@components/special/viewport/viewportpanel';
 import AbstractMode from './modes/abstractmode';
 import { MANAGER } from '@tools/prefman';
+import ExportRender from './exportRender';
 
 export type PoseEntry = {
   rotation?: THREE.EulerTuple;
@@ -65,6 +66,7 @@ export type AState = typeof defaultViewOptions & {
   };
   background?: boolean;
   backgroundImage?: string;
+  exportingRender: boolean;
 };
 
 const defaultLighting = {
@@ -162,7 +164,8 @@ export default class PaperDoll extends Component<AProps, AState> {
           base: true,
           hat: true
         }
-      }
+      },
+      exportingRender: false
     };
 
     this.scene = new THREE.Scene();
@@ -703,7 +706,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     if (!this.composer) return;
 
     const delta = this.clock.getDelta();
-    this.state.mode?.renderFrame?.(delta);
+    this.state.mode?.renderFrame?.(this.state.exportingRender ? 0 : delta);
     this.composer.render();
   };
 
@@ -713,19 +716,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.requestID = window.requestAnimationFrame(this.startAnimationLoop);
   };
 
-  handleWindowResize = () => {
-    if (
-      !this.canvasRef.current?.parentNode ||
-      !(this.canvasRef.current.parentNode instanceof Element)
-    )
-      return;
-
-    const width = this.canvasRef.current.parentNode.clientWidth;
-    const height = this.canvasRef.current.parentNode.clientHeight - 32;
-
-    this.renderer?.setSize(width, height);
-    this.composer?.setSize(width, height);
-
+  changeSize = (width: number, height: number, ratio = 1) => {
     if (this.perspCam) {
       this.perspCam.aspect = width / height;
       this.perspCam.updateProjectionMatrix();
@@ -738,6 +729,24 @@ export default class PaperDoll extends Component<AProps, AState> {
       this.orthoCam.bottom = height / -2;
       this.orthoCam.updateProjectionMatrix();
     }
+
+    this.renderer?.setSize(width, height);
+    this.composer?.setSize(width, height);
+    this.renderer?.setPixelRatio(ratio);
+    this.composer?.setPixelRatio(ratio);
+  };
+
+  handleWindowResize = () => {
+    if (
+      !this.canvasRef.current?.parentNode ||
+      !(this.canvasRef.current.parentNode instanceof Element)
+    )
+      return;
+
+    const width = this.canvasRef.current.parentNode.clientWidth;
+    const height = this.canvasRef.current.parentNode.clientHeight - 32;
+
+    this.changeSize(width, height, window.devicePixelRatio);
   };
 
   onKeyDown = (e: KeyboardEvent) => {
@@ -760,31 +769,23 @@ export default class PaperDoll extends Component<AProps, AState> {
     delete this.activeKeys[e.key];
   };
 
-  saveRender = () => {
+  createRender = (width: number, height: number, smaa: boolean) => {
     if (
-      !this.canvasRef.current?.parentNode ||
-      !(this.canvasRef.current.parentNode instanceof Element) ||
+      !this.canvasRef.current?.parentElement ||
       !this.SMAAPass ||
       !this.hoveredOutlinePass ||
       !this.selectedOutlinePass ||
       !this.renderer ||
       !this.composer
     )
-      return;
+      return ImgMod.EMPTY_IMAGE_SOURCE;
 
-    const scale = Number(window.prompt('Render Scale (1-4):', '1'));
-    if (isNaN(scale) || scale < 1 || scale > 4) return;
-
-    const width = this.canvasRef.current.parentNode.clientWidth;
-    const height = this.canvasRef.current.parentNode.clientHeight;
-
-    this.SMAAPass.enabled = false;
+    this.SMAAPass.enabled = smaa;
     this.hoveredOutlinePass.enabled = false;
     this.selectedOutlinePass.enabled = false;
     this.handles.visible = false;
     this.grid.visible = false;
-    this.renderer.setSize(width * scale, height * scale);
-    this.composer.setSize(width * scale, height * scale);
+    this.changeSize(width, height, 1);
     this.renderFrame();
 
     const data = this.renderer.domElement.toDataURL();
@@ -794,15 +795,9 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.selectedOutlinePass.enabled = true;
     this.handles.visible = true;
     this.grid.visible = this.state.grid;
-    this.renderer.setPixelRatio(window.devicePixelRatio);
     this.handleWindowResize();
 
-    const link = document.createElement('a');
-    link.href = data;
-    const name = window.prompt('Download as...', 'My Skin Render');
-    if (name === null) return;
-    link.download = name + '.png';
-    link.click();
+    return data;
   };
 
   nextMode = () => {
@@ -891,7 +886,7 @@ export default class PaperDoll extends Component<AProps, AState> {
           />
           {this.state.modeElement}
           <div className="bottom left">
-            <button title="Save Render" onClick={this.saveRender}>
+            <button title="Save Render" onClick={() => this.setState({ exportingRender: true })}>
               {SAVE_RENDER}
             </button>
           </div>
@@ -907,6 +902,14 @@ export default class PaperDoll extends Component<AProps, AState> {
             }
           />
         </div>
+        {this.state.exportingRender && (
+          <ExportRender
+            defaultWidth={this.canvasRef.current?.parentElement?.clientWidth}
+            defaultHeight={this.canvasRef.current?.parentElement?.clientHeight}
+            close={() => this.setState({ exportingRender: false })}
+            createRender={this.createRender}
+          />
+        )}
       </div>
     );
   }

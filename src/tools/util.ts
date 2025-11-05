@@ -2,7 +2,7 @@ export const fileSystemAccess = 'showOpenFilePicker' in window && 'FileSystemObs
 
 export const getBlob = async (content: string) => await fetch(content).then(r => r.blob());
 
-export const download = async (filename: string, content: string) => {
+export const download = async (filename: string, content: string, promptName = true) => {
   if (content === null) return;
 
   if (fileSystemAccess) {
@@ -18,7 +18,9 @@ export const download = async (filename: string, content: string) => {
     return;
   }
 
-  const name = window.prompt('Download as...', filename.split('.')[0]);
+  const name = promptName
+    ? window.prompt('Download as...', filename.split('.')[0])
+    : filename.split('.')[0];
   if (name === null) return;
 
   const link = document.createElement('a');

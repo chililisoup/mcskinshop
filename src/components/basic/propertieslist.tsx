@@ -3,6 +3,7 @@ import Slider, { SubType } from '@components/basic/slider';
 import ColorPicker from '@components/basic/colorpicker';
 import Dropdown from '@components/basic/dropdown';
 import FileInput from '@components/basic/fileinput';
+import NumberInput from '@components/basic/numberinput';
 
 type BaseProperty = {
   name: string;
@@ -10,6 +11,17 @@ type BaseProperty = {
   disabled?: boolean;
   unlabeled?: boolean;
   siblings?: Property[];
+};
+
+type NumberProperty = BaseProperty & {
+  type: 'number';
+  value: number;
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  enforceStep?: boolean;
+  onChange?: (value: number) => void;
 };
 
 type RangeProperty = BaseProperty & {
@@ -20,6 +32,7 @@ type RangeProperty = BaseProperty & {
   step?: number;
   snap?: number;
   allowExceed?: boolean;
+  enforceStep?: boolean;
   subtype?: SubType;
   onChange?: (value: number) => void;
 };
@@ -28,6 +41,13 @@ type BoolProperty = BaseProperty & {
   type: 'checkbox';
   value: boolean;
   onChange?: (value: boolean) => void;
+};
+
+type StringProperty = BaseProperty & {
+  type: 'string';
+  value: string;
+  placeholder?: string;
+  onChange?: (value: string) => void;
 };
 
 type SelectProperty = BaseProperty & {
@@ -72,8 +92,10 @@ type DividerProperty = {
 };
 
 export type Property =
+  | NumberProperty
   | RangeProperty
   | BoolProperty
+  | StringProperty
   | SelectProperty
   | ButtonProperty
   | FileProperty
@@ -117,6 +139,25 @@ export default function PropertiesList(props: AProps) {
 
   function getInput(property: Property, id: string) {
     switch (property.type) {
+      case 'number':
+        return [
+          <NumberInput
+            callback={
+              property.onChange ??
+              ((value, finished) => props.numberFallback?.(property.id, value, finished))
+            }
+            id={id}
+            key={property.id}
+            title={property.name}
+            placeholder={property.placeholder}
+            value={property.value}
+            min={property.min}
+            max={property.max}
+            step={property.step}
+            enforceStep={property.enforceStep}
+            disabled={property.disabled}
+          />
+        ];
       case 'range':
         return [
           <Slider
@@ -126,12 +167,14 @@ export default function PropertiesList(props: AProps) {
             }
             id={id}
             key={property.id}
+            title={property.name}
             value={property.value}
             min={property.min}
             max={property.max}
             step={property.step}
             snap={property.snap}
             allowExceed={property.allowExceed}
+            enforceStep={property.enforceStep}
             subtype={property.subtype}
             disabled={property.disabled}
           />
@@ -142,6 +185,7 @@ export default function PropertiesList(props: AProps) {
             <input
               id={id}
               key={property.id}
+              title={property.name}
               type="checkbox"
               checked={property.value}
               disabled={property.disabled}
@@ -155,6 +199,7 @@ export default function PropertiesList(props: AProps) {
             <span key={property.id}>
               <input
                 id={id}
+                title={property.name}
                 type="checkbox"
                 checked={property.value}
                 disabled={property.disabled}
@@ -167,12 +212,29 @@ export default function PropertiesList(props: AProps) {
             </span>
           )
         ];
-
+      case 'string':
+        return [
+          <input
+            id={id}
+            key={property.id}
+            title={property.name}
+            value={property.value}
+            placeholder={property.placeholder}
+            type="text"
+            disabled={property.disabled}
+            onChange={e =>
+              property.onChange
+                ? property.onChange(e.target.value)
+                : props.stringFallback?.(property.id, e.target.value, true)
+            }
+          />
+        ];
       case 'select':
         return [
           <select
             id={id}
             key={property.id}
+            title={property.name}
             value={property.value}
             disabled={property.disabled}
             onChange={e =>
@@ -207,10 +269,10 @@ export default function PropertiesList(props: AProps) {
           <button
             id={id}
             key={property.id}
+            title={property.name}
             disabled={property.disabled}
             onClick={property.onClick ?? (() => props.buttonFallback?.(property.id))}
             className={property.selected ? 'selected' : ''}
-            title={property.name}
           >
             {property.label ?? property.name}
           </button>
@@ -220,6 +282,7 @@ export default function PropertiesList(props: AProps) {
           <FileInput
             id={id}
             key={property.id}
+            title={property.name}
             accept={property.accept}
             disabled={property.disabled}
             callback={
@@ -234,6 +297,7 @@ export default function PropertiesList(props: AProps) {
           <ColorPicker
             id={id}
             key={property.id}
+            title={property.name}
             disabled={property.disabled}
             default={property.value}
             alpha={property.alpha}
@@ -290,7 +354,9 @@ export default function PropertiesList(props: AProps) {
       case 'toolbar':
         return labeled ? (
           <span key={`${property.id}-span`}>
-            <label htmlFor={id}>{property.name}</label>
+            <label htmlFor={id} title={property.name}>
+              {property.name}
+            </label>
             {input}
           </span>
         ) : (
@@ -301,7 +367,11 @@ export default function PropertiesList(props: AProps) {
           <tr key={`${property.id}-row`}>
             {labeled && (
               <th scope="row">
-                <label htmlFor={id} className={property.disabled ? 'disabled' : ''}>
+                <label
+                  htmlFor={id}
+                  className={property.disabled ? 'disabled' : ''}
+                  title={property.name}
+                >
                   {property.name}
                 </label>
               </th>
