@@ -69,19 +69,15 @@ export type AState = typeof defaultViewOptions & {
   exportingRender: boolean;
 };
 
-const defaultLighting = {
+export const defaultViewOptions = {
   shade: true,
   lightAngle: Math.PI / 4,
   lightFocus: Math.SQRT2,
   ambientLightColor: '#ffffff',
   ambientLightIntensity: 1,
   directionalLightColor: '#ffffff',
-  directionalLightIntensity: 2.5
-};
-
-const defaultViewOptions = {
-  ...defaultLighting,
-  fov: 80,
+  directionalLightIntensity: 2.5,
+  fov: 70,
   usePerspectiveCam: true,
   grid: true
 };
@@ -806,12 +802,6 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.updateSetting('modeElement', modes[next >= modes.length ? 0 : next]);
   };
 
-  resetLighting = () => {
-    Object.assign(this.savedViewOptions, defaultLighting);
-    localStorage.setItem('savedViewportOptions', JSON.stringify(this.savedViewOptions));
-    this.setState(defaultLighting);
-  };
-
   getSavedLighting = () => {
     const base = structuredClone(defaultViewOptions);
     const serialized = localStorage.getItem('savedViewportOptions');
@@ -880,7 +870,6 @@ export default class PaperDoll extends Component<AProps, AState> {
             updateSetting={this.updateSetting}
             updateSlim={this.props.updateSlim}
             resetCameraPosition={this.resetCameraPosition}
-            resetLighting={this.resetLighting}
             addEdit={this.props.addEdit}
             ref={this.panelRef}
           />

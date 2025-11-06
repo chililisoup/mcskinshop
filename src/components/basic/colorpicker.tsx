@@ -79,10 +79,12 @@ export default function ColorPicker(props: AProps) {
   function togglePicker() {
     if (!pickerRef.current) return;
 
+    setOpen(!open);
+    if (open) return;
+
     const rect = pickerRef.current.getBoundingClientRect();
     const height = window.innerHeight;
 
-    setOpen(!open);
     setBottom(rect.top > height / 2);
   }
 

@@ -29,7 +29,6 @@ type AProps = {
   ) => void;
   updateSlim: (slim: boolean) => void;
   resetCameraPosition: () => void;
-  resetLighting: () => void;
   addEdit: (name: string, undoCallback: UndoCallback) => void;
 };
 
@@ -66,10 +65,6 @@ export default class ViewportPanel extends Component<AProps, AState> {
 
     this.props.updateSetting('backgroundImage', URL.createObjectURL(file));
     this.props.updateSetting('background', true);
-  };
-
-  resetLighting = () => {
-    this.props.resetLighting();
   };
 
   togglePart = (part: keyof PaperDoll.AState['partToggles'], hat: boolean, value: boolean) => {
@@ -175,6 +170,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
               id: 'fov',
               type: 'range',
               value: this.props.settings.fov,
+              resetValue: PaperDoll.defaultViewOptions.fov,
               min: 30,
               max: 120,
               subtype: 'degrees',
@@ -202,9 +198,6 @@ export default class ViewportPanel extends Component<AProps, AState> {
             else if (id === 'directionalLightIntensity')
               this.props.updateSetting('directionalLightIntensity', value, finished);
           }}
-          buttonFallback={id => {
-            if (id === 'resetLighting') this.resetLighting();
-          }}
           stringFallback={(id, value, finished) => {
             if (id === 'ambientLightColor')
               this.props.updateSetting('ambientLightColor', value, finished);
@@ -219,6 +212,10 @@ export default class ViewportPanel extends Component<AProps, AState> {
               value: this.props.settings.shade
             },
             {
+              id: 'shadeDivider',
+              type: 'divider'
+            },
+            {
               name: 'Directional Light',
               id: 'directionalLightSettings',
               type: 'section',
@@ -228,6 +225,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
                   id: 'lightFocus',
                   type: 'range',
                   value: Math.sqrt(this.props.settings.lightFocus) * 10,
+                  resetValue: Math.sqrt(PaperDoll.defaultViewOptions.lightFocus) * 10,
                   min: 0,
                   max: 100,
                   subtype: 'percent',
@@ -238,6 +236,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
                   id: 'lightAngle',
                   type: 'range',
                   value: this.props.settings.lightAngle,
+                  resetValue: PaperDoll.defaultViewOptions.lightAngle,
                   min: 0,
                   max: 2 * Math.PI,
                   step: Math.PI / 180,
@@ -250,6 +249,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
                   id: 'directionalLightColor',
                   type: 'color',
                   value: this.props.settings.directionalLightColor,
+                  resetValue: PaperDoll.defaultViewOptions.directionalLightColor,
                   controlled: true,
                   disabled: !this.props.settings.shade
                 },
@@ -258,6 +258,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
                   id: 'directionalLightIntensity',
                   type: 'range',
                   value: this.props.settings.directionalLightIntensity,
+                  resetValue: PaperDoll.defaultViewOptions.directionalLightIntensity,
                   min: 0,
                   max: 5,
                   step: 0.1,
@@ -275,6 +276,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
                   id: 'ambientLightColor',
                   type: 'color',
                   value: this.props.settings.ambientLightColor,
+                  resetValue: PaperDoll.defaultViewOptions.ambientLightColor,
                   controlled: true,
                   disabled: !this.props.settings.shade
                 },
@@ -283,17 +285,13 @@ export default class ViewportPanel extends Component<AProps, AState> {
                   id: 'ambientLightIntensity',
                   type: 'range',
                   value: this.props.settings.ambientLightIntensity,
+                  resetValue: PaperDoll.defaultViewOptions.ambientLightIntensity,
                   min: 0,
                   max: 5,
                   step: 0.1,
                   disabled: !this.props.settings.shade
                 }
               ]
-            },
-            {
-              name: 'Reset Lighting',
-              id: 'resetLighting',
-              type: 'button'
             }
           ]}
         />

@@ -27,6 +27,7 @@ type NumberProperty = BaseProperty & {
 type RangeProperty = BaseProperty & {
   type: 'range';
   value: number;
+  resetValue?: number;
   min?: number;
   max?: number;
   step?: number;
@@ -75,9 +76,17 @@ type ColorProperty = BaseProperty & {
   type: 'color';
   value: string;
   alpha?: boolean;
-  controlled?: boolean;
   onChange?: (value: string) => void;
-};
+} & (
+    | {
+        resetValue?: string;
+        controlled: true;
+      }
+    | {
+        resetValue?: undefined;
+        controlled?: false;
+      }
+  );
 
 type SectionProperty = BaseProperty & {
   type: 'section';
@@ -158,8 +167,8 @@ export default function PropertiesList(props: AProps) {
             disabled={property.disabled}
           />
         ];
-      case 'range':
-        return [
+      case 'range': {
+        const slider = (
           <Slider
             callback={
               property.onChange ??
@@ -178,7 +187,29 @@ export default function PropertiesList(props: AProps) {
             subtype={property.subtype}
             disabled={property.disabled}
           />
+        );
+        const resetValue = property.resetValue;
+        return [
+          resetValue ? (
+            <span>
+              {slider}
+              {property.value !== resetValue && (
+                <button
+                  className="reset-button"
+                  onClick={() => {
+                    if (property.onChange) property.onChange(resetValue);
+                    else props.numberFallback?.(property.id, resetValue, true);
+                  }}
+                >
+                  &#8634;
+                </button>
+              )}
+            </span>
+          ) : (
+            slider
+          )
         ];
+      }
       case 'checkbox':
         return [
           props.type === 'ribbon' ? (
@@ -292,8 +323,8 @@ export default function PropertiesList(props: AProps) {
             {property.label ?? property.name}
           </FileInput>
         ];
-      case 'color':
-        return [
+      case 'color': {
+        const picker = (
           <ColorPicker
             id={id}
             key={property.id}
@@ -307,7 +338,29 @@ export default function PropertiesList(props: AProps) {
               ((value, finished) => props.stringFallback?.(property.id, value, finished))
             }
           />
+        );
+        const resetValue = property.resetValue;
+        return [
+          resetValue ? (
+            <span>
+              {picker}
+              {property.value !== resetValue && (
+                <button
+                  className="reset-button"
+                  onClick={() => {
+                    if (property.onChange) property.onChange(resetValue);
+                    else props.stringFallback?.(property.id, resetValue, true);
+                  }}
+                >
+                  &#8634;
+                </button>
+              )}
+            </span>
+          ) : (
+            picker
+          )
         ];
+      }
       case 'section':
         return property.disabled
           ? []

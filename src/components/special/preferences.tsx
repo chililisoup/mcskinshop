@@ -1,5 +1,12 @@
 import React from 'react';
-import { MANAGER, SELECT_PREFS, USER_THEME_COLOR_VARS, Prefs, usePrefs } from '@tools/prefman';
+import {
+  MANAGER,
+  SELECT_PREFS,
+  USER_THEME_COLOR_VARS,
+  Prefs,
+  usePrefs,
+  defaultPrefs
+} from '@tools/prefman';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
 
 export default function Preferences() {
@@ -57,15 +64,17 @@ export default function Preferences() {
             id: 'userThemeColors',
             type: 'section',
             disabled: prefs.theme !== 'user',
-            properties: Object.entries(USER_THEME_COLOR_VARS).map(([key, value]) => {
+            properties: Object.entries(USER_THEME_COLOR_VARS).map(([key, value]): Property => {
               return {
                 name: value,
                 id: key,
                 type: 'color',
                 value: prefs[key as keyof typeof USER_THEME_COLOR_VARS],
+                resetValue: defaultPrefs[key as keyof typeof USER_THEME_COLOR_VARS],
+                controlled: true,
                 alpha: true
               };
-            }) as Property[]
+            })
           },
           {
             id: 'themingDivider',

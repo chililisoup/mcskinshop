@@ -151,7 +151,7 @@ input[type='checkbox']:checked::before {
   width: 16px;
   height: 16px;
   background-color: var(--input);
-  clip-path: polygon(17% 32%, 42% 49%, 71% 2%, 100% 24%, 51% 97%, 0% 65%);
+  clip-path: polygon(19.3% 31.4%, 41.3% 44.2%, 67.9% 4.4%, 100% 25.9%, 53.4% 95.6%, 0% 64.8%);
 }
 
 input[type='checkbox']:checked::after {
@@ -161,7 +161,7 @@ input[type='checkbox']:checked::after {
   width: 16px;
   height: 16px;
   background-color: var(--input-text);
-  clip-path: polygon(22% 45%, 46% 60%, 73% 16%, 87% 25%, 50% 83%, 12% 60%);
+  clip-path: polygon(23.3% 46.4%, 44.8% 58.8%, 71% 19.6%, 84.8% 28.9%, 50% 80.9%, 15% 60.8%);
 }
 
 button:hover:enabled,
@@ -171,7 +171,7 @@ label:has(> *:is(img, svg)):has(+ input:enabled):hover,
 .dropdown-bar:hover > span > button:enabled {
   outline: 2px solid var(--highlight);
   box-shadow: inset 0 0 0 2px var(--input-outline);
-  outline-offset: 0px;
+  outline-offset: 0;
   cursor: pointer;
 }
 
@@ -762,7 +762,7 @@ hr.vr {
   display: block;
   background: var(--empty-area) !important;
   outline: 2px solid var(--outline) !important;
-  border-radius: calc(var(--curvature) + 4px);
+  border-radius: calc(var(--curvature) + 2px);
   height: 100%;
   width: 100%;
   overflow: hidden auto;
@@ -826,6 +826,7 @@ hr.vr {
   user-select: none;
   z-index: 1;
   cursor: grab;
+  border-radius: calc(var(--curvature) + 2px);
 }
 
 .manager-layer > * {
@@ -1030,6 +1031,44 @@ span.layer-title button {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+}
+
+.properties-list span:has(> .reset-button) {
+  width: calc(100% + 22px);
+}
+
+span:has(> .reset-button) {
+  flex: 1;
+}
+
+.properties-list span > .color-picker-parent {
+  flex: 1;
+}
+
+.reset-button {
+  background: none;
+  outline: none;
+  box-shadow: none;
+  color: var(--input-text);
+  padding: 0 6px;
+  font-size: 1em;
+  text-align: center;
+  font-weight: 900;
+  width: 22px;
+  animation: appear 0.15s;
+}
+
+@keyframes appear {
+  0% {
+    opacity: 0;
+  }
+}
+
+.reset-button:hover:enabled {
+  background: none;
+  outline: none;
+  box-shadow: none;
+  color: var(--hovered-accent);
 }
 
 .asset-layer-list {
