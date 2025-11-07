@@ -1022,6 +1022,14 @@ span.layer-title button {
   width: calc(100% - 12px);
 }
 
+.properties-list td > .siblings-holder {
+  gap: 4px;
+}
+
+.properties-list td > .siblings-holder > * {
+  flex: 1;
+}
+
 .properties-list div.inner-container {
   padding: 0;
 }
@@ -1041,7 +1049,7 @@ span:has(> .reset-button) {
   flex: 1;
 }
 
-.properties-list span > .color-picker-parent {
+.properties-list span > *:is(.color-picker-parent, input[type='number']) {
   flex: 1;
 }
 

@@ -16,6 +16,7 @@ type BaseProperty = {
 type NumberProperty = BaseProperty & {
   type: 'number';
   value: number;
+  resetValue?: number;
   placeholder?: string;
   min?: number;
   max?: number;
@@ -148,8 +149,8 @@ export default function PropertiesList(props: AProps) {
 
   function getInput(property: Property, id: string) {
     switch (property.type) {
-      case 'number':
-        return [
+      case 'number': {
+        const numberInput = (
           <NumberInput
             callback={
               property.onChange ??
@@ -166,7 +167,29 @@ export default function PropertiesList(props: AProps) {
             enforceStep={property.enforceStep}
             disabled={property.disabled}
           />
+        );
+        const resetValue = property.resetValue;
+        return [
+          resetValue ? (
+            <span>
+              {numberInput}
+              {property.value !== resetValue && (
+                <button
+                  className="reset-button"
+                  onClick={() => {
+                    if (property.onChange) property.onChange(resetValue);
+                    else props.numberFallback?.(property.id, resetValue, true);
+                  }}
+                >
+                  &#8634;
+                </button>
+              )}
+            </span>
+          ) : (
+            numberInput
+          )
         ];
+      }
       case 'range': {
         const slider = (
           <Slider
@@ -429,7 +452,7 @@ export default function PropertiesList(props: AProps) {
                 </label>
               </th>
             )}
-            <td colSpan={labeled ? 1 : 2}>{input}</td>
+            <td colSpan={labeled ? 1 : 2}>{input.length > 1 ? <span className='siblings-holder'>{input}</span> : input}</td>
           </tr>
         );
     }

@@ -358,27 +358,22 @@ type BProps = {
   children?: React.ReactNode;
 };
 
-class FeatureEntry extends Component<BProps> {
-  render() {
-    const children = this.props.children ?? (
-      <FileInput accept="image/png" callback={file => this.props.uploadCustom?.(file)}>
-        Upload custom...
-      </FileInput>
-    );
-    return (
-      <Dropdown title={this.props.title}>
-        <span>
-          {children}
-          <GridSelect
-            targetWidth={this.props.targetGridEntryWidth}
-            crop={this.props.crop}
-            options={[false, ...this.props.options]}
-            default={this.props.default}
-            select={this.props.changeFeature}
-            delete={this.props.deleteCustomFeature}
-          />
-        </span>
-      </Dropdown>
-    );
-  }
-}
+const FeatureEntry = (props: BProps) => (
+  <Dropdown title={props.title}>
+    <span>
+      {props.children ?? (
+        <FileInput accept="image/png" callback={file => props.uploadCustom?.(file)}>
+          Upload custom...
+        </FileInput>
+      )}
+      <GridSelect
+        targetWidth={props.targetGridEntryWidth}
+        crop={props.crop}
+        options={[false, ...props.options]}
+        default={props.default}
+        select={props.changeFeature}
+        delete={props.deleteCustomFeature}
+      />
+    </span>
+  </Dropdown>
+);

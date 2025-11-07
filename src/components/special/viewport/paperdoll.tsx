@@ -891,10 +891,10 @@ export default class PaperDoll extends Component<AProps, AState> {
             }
           />
         </div>
-        {this.state.exportingRender && (
+        {this.state.exportingRender && this.canvasRef.current?.parentElement && (
           <ExportRender
-            defaultWidth={this.canvasRef.current?.parentElement?.clientWidth}
-            defaultHeight={this.canvasRef.current?.parentElement?.clientHeight}
+            defaultWidth={this.canvasRef.current.parentElement.clientWidth}
+            defaultHeight={this.canvasRef.current.parentElement.clientHeight}
             close={() => this.setState({ exportingRender: false })}
             createRender={this.createRender}
           />

@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { Component, useEffect, useState } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import ColorPicker from '@components/basic/colorpicker';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
@@ -736,38 +736,16 @@ class Layer extends Component<CProps, CState> {
   }
 }
 
-type DProps = {
-  asset: ImgMod.AbstractLayer;
-};
+function LayerPreview({ asset }: { asset: ImgMod.AbstractLayer }) {
+  const [src, setSrc] = useState(ImgMod.EMPTY_IMAGE_SOURCE);
+  const [alt, setAlt] = useState('');
 
-type DState = {
-  src?: string;
-  alt: string;
-};
+  useEffect(updatePreview);
 
-class LayerPreview extends Component<DProps, DState> {
-  constructor(props: DProps) {
-    super(props);
-
-    this.state = {
-      src: undefined,
-      alt: ''
-    };
+  function updatePreview() {
+    setSrc(asset.src);
+    setAlt(asset.name ?? '');
   }
 
-  componentDidMount() {
-    this.updatePreview();
-  }
-
-  componentDidUpdate(prevProps: Readonly<DProps>) {
-    if (prevProps !== this.props) this.updatePreview();
-  }
-
-  updatePreview = () => {
-    this.setState({ src: this.props.asset.src, alt: this.props.asset.name ?? '' });
-  };
-
-  render() {
-    return <img src={this.state.src} alt={this.state.alt} title={this.state.alt} />;
-  }
+  return <img src={src} alt={alt} title={alt} />;
 }

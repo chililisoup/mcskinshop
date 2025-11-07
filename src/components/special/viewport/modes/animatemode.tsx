@@ -120,8 +120,7 @@ export default class AnimateMode extends AbstractMode<AState> {
     pivots.leftArm.rotation.z = Math.sin(this.data.idleTime / 4) * 0.075 + 0.075;
     pivots.rightArm.rotation.z = -pivots.leftArm.rotation.z;
 
-    pivots.cape.rotation.x =
-      Math.sin(this.data.idleTime * 0.1) * 0.05 + 0.75 * this.state.speed + 0.1;
+    pivots.cape.rotation.x = 0.15 + this.state.speed / 4;
 
     const oldWingRotation = pivots.leftElytraWing.rotation.clone();
     const newWingRotation = new THREE.Euler(Math.PI / 12, Math.PI / 36, Math.PI / 12);

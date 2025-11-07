@@ -1,53 +1,38 @@
-import React, { Component } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 type AProps = {
   close?: () => void;
   children: React.ReactNode;
 };
 
-type AState = {
-  open: boolean;
-};
+export default function PopUp(props: AProps) {
+  const wrapperRef: React.RefObject<HTMLDivElement | null> = useRef(null);
+  const first = useRef(false);
 
-export default class PopUp extends Component<AProps, AState> {
-  wrapperRef: React.RefObject<HTMLDivElement | null> = React.createRef();
-  first = false;
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  });
 
-  constructor(props: AProps) {
-    super(props);
-
-    this.handleClickOutside = this.handleClickOutside.bind(this);
-  }
-
-  componentDidMount() {
-    document.addEventListener('mousedown', this.handleClickOutside);
-  }
-
-  componentWillUnmount() {
-    document.removeEventListener('mousedown', this.handleClickOutside);
-  }
-
-  handleClickOutside = (e: MouseEvent) => {
-    if (!this.first) {
-      this.first = true;
+  function handleClickOutside(e: MouseEvent) {
+    if (!first.current) {
+      first.current = true;
       return;
     }
     if (
       e.target &&
       e.target instanceof Element &&
-      this.props.close &&
-      this.wrapperRef.current &&
-      !this.wrapperRef.current.contains(e.target)
+      props.close &&
+      wrapperRef.current &&
+      !wrapperRef.current.contains(e.target)
     ) {
-      this.props.close();
+      props.close();
     }
-  };
-
-  render() {
-    return (
-      <div ref={this.wrapperRef} className="popup">
-        {this.props.children}
-      </div>
-    );
   }
+
+  return (
+    <div ref={wrapperRef} className="popup">
+      {props.children}
+    </div>
+  );
 }
