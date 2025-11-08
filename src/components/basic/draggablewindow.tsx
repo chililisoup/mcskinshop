@@ -242,7 +242,11 @@ export default class DraggableWindow extends Component<AProps, AState> {
         <hr />
         <span ref={this.handleRef}>
           <p>{this.props.title}</p>
-          {this.props.close && <button onClick={this.props.close}>X</button>}
+          {this.props.close && (
+            <button onClick={this.props.close} className="material-symbols-outlined">
+              close
+            </button>
+          )}
         </span>
       </div>
     );

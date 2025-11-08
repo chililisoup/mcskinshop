@@ -1,6 +1,6 @@
 {
-  "short_name": "MC SkinShop",
-  "name": "Minecraft Skin Shop",
+  "name": "MC SkinShop",
+  "short_name": "MCSS",
   "icons": [
     {
       "src": "favicon.ico",

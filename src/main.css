@@ -53,9 +53,6 @@
   --medium-shadow: rgba(0, 0, 0, 0.4);
   --dark-shadow: rgba(0, 0, 0, 0.6);
 
-  --main-font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  --alt-font: monospace;
-
   --input-text-outline:
     2px 0 0 var(--input), -2px 0 0 var(--input), 0 2px 0 var(--input), 0 -2px 0 var(--input),
     1.4px 1.4px 0 var(--input), -1.4px 1.4px 0 var(--input), -1.4px -1.4px 0 var(--input),
@@ -71,6 +68,7 @@ body,
 }
 
 * {
+  font-family: 'Noto Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   border: none;
 }
 
@@ -79,8 +77,14 @@ body {
   background-repeat: no-repeat;
   background-attachment: fixed;
   margin: 0;
-  font-family: var(--main-font);
   color: var(--text);
+}
+
+.material-symbols-outlined {
+  font-size: 1em;
+  text-align: center;
+  margin: none;
+  padding: 0;
 }
 
 button,
@@ -89,6 +93,7 @@ select {
   min-height: 22px;
   min-width: 22px;
   padding: 0;
+  user-select: none;
 }
 
 button,
@@ -117,11 +122,6 @@ label:has(> *:is(img, svg)) {
   outline-offset: -2px;
   margin: 3px;
   overflow: visible;
-  font-family: var(--main-font);
-}
-
-input {
-  font-family: var(--alt-font);
 }
 
 input[type='checkbox'] {
@@ -175,6 +175,13 @@ label:has(> *:is(img, svg)):has(+ input:enabled):hover,
   box-shadow: inset 0 0 0 2px var(--input-outline);
   outline-offset: 0;
   cursor: pointer;
+}
+
+input[type='text']:enabled,
+input[type='number']:enabled {
+  pointer-events: all;
+  user-select: text;
+  cursor: text;
 }
 
 button:hover:enabled:not(:has(img, svg)),
@@ -264,8 +271,7 @@ label:has(+ input:disabled) > *:is(img, svg) {
 }
 
 #MenuBar > div > button,
-#MenuBar span,
-#MenuBar span p {
+#MenuBar span {
   background: none;
   height: 30px;
   max-height: none;
@@ -288,11 +294,10 @@ label:has(+ input:disabled) > *:is(img, svg) {
   flex: 1;
 }
 
-#MenuBar span p {
-  text-align: center;
-  padding: 0;
-  aspect-ratio: 1 / 1;
-  font-weight: 900;
+#MenuBar span .material-symbols-outlined {
+  aspect-ratio: 1;
+  height: 1em;
+  margin: auto 4px;
 }
 
 #MenuBar > * {
@@ -956,9 +961,13 @@ span.layer-title p {
 span.layer-title input[type='text'],
 span.layer-title p {
   min-width: 0;
-  flex-grow: 1;
+  flex: 1;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+span.layer-title input[type='text'] {
+  padding: 0 4px;
 }
 
 span.layer-title button {
@@ -1061,7 +1070,6 @@ span:has(> .reset-button) {
   box-shadow: none;
   color: var(--input-text);
   padding: 0 6px;
-  font-size: 1em;
   text-align: center;
   font-weight: 900;
   width: 22px;
@@ -1308,26 +1316,32 @@ h3 {
   --accent: var(--hovered-accent);
 }
 
-.slider-label {
+.stack > .slider-label {
   position: absolute;
+  min-width: 0;
   width: 100%;
   height: 100%;
-  text-align: center;
   font-size: smaller;
   font-weight: bolder;
-}
-
-.slider-label {
   text-shadow: var(--input-text-outline);
   color: var(--input-text);
   user-select: none;
   pointer-events: none;
   margin: 0;
-  padding: 0;
+  padding: 0 3px;
+  overflow: hidden;
 }
 
-.slider-label > * {
+.slider-label > *:is(p, input[type='number']) {
+  padding: 0 4px;
+}
+
+.slider-label > input[type='number'] {
+  margin: auto;
+  min-width: 0;
   width: 100%;
+  min-height: 0;
+  height: 22px;
   background-color: transparent;
 }
 

@@ -642,8 +642,9 @@ class Layer extends Component<CProps, CState> {
                 this.setState({ layersOpen: !this.state.layersOpen });
                 e.stopPropagation();
               }}
+              className="material-symbols-outlined"
             >
-              {this.state.layersOpen ? '📂' : '📁'}
+              {this.state.layersOpen ? 'folder_open' : 'folder'}
             </button>
           )}
           <button
@@ -651,8 +652,9 @@ class Layer extends Component<CProps, CState> {
               this.setState({ fxOpen: !this.state.fxOpen });
               e.stopPropagation();
             }}
+            className="material-symbols-outlined"
           >
-            {this.state.fxOpen ? '▲' : '▼'}
+            {this.state.fxOpen ? 'unfold_less' : 'unfold_more'}
           </button>
         </span>
         <hr />
@@ -662,24 +664,30 @@ class Layer extends Component<CProps, CState> {
             <button
               onClick={() => this.props.duplicateLayer(this.props.index)}
               title="Duplicate Layer"
+              className="material-symbols-outlined"
             >
-              &#128471;
+              content_copy
             </button>
             <button
               onClick={() => this.props.removeLayer(this.props.index)}
               title="Delete Layer"
-              className="delete-button"
+              className="delete-button material-symbols-outlined"
             >
-              &#10006;
+              delete
             </button>
-            <button onClick={() => this.props.flattenLayer(this.props.index)} title="Flatten Layer">
-              &#8676;
+            <button
+              onClick={() => this.props.flattenLayer(this.props.index)}
+              title="Flatten Layer"
+              className="material-symbols-outlined"
+            >
+              vertical_align_center
             </button>
             <button
               onClick={() => this.props.mergeLayerDown(this.props.index)}
               title="Merge Layer Down"
+              className="material-symbols-outlined"
             >
-              &#10515;
+              vertical_align_bottom
             </button>
             {colors}
           </div>

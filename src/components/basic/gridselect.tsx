@@ -65,7 +65,7 @@ export default function GridSelect(props: AProps) {
         )}
         {option && option[2] && (
           <button
-            className="delete-button"
+            className="delete-button material-symbols-outlined"
             onClickCapture={e => {
               e.preventDefault();
               e.stopPropagation();
@@ -74,7 +74,7 @@ export default function GridSelect(props: AProps) {
               props.delete?.(option);
             }}
           >
-            &#10006;
+            delete
           </button>
         )}
       </div>

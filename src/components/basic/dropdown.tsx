@@ -14,7 +14,9 @@ export default function Dropdown(props: AProps) {
       <span onClick={() => setOpen(!open)} className="dropdown-bar">
         <p>{props.title}</p>
         <span>
-          <button>{open ? '▲' : '▼'}</button>
+          <button className="material-symbols-outlined">
+            {open ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
+          </button>
         </span>
       </span>
       {open && (

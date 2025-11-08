@@ -222,7 +222,12 @@ class AssetLayer extends Component<BProps, BState> {
             <span>
               <button onClick={() => this.props.moveLayer(this.props.index, 1)}>&#9650;</button>
               <button onClick={() => this.props.moveLayer(this.props.index, -1)}>&#9660;</button>
-              <button onClick={() => this.props.removeLayer(this.props.index)}>&#10006;</button>
+              <button
+                onClick={() => this.props.removeLayer(this.props.index)}
+                className="material-symbols-outlined"
+              >
+                delete
+              </button>
             </span>
           </div>
         </span>

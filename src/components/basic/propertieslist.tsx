@@ -171,17 +171,17 @@ export default function PropertiesList(props: AProps) {
         const resetValue = property.resetValue;
         return [
           resetValue !== undefined ? (
-            <span>
+            <span key={property.id}>
               {numberInput}
               {property.value !== resetValue && (
                 <button
-                  className="reset-button"
+                  className="reset-button material-symbols-outlined"
                   onClick={() => {
                     if (property.onChange) property.onChange(resetValue);
                     else props.numberFallback?.(property.id, resetValue, true);
                   }}
                 >
-                  &#8634;
+                  replay
                 </button>
               )}
             </span>
@@ -214,17 +214,17 @@ export default function PropertiesList(props: AProps) {
         const resetValue = property.resetValue;
         return [
           resetValue !== undefined ? (
-            <span>
+            <span key={property.id}>
               {slider}
               {property.value !== resetValue && (
                 <button
-                  className="reset-button"
+                  className="reset-button material-symbols-outlined"
                   onClick={() => {
                     if (property.onChange) property.onChange(resetValue);
                     else props.numberFallback?.(property.id, resetValue, true);
                   }}
                 >
-                  &#8634;
+                  replay
                 </button>
               )}
             </span>
@@ -365,17 +365,17 @@ export default function PropertiesList(props: AProps) {
         const resetValue = property.resetValue;
         return [
           resetValue !== undefined ? (
-            <span>
+            <span key={property.id}>
               {picker}
               {property.value !== resetValue && (
                 <button
-                  className="reset-button"
+                  className="reset-button material-symbols-outlined"
                   onClick={() => {
                     if (property.onChange) property.onChange(resetValue);
                     else props.stringFallback?.(property.id, resetValue, true);
                   }}
                 >
-                  &#8634;
+                  replay
                 </button>
               )}
             </span>

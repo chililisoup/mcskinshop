@@ -415,8 +415,9 @@ export default class ViewportPanel extends Component<AProps, AState> {
 
     return (
       <div className={'top panel' + (this.state.panel ? ' open' : '')}>
-        <button onClick={() => this.setState({ panel: !this.state.panel })}>
-          {this.state.panel ? '▶' : '◀'}
+        <button onClick={() => this.setState({ panel: !this.state.panel })}
+              className="material-symbols-outlined">
+          {this.state.panel ? 'keyboard_arrow_right' : 'keyboard_arrow_left'}
         </button>
         <div className="panel-content">{this.state.panel && panelItems}</div>
       </div>

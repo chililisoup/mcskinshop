@@ -94,7 +94,7 @@ export default function MenuBar(props: AProps) {
   const viewTabChildren = props.viewTab ? (
     props.viewTab.map(tab => (
       <span key={tab[0]}>
-        <p>{tab[1] ? '✓' : ''}</p>
+        <p className="material-symbols-outlined">{tab[1] ? 'check' : ''}</p>
         <button onClick={tab[2]}>{tab[0]}</button>
       </span>
     ))
@@ -135,7 +135,7 @@ export default function MenuBar(props: AProps) {
         {viewTabChildren}
         <hr />
         <span key="fullscreen">
-          <p>{fullscreen ? '✓' : ''}</p>
+          <p className="material-symbols-outlined">{fullscreen ? 'check' : ''}</p>
           <button onClick={() => void toggleFullscreen()}>Fullscreen</button>
         </span>
       </MenuBarTab>

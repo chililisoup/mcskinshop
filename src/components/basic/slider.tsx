@@ -179,8 +179,8 @@ export default class Slider extends Component<AProps, AState> {
               title={this.props.title}
               autoFocus={true}
               defaultValue={this.textVal}
-              min={min - buffer}
-              max={max + buffer}
+              min={min}
+              max={max}
               step={step}
               onChange={e => {
                 this.textVal = e.target.value;
