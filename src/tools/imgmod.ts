@@ -282,11 +282,13 @@ export abstract class AbstractLayer {
     if (Object.keys(filter).length === 0) return 'none';
 
     const strings = [];
-    if (filter.opacity) strings.push(`opacity(${filter.opacity}%)`);
+
+    if (filter.opacity !== undefined) strings.push(`opacity(${filter.opacity}%)`);
+    if (filter.saturation !== undefined) strings.push(`saturate(${filter.saturation}%)`);
+    if (filter.brightness !== undefined) strings.push(`brightness(${filter.brightness}%)`);
+    if (filter.contrast !== undefined) strings.push(`contrast(${filter.contrast}%)`);
+
     if (filter.hue) strings.push(`hue-rotate(${filter.hue}deg)`);
-    if (filter.saturation) strings.push(`saturate(${filter.saturation}%)`);
-    if (filter.brightness) strings.push(`brightness(${filter.brightness}%)`);
-    if (filter.contrast) strings.push(`contrast(${filter.contrast}%)`);
     if (filter.invert) strings.push(`invert(${filter.invert}%)`);
     if (filter.sepia) strings.push(`sepia(${filter.sepia}%)`);
 
@@ -301,14 +303,14 @@ export abstract class AbstractLayer {
   filterFilter = (filter: Filter) => {
     const filtered = AbstractLayer.defaultFilter(this.filterInternal);
 
-    if (filter.opacity) filtered.opacity *= filter.opacity / 100;
-    if (filter.hue) filtered.hue = (filter.hue + filtered.hue) % 180;
-    if (filter.saturation) filtered.saturation += filter.saturation - 100;
-    if (filter.brightness) filtered.brightness += filter.brightness - 100;
-    if (filter.contrast) filtered.contrast += filter.contrast - 100;
-    if (filter.invert)
+    if (filter.opacity !== undefined) filtered.opacity *= filter.opacity / 100;
+    if (filter.hue !== undefined) filtered.hue = (filter.hue + filtered.hue) % 360;
+    if (filter.saturation !== undefined) filtered.saturation *= filter.saturation / 100;
+    if (filter.brightness !== undefined) filtered.brightness *= filter.brightness / 100;
+    if (filter.contrast !== undefined) filtered.contrast *= filter.contrast / 100;
+    if (filter.invert !== undefined)
       filtered.invert = Math.abs(100 - (Math.abs(filter.invert + filtered.invert - 100) % 200));
-    if (filter.sepia) filtered.sepia += filter.sepia;
+    if (filter.sepia !== undefined) filtered.sepia += filter.sepia;
 
     return filtered;
   };
