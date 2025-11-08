@@ -460,6 +460,7 @@ class Layer extends Component<CProps, CState> {
         id: 'opacity',
         type: 'range',
         value: this.state.opacity,
+        resetValue: ImgMod.DEFAULT_FILTER.opacity,
         min: 0,
         max: 100,
         subtype: 'percent'
@@ -469,6 +470,7 @@ class Layer extends Component<CProps, CState> {
         id: 'hue',
         type: 'range',
         value: this.state.hue,
+        resetValue: ImgMod.DEFAULT_FILTER.hue,
         min: -180,
         max: 180,
         subtype: 'degrees'
@@ -478,6 +480,7 @@ class Layer extends Component<CProps, CState> {
         id: 'saturation',
         type: 'range',
         value: this.state.saturation,
+        resetValue: ImgMod.DEFAULT_FILTER.saturation,
         min: 0,
         max: 200,
         subtype: 'percent'
@@ -487,6 +490,7 @@ class Layer extends Component<CProps, CState> {
         id: 'brightness',
         type: 'range',
         value: this.state.brightness,
+        resetValue: ImgMod.DEFAULT_FILTER.brightness,
         min: 0,
         max: 200,
         subtype: 'percent'
@@ -496,6 +500,7 @@ class Layer extends Component<CProps, CState> {
         id: 'contrast',
         type: 'range',
         value: this.state.contrast,
+        resetValue: ImgMod.DEFAULT_FILTER.contrast,
         min: 0,
         max: 200,
         subtype: 'percent'
@@ -505,6 +510,7 @@ class Layer extends Component<CProps, CState> {
         id: 'invert',
         type: 'range',
         value: this.state.invert,
+        resetValue: ImgMod.DEFAULT_FILTER.invert,
         min: 0,
         max: 100,
         subtype: 'percent'
@@ -514,6 +520,7 @@ class Layer extends Component<CProps, CState> {
         id: 'sepia',
         type: 'range',
         value: this.state.sepia,
+        resetValue: ImgMod.DEFAULT_FILTER.sepia,
         min: 0,
         max: 100,
         subtype: 'percent'

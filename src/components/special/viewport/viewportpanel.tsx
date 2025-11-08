@@ -147,7 +147,7 @@ export default class ViewportPanel extends Component<AProps, AState> {
       <Dropdown title="Camera" key="camera">
         <PropertiesList
           buttonFallback={id => {
-            if (id === 'cameraType')
+            if (id === 'type')
               this.props.updateSetting(
                 'usePerspectiveCam',
                 !this.props.settings.usePerspectiveCam,
@@ -160,8 +160,8 @@ export default class ViewportPanel extends Component<AProps, AState> {
           }}
           properties={[
             {
-              name: 'Camera Type',
-              id: 'cameraType',
+              name: 'Type',
+              id: 'type',
               type: 'button',
               label: this.props.settings.usePerspectiveCam ? 'Perspective' : 'Orthographic'
             },

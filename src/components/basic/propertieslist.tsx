@@ -170,7 +170,7 @@ export default function PropertiesList(props: AProps) {
         );
         const resetValue = property.resetValue;
         return [
-          resetValue ? (
+          resetValue !== undefined ? (
             <span>
               {numberInput}
               {property.value !== resetValue && (
@@ -213,7 +213,7 @@ export default function PropertiesList(props: AProps) {
         );
         const resetValue = property.resetValue;
         return [
-          resetValue ? (
+          resetValue !== undefined ? (
             <span>
               {slider}
               {property.value !== resetValue && (
@@ -364,7 +364,7 @@ export default function PropertiesList(props: AProps) {
         );
         const resetValue = property.resetValue;
         return [
-          resetValue ? (
+          resetValue !== undefined ? (
             <span>
               {picker}
               {property.value !== resetValue && (
@@ -452,7 +452,9 @@ export default function PropertiesList(props: AProps) {
                 </label>
               </th>
             )}
-            <td colSpan={labeled ? 1 : 2}>{input.length > 1 ? <span className='siblings-holder'>{input}</span> : input}</td>
+            <td colSpan={labeled ? 1 : 2}>
+              {input.length > 1 ? <span className="siblings-holder">{input}</span> : input}
+            </td>
           </tr>
         );
     }

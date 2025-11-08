@@ -200,6 +200,16 @@ export type Filter = {
   sepia?: number;
 };
 
+export const DEFAULT_FILTER = {
+  opacity: 100,
+  hue: 0,
+  saturation: 100,
+  brightness: 100,
+  contrast: 100,
+  invert: 0,
+  sepia: 0
+} as const;
+
 type SerializedAbstractLayer = {
   filterInternal: Filter;
   active: boolean;
@@ -285,21 +295,14 @@ export abstract class AbstractLayer {
 
   copyFilter = (): Filter => ({ ...this.filterInternal });
 
-  static defaultFilter = (filter: Filter): Required<Filter> => ({
-    opacity: filter.opacity ?? 100,
-    hue: filter.hue ?? 0,
-    saturation: filter.saturation ?? 100,
-    brightness: filter.brightness ?? 100,
-    contrast: filter.contrast ?? 100,
-    invert: filter.invert ?? 0,
-    sepia: filter.sepia ?? 0
-  });
+  static defaultFilter = (filter: Filter): Required<Filter> =>
+    Object.assign({ ...DEFAULT_FILTER }, filter);
 
   filterFilter = (filter: Filter) => {
     const filtered = AbstractLayer.defaultFilter(this.filterInternal);
 
     if (filter.opacity) filtered.opacity *= filter.opacity / 100;
-    if (filter.hue) filtered.hue = (filter.hue + filtered.hue) % 360;
+    if (filter.hue) filtered.hue = (filter.hue + filtered.hue) % 180;
     if (filter.saturation) filtered.saturation += filter.saturation - 100;
     if (filter.brightness) filtered.brightness += filter.brightness - 100;
     if (filter.contrast) filtered.contrast += filter.contrast - 100;

@@ -982,7 +982,7 @@ span.layer-title button {
 .properties-list {
   table-layout: fixed;
   border-spacing: 0 5px;
-  width: calc(100% - 32px);
+  width: calc(100% - 48px);
   margin: auto;
   --label-width: 40%;
 }
