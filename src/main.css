@@ -132,6 +132,8 @@ input[type='checkbox'] {
   margin: 3px;
   width: 22px;
   height: 22px;
+  padding: 1px;
+  background-clip: content-box;
 }
 
 input[type='checkbox']:checked,
@@ -1023,7 +1025,7 @@ span.layer-title button {
 }
 
 .properties-list td > .siblings-holder {
-  gap: 4px;
+  gap: 5px;
 }
 
 .properties-list td > .siblings-holder > * {
@@ -1110,10 +1112,10 @@ h3 {
 .color-label {
   position: relative;
   margin: 0;
-  padding: 0;
+  padding: 1px;
   width: 100%;
   height: 100%;
-  outline: 2px solid var(--input-outline);
+  background-clip: content-box;
   image-rendering: pixelated;
 }
 
@@ -1294,9 +1296,12 @@ h3 {
 .slider {
   appearance: none;
   image-rendering: pixelated;
-  width: 100%;
-  height: 22px;
+  width: calc(100% - 2px);
+  height: 20px;
+  min-height: 20px;
   margin: 3px;
+  padding: 1px;
+  background-clip: content-box;
 }
 
 .slider:hover {

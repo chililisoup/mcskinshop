@@ -190,9 +190,18 @@ export const cssVariableColor = (variable: string) => colorAsRgba(Util.getCssVar
 export const invertRgba = (rgba: Rgba) =>
   [255 - rgba[0], 255 - rgba[1], 255 - rgba[2], rgba[3]] as Rgba;
 
+export type Filter = {
+  opacity?: number;
+  hue?: number;
+  saturation?: number;
+  brightness?: number;
+  contrast?: number;
+  invert?: number;
+  sepia?: number;
+};
+
 type SerializedAbstractLayer = {
-  blendInternal: GlobalCompositeOperation;
-  filterInternal: string;
+  filterInternal: Filter;
   active: boolean;
   name?: string;
 };
@@ -205,7 +214,6 @@ export abstract class AbstractLayer {
       instance: TType
     ) => Promise<SSerialized & SerializedAbstractLayer> = async instance => {
       const base: SerializedAbstractLayer = {
-        blendInternal: instance.blendInternal,
         filterInternal: instance.filterInternal,
         active: instance.active,
         name: instance.name
@@ -222,8 +230,8 @@ export abstract class AbstractLayer {
     ) => Promise<TType> = async data => {
       const instance = await deserialize(data);
 
-      instance.blendInternal = data.blendInternal;
       instance.filterInternal = data.filterInternal;
+      instance.filterStringInternal = instance.makeFilterString();
       instance.active = data.active;
       instance.name = data.name;
 
@@ -235,8 +243,8 @@ export abstract class AbstractLayer {
 
   abstract getCodec: () => PairCodec<keyof typeof CODECS, AbstractLayer, SerializedAbstractLayer>;
 
-  private blendInternal: GlobalCompositeOperation;
-  private filterInternal: string;
+  private filterInternal: Filter;
+  private filterStringInternal: string;
   id: string;
   active = true;
   src = EMPTY_IMAGE_SOURCE;
@@ -245,26 +253,61 @@ export abstract class AbstractLayer {
   changed = true;
   parent?: Layer;
 
-  constructor(blend?: GlobalCompositeOperation, filter?: string) {
-    this.blendInternal = blend ?? 'source-over';
-    this.filterInternal = filter ?? 'none';
+  constructor(filter?: Filter) {
+    this.filterInternal = filter ?? {};
+    this.filterStringInternal = this.makeFilterString();
     this.id = Util.randomKey();
   }
 
-  blend = (blend?: GlobalCompositeOperation) => {
-    if (blend !== undefined) {
-      this.blendInternal = blend;
-      this.markChanged();
-    }
-    return this.blendInternal;
-  };
-
-  filter = (filter?: string) => {
+  filter = (filter?: Filter) => {
     if (filter !== undefined) {
       this.filterInternal = filter;
+      this.filterStringInternal = this.makeFilterString();
       this.markChanged();
     }
-    return this.filterInternal;
+    return this.filterStringInternal;
+  };
+
+  makeFilterString = (filter = this.filterInternal) => {
+    if (Object.keys(filter).length === 0) return 'none';
+
+    const strings = [];
+    if (filter.opacity) strings.push(`opacity(${filter.opacity}%)`);
+    if (filter.hue) strings.push(`hue-rotate(${filter.hue}deg)`);
+    if (filter.saturation) strings.push(`saturate(${filter.saturation}%)`);
+    if (filter.brightness) strings.push(`brightness(${filter.brightness}%)`);
+    if (filter.contrast) strings.push(`contrast(${filter.contrast}%)`);
+    if (filter.invert) strings.push(`invert(${filter.invert}%)`);
+    if (filter.sepia) strings.push(`sepia(${filter.sepia}%)`);
+
+    return strings.join(' ');
+  };
+
+  copyFilter = (): Filter => ({ ...this.filterInternal });
+
+  static defaultFilter = (filter: Filter): Required<Filter> => ({
+    opacity: filter.opacity ?? 100,
+    hue: filter.hue ?? 0,
+    saturation: filter.saturation ?? 100,
+    brightness: filter.brightness ?? 100,
+    contrast: filter.contrast ?? 100,
+    invert: filter.invert ?? 0,
+    sepia: filter.sepia ?? 0
+  });
+
+  filterFilter = (filter: Filter) => {
+    const filtered = AbstractLayer.defaultFilter(this.filterInternal);
+
+    if (filter.opacity) filtered.opacity *= filter.opacity / 100;
+    if (filter.hue) filtered.hue = (filter.hue + filtered.hue) % 360;
+    if (filter.saturation) filtered.saturation += filter.saturation - 100;
+    if (filter.brightness) filtered.brightness += filter.brightness - 100;
+    if (filter.contrast) filtered.contrast += filter.contrast - 100;
+    if (filter.invert)
+      filtered.invert = Math.abs(100 - (Math.abs(filter.invert + filtered.invert - 100) % 200));
+    if (filter.sepia) filtered.sepia += filter.sepia;
+
+    return filtered;
   };
 
   markChanged = () => {
@@ -280,6 +323,7 @@ export abstract class AbstractLayer {
 }
 
 type SerializedImg = {
+  blendInternal: GlobalCompositeOperation;
   typeInternal: LayerType;
   formInternal: LayerForm;
   linearOpacity: boolean;
@@ -290,6 +334,7 @@ export class Img extends AbstractLayer {
   static CODEC: Codec<Img, SerializedImg & SerializedAbstractLayer> = this.codec(
     async img => {
       return {
+        blendInternal: img.blendInternal,
         typeInternal: img.typeInternal,
         formInternal: img.formInternal,
         linearOpacity: img.linearOpacity,
@@ -298,7 +343,7 @@ export class Img extends AbstractLayer {
       };
     },
     async data => {
-      const img = new Img(data.typeInternal, data.formInternal);
+      const img = new Img(data.typeInternal, data.formInternal, data.blendInternal);
       img.linearOpacity = data.linearOpacity;
       if (data.rawSrc) await img.loadUrl(URL.createObjectURL(await Util.getBlob(data.rawSrc)));
       return img;
@@ -307,6 +352,7 @@ export class Img extends AbstractLayer {
 
   getCodec = () => PairCodec.of('Img', Img.CODEC);
 
+  private blendInternal: GlobalCompositeOperation;
   private typeInternal;
   private formInternal;
   // rawSrc contains uncolored image data,
@@ -323,13 +369,22 @@ export class Img extends AbstractLayer {
     type?: LayerType,
     form?: LayerForm,
     blend?: GlobalCompositeOperation,
-    filter?: string
+    filter?: Filter
   ) {
-    super(blend, filter);
+    super(filter);
 
+    this.blendInternal = blend ?? 'source-over';
     this.typeInternal = type ?? 'normal';
     this.formInternal = form ?? 'universal';
   }
+
+  blend = (blend?: GlobalCompositeOperation) => {
+    if (blend !== undefined) {
+      this.blendInternal = blend;
+      this.markChanged();
+    }
+    return this.blendInternal;
+  };
 
   type = (type?: LayerType) => {
     if (type !== undefined) {
@@ -347,8 +402,11 @@ export class Img extends AbstractLayer {
     return this.formInternal;
   };
 
-  loadImage = async (image: ImageBitmapSource) => {
+  loadImage = async (image: ImageBitmapSource, detectResolution = false) => {
     const result = await createImageBitmap(image);
+    if (detectResolution) {
+      this.size = [result.width, result.height];
+    }
 
     const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
     const ctx = canvas.getContext('2d')!;
@@ -387,12 +445,12 @@ export class Img extends AbstractLayer {
     this.markChanged();
   };
 
-  loadUrl = (url: string) =>
+  loadUrl = (url: string, detectResolution = false) =>
     new Promise<void>((resolve, reject) => {
       const image = new Image();
 
       image.onerror = reject;
-      image.onload = () => this.loadImage(image).then(resolve);
+      image.onload = () => this.loadImage(image, detectResolution).then(resolve);
 
       image.crossOrigin = 'anonymous';
       image.src = url;
@@ -400,7 +458,8 @@ export class Img extends AbstractLayer {
 
   render = (
     ctx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-    loCtx?: OffscreenCanvasRenderingContext2D
+    loCtx?: OffscreenCanvasRenderingContext2D,
+    parentFilter?: Filter
   ) => {
     this.changed = false;
     if (!this.image) return;
@@ -411,9 +470,16 @@ export class Img extends AbstractLayer {
     }
 
     const type = this.type();
-    if (type === 'flatten' || type === 'blowup') this.flatten(ctx, this.image, type === 'blowup');
+    if (type === 'flatten' || type === 'blowup') {
+      this.flatten(ctx, this.image, type === 'blowup');
+      return;
+    }
 
-    ctx.filter = this.filter();
+    const filter = parentFilter
+      ? this.makeFilterString(this.filterFilter(parentFilter))
+      : this.filter();
+
+    ctx.filter = filter;
     if (type === 'erase') ctx.globalCompositeOperation = 'destination-out';
     else ctx.globalCompositeOperation = this.blend();
 
@@ -456,7 +522,7 @@ export class Img extends AbstractLayer {
   };
 
   copy = async () => {
-    const copy = new Img(this.type(), this.form(), this.blend(), this.filter());
+    const copy = new Img(this.type(), this.form(), this.blend(), this.copyFilter());
     copy.src = this.src;
     copy.rawImage = this.rawImage ? await createImageBitmap(this.rawImage) : undefined;
     copy.image = this.image ? await createImageBitmap(this.image) : undefined;
@@ -778,10 +844,9 @@ export class Layer extends AbstractLayer {
   constructor(
     sublayers?: AbstractLayer[],
     colors?: (Color | UnloadedRelativeColor)[],
-    blend?: GlobalCompositeOperation,
-    filter?: string
+    filter?: Filter
   ) {
-    super(blend, filter);
+    super(filter);
 
     this.sublayers = sublayers ?? [];
     this.sublayers.forEach(layer => {
@@ -935,7 +1000,6 @@ export class Layer extends AbstractLayer {
 
     const flatLayer = new Img();
     flatLayer.name = baseLayer.name;
-    flatLayer.id = baseLayer.id;
 
     await baseLayer.render();
     if (baseLayer instanceof Img) {
@@ -1056,11 +1120,13 @@ export class Layer extends AbstractLayer {
     return Promise.resolve();
   };
 
-  render = async (force?: boolean) => {
-    if (!force && !this.changed && this.image) return this.image;
+  private renderInternal = async (
+    ctx: OffscreenCanvasRenderingContext2D,
+    parentFilter?: Filter
+  ) => {
+    if (this.changed) await this.render();
 
-    const canvas = new OffscreenCanvas(64, 64);
-    const ctx = canvas.getContext('2d')!;
+    const filter = parentFilter ? this.filterFilter(parentFilter) : this.copyFilter();
 
     let loCtx: OffscreenCanvasRenderingContext2D | undefined = undefined;
     let loIndex: number | undefined = undefined;
@@ -1086,13 +1152,8 @@ export class Layer extends AbstractLayer {
       if (!sublayer) continue;
       if (!sublayer.active) continue;
 
-      ctx.filter = 'none';
-      ctx.globalCompositeOperation = 'source-over';
-
       if (sublayer instanceof Layer) {
-        ctx.filter = sublayer.filter();
-        ctx.globalCompositeOperation = sublayer.blend();
-        ctx.drawImage(await sublayer.render(force), 0, 0);
+        await sublayer.renderInternal(ctx, filter);
         continue;
       }
       if (!(sublayer instanceof Img)) continue;
@@ -1105,14 +1166,23 @@ export class Layer extends AbstractLayer {
         loIndex = typeof color === 'object' && 'from' in color ? color.from : i;
       }
 
-      sublayer.render(ctx, loCtx);
+      sublayer.render(ctx, loCtx, filter);
     }
 
     if (loCtx) ctx.drawImage(loCtx.canvas, 0, 0);
+  };
+
+  render = async (force?: boolean) => {
+    if (!force && !this.changed && this.image) return this.image;
+    this.changed = false;
+
+    const canvas = new OffscreenCanvas(64, 64);
+    const ctx = canvas.getContext('2d')!;
+
+    await this.renderInternal(ctx);
 
     this.src = URL.createObjectURL(await canvas.convertToBlob());
     this.image = canvas.transferToImageBitmap();
-    this.changed = false;
 
     return this.image;
   };
@@ -1121,8 +1191,7 @@ export class Layer extends AbstractLayer {
     const copy = new Layer(
       await Promise.all(this.sublayers.map(layer => layer.copy())),
       [...this.colors],
-      this.blend(),
-      this.filter()
+      this.copyFilter()
     );
     copy.src = this.src;
     copy.advanced = this.advanced ? [...this.advanced] : undefined;

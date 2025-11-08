@@ -58,9 +58,8 @@ export default class Slider extends Component<AProps, AState> {
   clamp = (value: number) => Util.clamp(value, this.min(), this.max());
 
   alignValue = (value: number, align: number) => {
-    const inv = 1 / align;
     const min = this.min();
-    return Math.round((value - min) * inv) / inv + min;
+    return Math.round((value - min) / align) * align + min;
   };
 
   buildLabel = () => {
@@ -89,12 +88,7 @@ export default class Slider extends Component<AProps, AState> {
 
     let value = Number(this.textVal);
 
-    if (this.props.enforceStep) {
-      const step = this.step();
-      value += step / 2;
-      value -= value % step;
-    }
-
+    if (this.props.enforceStep) value = this.alignValue(value, this.step());
     if (!this.props.allowExceed) value = this.clamp(value);
 
     this.prevValues = [value, value, value];
@@ -137,7 +131,7 @@ export default class Slider extends Component<AProps, AState> {
     const min = this.min();
     const max = this.max();
     const step = this.step();
-    const buffer = (max - min) / 100;
+    const buffer = step / 3;
     const stop = Util.clamp((this.props.value - min) / (max - min), 0, 1) * 100;
     const shadow = Math.min(stop + 6, 100);
 
@@ -169,7 +163,7 @@ export default class Slider extends Component<AProps, AState> {
           onKeyDown={e => (this.ctrlKey = e.ctrlKey)}
           onKeyUp={e => (this.ctrlKey = e.ctrlKey)}
           style={{
-            background:
+            backgroundImage:
               'linear-gradient(to right,' +
               `var(--${this.props.disabled ? 'no-accent' : 'accent'}) ${stop}%,` +
               `color-mix(in srgb, var(--input) 100%, var(--dark-shadow) 100%) ${stop}%,` +

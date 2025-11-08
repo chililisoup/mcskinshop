@@ -342,17 +342,10 @@ type CProps = {
   selectedLayer?: ImgMod.AbstractLayer;
 };
 
-type CState = {
+type CState = Required<ImgMod.Filter> & {
   editingName: boolean;
   fxOpen: boolean;
   layersOpen: boolean;
-  opacity: number;
-  hue: number;
-  saturation: number;
-  brightness: number;
-  contrast: number;
-  invert: number;
-  sepia: number;
 };
 
 class Layer extends Component<CProps, CState> {
@@ -361,17 +354,13 @@ class Layer extends Component<CProps, CState> {
   constructor(props: CProps) {
     super(props);
 
+    const filter = ImgMod.AbstractLayer.defaultFilter(props.layer.copyFilter());
+
     this.state = {
       editingName: false,
       fxOpen: false,
       layersOpen: false,
-      opacity: 100,
-      hue: 0,
-      saturation: 100,
-      brightness: 100,
-      contrast: 100,
-      invert: 0,
-      sepia: 0
+      ...filter
     };
   }
 
@@ -390,36 +379,24 @@ class Layer extends Component<CProps, CState> {
   };
 
   changeBlendMode = (blend: GlobalCompositeOperation) => {
+    if (!(this.props.layer instanceof ImgMod.Img)) return;
+
     this.props.layer.blend(blend);
     this.props.updateLayer();
   };
 
   updateFilter = <KKey extends keyof CState>(filter: KKey, value: number) => {
     this.setState({ [filter]: value } as Pick<CState, KKey>, () => {
-      const filterString =
-        'opacity(' +
-        this.state.opacity +
-        '%) ' +
-        'hue-rotate(' +
-        this.state.hue +
-        'deg) ' +
-        'saturate(' +
-        this.state.saturation +
-        '%) ' +
-        'brightness(' +
-        this.state.brightness +
-        '%) ' +
-        'contrast(' +
-        this.state.contrast +
-        '%) ' +
-        'invert(' +
-        this.state.invert +
-        '%) ' +
-        'sepia(' +
-        this.state.sepia +
-        '%)';
+      this.props.layer.filter({
+        opacity: this.state.opacity,
+        hue: this.state.hue,
+        saturation: this.state.saturation,
+        brightness: this.state.brightness,
+        contrast: this.state.contrast,
+        invert: this.state.invert,
+        sepia: this.state.sepia
+      });
 
-      this.props.layer.filter(filterString);
       this.props.updateLayer();
     });
   };
@@ -478,40 +455,6 @@ class Layer extends Component<CProps, CState> {
     }
 
     const properties: Property[] = [
-      {
-        name: 'Blend Mode',
-        id: 'blend',
-        type: 'select',
-        value: this.props.layer.blend(),
-        options: [
-          ['source-over', 'Source Over'],
-          ['source-in', 'Source In'],
-          ['source-out', 'Source Out'],
-          ['source-atop', 'Source Atop'],
-          ['destination-over', 'Destination Over'],
-          ['destination-in', 'Destination In'],
-          ['destination-out', 'Destination Out'],
-          ['destination-atop', 'Destination Atop'],
-          ['lighter', 'Lighter'],
-          ['copy', 'Copy'],
-          ['xor', 'XOR'],
-          ['multiply', 'Multiply'],
-          ['screen', 'Screen'],
-          ['overlay', 'Overlay'],
-          ['darken', 'Darken'],
-          ['lighten', 'Lighten'],
-          ['color-dodge', 'Color Dodge'],
-          ['color-burn', 'Color Burn'],
-          ['hard-light', 'Hard Light'],
-          ['soft-light', 'Soft Light'],
-          ['difference', 'Difference'],
-          ['exclusion', 'Exclusion'],
-          ['hue', 'Hue'],
-          ['saturation', 'Saturation'],
-          ['color', 'Color'],
-          ['luminosity', 'Luminosity']
-        ]
-      },
       {
         name: 'Opacity',
         id: 'opacity',
@@ -577,7 +520,42 @@ class Layer extends Component<CProps, CState> {
       }
     ];
 
-    if (this.props.layer instanceof ImgMod.Img)
+    if (this.props.layer instanceof ImgMod.Img) {
+      properties.unshift({
+        name: 'Blend Mode',
+        id: 'blend',
+        type: 'select',
+        value: this.props.layer.blend(),
+        options: [
+          ['source-over', 'Source Over'],
+          ['source-in', 'Source In'],
+          ['source-out', 'Source Out'],
+          ['source-atop', 'Source Atop'],
+          ['destination-over', 'Destination Over'],
+          ['destination-in', 'Destination In'],
+          ['destination-out', 'Destination Out'],
+          ['destination-atop', 'Destination Atop'],
+          ['lighter', 'Lighter'],
+          ['copy', 'Copy'],
+          ['xor', 'XOR'],
+          ['multiply', 'Multiply'],
+          ['screen', 'Screen'],
+          ['overlay', 'Overlay'],
+          ['darken', 'Darken'],
+          ['lighten', 'Lighten'],
+          ['color-dodge', 'Color Dodge'],
+          ['color-burn', 'Color Burn'],
+          ['hard-light', 'Hard Light'],
+          ['soft-light', 'Soft Light'],
+          ['difference', 'Difference'],
+          ['exclusion', 'Exclusion'],
+          ['hue', 'Hue'],
+          ['saturation', 'Saturation'],
+          ['color', 'Color'],
+          ['luminosity', 'Luminosity']
+        ]
+      });
+
       properties.push(
         {
           name: 'Type',
@@ -607,6 +585,7 @@ class Layer extends Component<CProps, CState> {
           ]
         }
       );
+    }
 
     return (
       <div

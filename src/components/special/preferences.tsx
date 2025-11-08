@@ -50,7 +50,8 @@ export default function Preferences() {
             id: 'curvature',
             type: 'range',
             value: prefs.curvature,
-            max: 16
+            max: 16,
+            enforceStep: true
           },
           {
             name: 'Theme',

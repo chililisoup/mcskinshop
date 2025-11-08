@@ -282,11 +282,13 @@ export class Model {
 export const buildItemModel = async (item: THREE.Object3D, url: string, extra?: string) => {
   const image = new ImgMod.Img();
   image.size = [16, 16];
-  await image.loadUrl(url);
+  await image.loadUrl(url, true);
   if (!image.image)
     return Promise.reject(new Error('Item texture image does not exist! How did this happen?'));
 
-  const canvas = new OffscreenCanvas(image.size[0], image.size[1]);
+  const width = image.size[0];
+  const height = image.size[1];
+  const canvas = new OffscreenCanvas(width, height);
   const ctx = canvas.getContext('2d')!;
 
   ctx.drawImage(image.image, 0, 0);
@@ -303,24 +305,30 @@ export const buildItemModel = async (item: THREE.Object3D, url: string, extra?: 
   const indices: number[] = [];
   const uv: number[] = [];
 
+  const p = 16 / Math.max(width, height);
+  const sx = 1 / width - (0.2 / width);
+  const sy = 1 / height - (0.2 / height);
+
   let iter = 0;
   for (let i = 0; i < data.length; i += 4) {
     const index = Math.floor(i / 4);
-    const x = (index % 16) - 8;
-    const y = Math.ceil(index / -16) + 8;
+    const x = (index % width) - width / 2;
+    const y = Math.ceil(index / -width) + height / 2;
+    const px = x * p;
+    const py = y * p;
 
     if (data[i + 3] === 0) continue;
 
     vertices.push(
-      x,     y,     -0.5, // 0
-      x + 1, y,     -0.5, // 1
-      x + 1, y - 1, -0.5, // 2
-      x,     y - 1, -0.5, // 3
+      px,     py,     -0.5, // 0
+      px + p, py,     -0.5, // 1
+      px + p, py - p, -0.5, // 2
+      px,     py - p, -0.5, // 3
 
-      x,     y,     0.5,  // 4
-      x + 1, y,     0.5,  // 5
-      x + 1, y - 1, 0.5,  // 6
-      x,     y - 1, 0.5   // 7
+      px,     py,     0.5,  // 4
+      px + p, py,     0.5,  // 5
+      px + p, py - p, 0.5,  // 6
+      px,     py - p, 0.5   // 7
     );
 
     const ind = iter * 8;
@@ -333,34 +341,33 @@ export const buildItemModel = async (item: THREE.Object3D, url: string, extra?: 
       ind + 6, ind + 4, ind + 7,
     );
 
-    if (index % 16 === 15 || isClear(index + 1)) indices.push(
+    if (index % width === width - 1 || isClear(index + 1)) indices.push(
       // FRONT
       ind + 1, ind + 5, ind + 6,
       ind + 6, ind + 2, ind + 1
     );
 
-    if (index % 16 === 0 || isClear(index - 1)) indices.push(
+    if (index % width === 0 || isClear(index - 1)) indices.push(
       // BACK
       ind + 0, ind + 7, ind + 4,
       ind + 7, ind + 0, ind + 3,
     );
 
-    if (isClear(index - 16)) indices.push(
+    if (isClear(index - width)) indices.push(
       // UP
       ind + 0, ind + 4, ind + 5,
       ind + 5, ind + 1, ind + 0
     );
 
-    if (isClear(index + 16)) indices.push(
+    if (isClear(index + width)) indices.push(
       // DOWN
       ind + 3, ind + 6, ind + 7,
       ind + 6, ind + 3, ind + 2
     );
 
-    const ux = (x + 8) / 16 + 0.005;
-    const uy = (y + 8) / 16 - 0.005;
-    const s = 1 / 16 - 0.01;
-    const pixel = [ux, uy, ux + s, uy, ux + s, uy - s, ux, uy - s];
+    const ux = (x + (width / 2)) / width + (0.1 / width);
+    const uy = (y + (height / 2)) / height - (0.1 / height);
+    const pixel = [ux, uy, ux + sx, uy, ux + sx, uy - sy, ux, uy - sy];
     uv.push(...pixel, ...pixel);
 
     iter++;

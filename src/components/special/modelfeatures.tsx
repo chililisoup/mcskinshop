@@ -7,13 +7,6 @@ import FileInput from '@components/basic/fileinput';
 
 type AssetType = 'capes' | 'equipment' | 'leggings' | 'items';
 
-const ASSET_TYPE_RESOLUTIONS: Record<AssetType, [width: number, height: number]> = {
-  capes: [64, 32],
-  equipment: [64, 32],
-  leggings: [64, 32],
-  items: [16, 16]
-};
-
 type FeatureType =
   | 'cape'
   | 'elytra'
@@ -39,16 +32,6 @@ type FeatureList =
   | 'availableLeggings'
   | 'availableBoots'
   | 'availableItems';
-
-const FEATURE_LIST_ASSET_TYPES: Record<FeatureList, AssetType> = {
-  availableCapes: 'capes',
-  availableElytras: 'capes',
-  availableHelmets: 'equipment',
-  availableChestplates: 'equipment',
-  availableLeggings: 'leggings',
-  availableBoots: 'equipment',
-  availableItems: 'items'
-};
 
 type CustomFeature = [list: FeatureList, extra?: string];
 
@@ -138,9 +121,8 @@ export default class ModelFeatures extends Component<AProps, AState> {
   onCustomUpload: (file: File, feature: CustomFeature) => void = async (file, feature) => {
     const name = feature[1] ? feature[1] + '/' + file.name : file.name;
     const image = new ImgMod.Img();
-    image.size = ASSET_TYPE_RESOLUTIONS[FEATURE_LIST_ASSET_TYPES[feature[0]]];
 
-    await image.loadUrl(URL.createObjectURL(file));
+    await image.loadUrl(URL.createObjectURL(file), true);
     const blobSrc = await image.getImageBlobSrc();
     if (!blobSrc) return;
 
