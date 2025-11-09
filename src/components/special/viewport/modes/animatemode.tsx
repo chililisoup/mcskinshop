@@ -4,7 +4,7 @@ import * as Util from '@tools/util';
 import skinmodel from '@/skinmodel.json';
 import AbstractMode, { Props } from '@components/special/viewport/modes/abstractmode';
 import PropertiesList from '@components/basic/propertieslist';
-import { MANAGER } from '@tools/prefman';
+import { Manager } from '@tools/prefman';
 
 const ANIMATIONS = ['Walk', 'Crouch Walk', 'Swim', 'Fly'] as const;
 
@@ -28,7 +28,7 @@ export default class AnimateMode extends AbstractMode<AState> {
     if (!this.state)
       this.state = {
         explode: false,
-        animate: MANAGER.get().animatePlayerOnStart,
+        animate: Manager.get().animatePlayerOnStart,
         speed: 1,
         animation: 'Walk'
       };

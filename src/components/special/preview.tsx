@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import * as ImgMod from '@tools/imgmod';
 import DraggableWindow from '@components/basic/draggablewindow';
+import { useSkin } from '@tools/skinman';
 
 type AProps = {
   close: () => void;
-  skin?: string;
 };
 
-export default function Preview({ close, skin }: AProps) {
+export default function Preview({ close }: AProps) {
   const [size, setSize] = useState(4);
+  const skin = useSkin();
 
   return (
     <DraggableWindow title="Preview" anchor={{ vw: 1, vh: 1 }} close={close}>
@@ -18,7 +18,7 @@ export default function Preview({ close, skin }: AProps) {
           <button onClick={() => setSize(Math.min(size + 1, 16))}>+</button>
         </span>
         <img
-          src={skin ?? ImgMod.EMPTY_IMAGE_SOURCE}
+          src={skin.src}
           alt="Flattened Skin"
           style={{
             width: size * 64 + 'px',

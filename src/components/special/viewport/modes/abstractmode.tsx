@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import PaperDoll from '../paperdoll';
-import { UndoCallback } from '@components/special/skinmanager';
+import { UndoCallback } from '@components/special/mcskinshop';
 
 export type Props = {
   instance: PaperDoll;

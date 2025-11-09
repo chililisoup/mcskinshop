@@ -5,12 +5,10 @@ import fullref from '@assets/fullref.png';
 import slimref from '@assets/slimref.png';
 import * as ImgMod from '@tools/imgmod';
 import * as Util from '@tools/util';
+import { SkinManager } from '@tools/skinman';
 
 type AProps = {
   layer?: ImgMod.AbstractLayer;
-  skin?: ImageBitmap;
-  slim: boolean;
-  updateLayer: () => void;
 };
 
 type AState = {
@@ -47,14 +45,15 @@ export default class LayerEditor extends Component<AProps, AState> {
   componentDidMount() {
     this.loadLayer();
     this.updateSkin();
+    SkinManager.speaker.registerListener(this.updateSkin);
+  }
+
+  componentWillUnmount() {
+    SkinManager.speaker.unregisterListener(this.updateSkin);
   }
 
   componentDidUpdate(prevProps: Readonly<AProps>, prevState: Readonly<AState>) {
-    if (
-      prevState.focusLayer !== this.state.focusLayer ||
-      prevProps.skin !== this.props.skin ||
-      prevProps.layer !== this.props.layer
-    )
+    if (prevState.focusLayer !== this.state.focusLayer || prevProps.layer !== this.props.layer)
       this.updateSkin();
     if (prevProps.layer !== this.props.layer) this.loadLayer();
   }
@@ -80,7 +79,8 @@ export default class LayerEditor extends Component<AProps, AState> {
     const ctx = this.canvasRef.current.getContext('2d')!;
 
     ctx.clearRect(0, 0, 64, 64);
-    if (this.props.skin) ctx.drawImage(this.props.skin, 0, 0);
+    const skin = SkinManager.getRoot().image;
+    if (skin) ctx.drawImage(skin, 0, 0);
   };
 
   loadLayer = () => {
@@ -138,7 +138,7 @@ export default class LayerEditor extends Component<AProps, AState> {
 
     await this.props.layer.base.loadImage(this.layerCanvas);
     this.props.layer.base.markChanged();
-    this.props.updateLayer();
+    SkinManager.updateSkin();
   };
 
   updatePreview = () => {
@@ -151,7 +151,7 @@ export default class LayerEditor extends Component<AProps, AState> {
 
     this.props.layer.image = this.previewCanvas.transferToImageBitmap();
     this.props.layer.markChanged();
-    this.props.updateLayer();
+    SkinManager.updateSkin();
   };
 
   drawPixel = () => {
@@ -221,7 +221,7 @@ export default class LayerEditor extends Component<AProps, AState> {
           height={64}
           style={{
             backgroundImage:
-              (this.state.guide ? `url(${this.props.slim ? slimref : fullref})` : 'none') +
+              (this.state.guide ? `url(${SkinManager.getSlim() ? slimref : fullref})` : 'none') +
               `, url(${checkerboard})`,
             backgroundSize: `512px, ${this.state.grid ? this.state.gridSize * 16 : 1024}px`
           }}

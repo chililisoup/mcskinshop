@@ -14,7 +14,8 @@ import Preferences from '@components/special/preferences';
 import DraggableWindow from '@components/basic/draggablewindow';
 import LayerEditor from '@components/special/layereditor';
 import AppWindow from '@components/basic/appwindow';
-import { MANAGER } from '@tools/prefman';
+import { Manager } from '@tools/prefman';
+import { SkinManager } from '@tools/skinman';
 
 export type UndoCallback = () => RedoCallback;
 export type RedoCallback = () => UndoCallback;
@@ -23,7 +24,6 @@ type UndoEdit = [name: string, undoCallback: RedoCallback];
 type RedoEdit = [name: string, redoCallback: UndoCallback];
 
 type StateCommon = {
-  slim: boolean;
   modelFeatures: Features;
   layerManager: boolean;
   layerEditor: boolean;
@@ -36,10 +36,10 @@ type StateCommon = {
 
 type SavedSession = {
   layers: ImgMod.FullSerializedLayer;
+  slim: boolean;
 } & StateCommon;
 
 type AState = {
-  skin: string;
   editHints: [string, string];
   preferences: boolean;
   selectedLayer?: ImgMod.AbstractLayer;
@@ -48,19 +48,16 @@ type AState = {
 } & StateCommon;
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export default class SkinManager extends Component<{}, AState> {
-  layers = new ImgMod.Layer();
+export default class MCSkinShop extends Component<{}, AState> {
   editHistory: UndoEdit[] = [];
   redoProphecy: RedoEdit[] = [];
 
   state = this.defaultState();
 
   defaultState(): AState {
-    const prefs = MANAGER.get();
+    const prefs = Manager.get();
 
     return {
-      skin: prefs.showPlaceholderSkins ? steve : ImgMod.EMPTY_IMAGE_SOURCE,
-      slim: false,
       editHints: ['', ''],
       modelFeatures: {
         cape: { value: false },
@@ -90,21 +87,30 @@ export default class SkinManager extends Component<{}, AState> {
     document.addEventListener('keydown', this.onKeyDown);
 
     this.loadSession().catch(() => {
-      if (MANAGER.get().addDefaultLayer) this.setDefaultLayers();
+      if (Manager.get().addDefaultLayer) this.setDefaultLayers();
+      else SkinManager.updateSkin();
     });
+
+    // this is entirely too often
+    SkinManager.rootSpeaker.registerListener(this.autosave);
   }
 
   componentWillUnmount() {
     document.removeEventListener('keydown', this.onKeyDown);
+
+    SkinManager.rootSpeaker.unregisterListener(this.autosave);
   }
 
-  componentDidUpdate = () => {
-    Util.setSlim(this.state.slim);
-    if (MANAGER.get().autosaveSession) void this.saveSession();
+  componentDidUpdate() {
+    this.autosave();
+  }
+
+  autosave = () => {
+    if (Manager.get().autosaveSession) this.saveSession();
   };
 
   setDefaultLayers: (add?: boolean) => void = async add => {
-    if (!add && this.layers.getLayers().length) return;
+    if (!add && SkinManager.getLayers().length) return;
 
     const steveImg = new ImgMod.Img('normal', 'full-only');
     steveImg.name = 'Steve';
@@ -117,10 +123,8 @@ export default class SkinManager extends Component<{}, AState> {
     const layer = new ImgMod.Layer([steveImg, alexImg]);
     layer.name = 'Steve & Alex';
 
-    if (add) this.layers.addLayer(layer);
-    else this.layers = new ImgMod.Layer([layer]);
-
-    this.updateSkin();
+    if (add) SkinManager.addLayer(layer);
+    else SkinManager.replaceLayers(new ImgMod.Layer([layer]));
   };
 
   onKeyDown = (e: KeyboardEvent) => {
@@ -175,26 +179,10 @@ export default class SkinManager extends Component<{}, AState> {
     this.setState({ editHints: [name, ''] });
   };
 
-  updateSkin: (slim?: boolean) => void = async slim => {
-    slim ??= this.state.slim;
-    Util.setSlim(slim);
-
-    await this.layers.render(slim !== this.state.slim);
-    const stateUpdate = { skin: this.layers.src, slim: slim };
-    if (this.layers.getLayers().length === 0 && MANAGER.get().showPlaceholderSkins)
-      stateUpdate.skin = slim ? alex : steve;
-    this.setState(stateUpdate);
-  };
-
-  addLayer = (layer: ImgMod.AbstractLayer) => {
-    this.layers.addLayer(layer);
-    this.updateSkin();
-  };
-
   getSkinFromUsername = async (username: string) => {
     const fallback = `https://minotar.net/skin/${username}`;
 
-    if (MANAGER.get().useFallbackSkinSource) return fallback;
+    if (Manager.get().useFallbackSkinSource) return fallback;
 
     try {
       const uuidResponse = await fetch(
@@ -262,10 +250,9 @@ export default class SkinManager extends Component<{}, AState> {
   };
 
   processSkinUpload = (image: ImgMod.Img) => {
-    this.addLayer(image);
     const slim = image.detectSlimModel();
-    if (MANAGER.get().autosetImageForm) image.form(slim ? 'slim-stretch' : 'full-squish-inner');
-    this.updateSkin(slim);
+    if (Manager.get().autosetImageForm) image.form(slim ? 'slim-stretch' : 'full-squish-inner');
+    SkinManager.addLayer(image, slim);
   };
 
   uploadSkin: (name: string, url?: string) => void = async (name, url) => {
@@ -295,16 +282,14 @@ export default class SkinManager extends Component<{}, AState> {
     const image = new ImgMod.Img();
     image.name = file.name;
 
-    image.internalUpdateCallback = () => this.updateSkin();
+    image.internalUpdateCallback = () => SkinManager.updateSkin();
     image.observeDynamic(fileHandle);
 
     await image.loadUrl(URL.createObjectURL(file));
     this.processSkinUpload(image);
   };
 
-  downloadSkin: () => void = async () => {
-    if (this.state.skin) await Util.download('My Skin.png', this.state.skin);
-  };
+  downloadSkin: () => void = () => Util.download('My Skin.png', SkinManager.get().src);
 
   updateState = <KKey extends keyof AState>(setting: KKey, value: AState[KKey]) => {
     this.setState({ [setting]: value } as Pick<AState, KKey>);
@@ -341,21 +326,18 @@ export default class SkinManager extends Component<{}, AState> {
     // don't let it get bad.
     localStorage.removeItem('savedViewportOptions');
 
-    this.layers = new ImgMod.Layer();
     this.editHistory = [];
     this.redoProphecy = [];
 
     this.setState(this.defaultState());
-    if (MANAGER.get().addDefaultLayer) this.setDefaultLayers();
-    else this.updateSkin();
+    if (Manager.get().addDefaultLayer) this.setDefaultLayers();
+    else SkinManager.reset();
   };
 
-  saveSession = async () => {
+  saveSession: () => void = async () => {
     const serialized = JSON.stringify({
-      layers: this.layers.getLayers().length
-        ? await ImgMod.Layer.CODEC.serialize(this.layers)
-        : undefined,
-      slim: this.state.slim,
+      layers: SkinManager.getLayers().length ? await SkinManager.serializeLayers() : undefined,
+      slim: SkinManager.getSlim(),
       modelFeatures: this.state.modelFeatures,
       layerManager: this.state.layerManager,
       layerEditor: this.state.layerEditor,
@@ -368,7 +350,7 @@ export default class SkinManager extends Component<{}, AState> {
     localStorage.setItem('savedSession', serialized);
   };
 
-  loadSession = async () => {
+  private loadSession = async () => {
     const serialized = localStorage.getItem('savedSession');
     if (!serialized) return Promise.reject(new Error('No saved session.'));
 
@@ -376,7 +358,6 @@ export default class SkinManager extends Component<{}, AState> {
 
     const defaultState = this.defaultState();
     const stateUpdate: Partial<AState> = {
-      slim: session.slim ?? defaultState.slim,
       modelFeatures: session.modelFeatures ?? defaultState.modelFeatures,
       layerManager: session.layerManager ?? defaultState.layerManager,
       layerEditor: session.layerEditor ?? defaultState.layerEditor,
@@ -386,20 +367,9 @@ export default class SkinManager extends Component<{}, AState> {
       layerAdder: session.layerAdder ?? defaultState.layerAdder,
       modelFeaturesWindow: session.modelFeaturesWindow ?? defaultState.modelFeaturesWindow
     };
-    stateUpdate.skin = MANAGER.get().showPlaceholderSkins
-      ? stateUpdate.slim
-        ? alex
-        : steve
-      : ImgMod.EMPTY_IMAGE_SOURCE;
 
-    Util.setSlim(!!stateUpdate.slim);
-
-    if (session.layers) {
-      this.layers = await ImgMod.Layer.CODEC.deserialize(session.layers);
-      await this.layers.color();
-      await this.layers.render(true);
-      stateUpdate.skin = this.layers.src;
-    }
+    if (session.layers) await SkinManager.deserializeLayers(session.layers, session.slim);
+    else SkinManager.setSlim(session.slim);
 
     this.setState(stateUpdate as Pick<AState, keyof AState>);
 
@@ -411,6 +381,7 @@ export default class SkinManager extends Component<{}, AState> {
       <div className="appRoot" key={this.state.sessionKey}>
         <MenuBar
           newSession={this.newSession}
+          saveSession={this.saveSession}
           uploadSkin={this.uploadSkin}
           uploadDynamicSkin={this.uploadDynamicSkin}
           downloadSkin={this.downloadSkin}
@@ -456,9 +427,6 @@ export default class SkinManager extends Component<{}, AState> {
           {this.state.layerManager && (
             <AppWindow style={{ flex: '0 0 325px' }}>
               <LayerManager
-                layers={this.layers}
-                updateSkin={this.updateSkin}
-                slim={this.state.slim}
                 selectForEdit={this.selectForEdit}
                 selectedLayer={this.state.selectedLayer}
               />
@@ -470,35 +438,19 @@ export default class SkinManager extends Component<{}, AState> {
               startPos={{ x: 350, y: 0 }}
               close={() => this.setState({ layerEditor: false })}
             >
-              <LayerEditor
-                layer={this.state.selectedLayerPreview ?? this.state.selectedLayer}
-                skin={this.layers.image}
-                updateLayer={this.updateSkin}
-                slim={this.state.slim}
-              />
+              <LayerEditor layer={this.state.selectedLayerPreview ?? this.state.selectedLayer} />
             </DraggableWindow>
           )}
           {this.state.paperDoll && (
             <AppWindow style={{ flex: '100%' }}>
-              <PaperDoll
-                skin={this.state.skin}
-                slim={this.state.slim}
-                updateSlim={this.updateSkin}
-                modelFeatures={this.state.modelFeatures}
-                addEdit={this.addEdit}
-              />
+              <PaperDoll modelFeatures={this.state.modelFeatures} addEdit={this.addEdit} />
             </AppWindow>
           )}
-          {this.state.preview && (
-            <Preview skin={this.state.skin} close={() => this.updateState('preview', false)} />
-          )}
-          {this.state.assetCreator && <AssetCreator addLayer={this.addLayer} />}
+          {this.state.preview && <Preview close={() => this.updateState('preview', false)} />}
+          {this.state.assetCreator && <AssetCreator />}
           {this.state.layerAdder && (
             <AppWindow style={{ flex: '0 0 325px' }}>
-              <LayerAdder
-                addLayer={this.addLayer}
-                addDefaultLayer={() => void this.setDefaultLayers(true)}
-              />
+              <LayerAdder addDefaultLayer={() => void this.setDefaultLayers(true)} />
             </AppWindow>
           )}
           {this.state.modelFeaturesWindow && (

@@ -3,11 +3,13 @@ import PopUp from '@components/basic/popup';
 import * as Util from '@tools/util';
 import icon from '@assets/icon.png';
 import FileInput from '@components/basic/fileinput';
+import { Manager } from '@tools/prefman';
 
 type Tab = 'file' | 'edit' | 'view' | 'help';
 
 type AProps = {
   newSession: () => void;
+  saveSession: () => void;
   uploadSkin: (name: string, url?: string) => void;
   uploadDynamicSkin: () => void;
   downloadSkin: () => void;
@@ -27,16 +29,9 @@ export default function MenuBar(props: AProps) {
     return () => document.documentElement.removeEventListener('fullscreenchange', updateFullscreen);
   });
 
-  function addLayerFromInput(file: File, name: string) {
+  function callAndClose(func: () => void) {
     setOpen(null);
-
-    props.uploadSkin(name, URL.createObjectURL(file));
-  }
-
-  function addDynamicLayerFromInput() {
-    setOpen(null);
-
-    props.uploadDynamicSkin();
+    func();
   }
 
   function addLayerFromUsername() {
@@ -55,11 +50,6 @@ export default function MenuBar(props: AProps) {
     if (!input) return;
 
     props.uploadSkin(input.split('/').pop()?.split('.')[0] ?? input, Util.corsProxy(input));
-  }
-
-  function downloadSkin() {
-    setOpen(null);
-    props.downloadSkin();
   }
 
   function updateFullscreen() {
@@ -110,17 +100,25 @@ export default function MenuBar(props: AProps) {
       <img alt="Logo" src={icon} />
       <MenuBarTab tab="file" name="File" {...tabProps}>
         <button onClick={props.newSession}>New Session</button>
+        <button onClick={() => callAndClose(props.saveSession)} disabled={Manager.get().autosaveSession}>Save Session</button>
         <hr />
-        <FileInput callback={addLayerFromInput} accept="image/png">
+        <FileInput
+          callback={(file, name) =>
+            callAndClose(() => props.uploadSkin(name, URL.createObjectURL(file)))
+          }
+          accept="image/png"
+        >
           Import File...
         </FileInput>
         {Util.fileSystemAccess && (
-          <button onClick={addDynamicLayerFromInput}>Dynamically Import File...</button>
+          <button onClick={() => callAndClose(props.uploadDynamicSkin)}>
+            Dynamically Import File...
+          </button>
         )}
         <button onClick={addLayerFromUsername}>Import from Username...</button>
         <button onClick={addLayerFromUrl}>Import from URL...</button>
         <hr />
-        <button onClick={downloadSkin}>Save As...</button>
+        <button onClick={() => callAndClose(props.downloadSkin)}>Save As...</button>
       </MenuBarTab>
       <MenuBarTab tab="edit" name="Edit" {...tabProps}>
         <button disabled={!undoHint} onClick={props.requestUndo}>

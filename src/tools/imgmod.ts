@@ -1,5 +1,6 @@
 import * as Util from '@tools/util';
 import Codec, { PairCodec } from '@tools/codec';
+import Speaker from '@tools/speaker';
 
 type Offset = {
   width: number;
@@ -215,6 +216,7 @@ type SerializedAbstractLayer = {
   active: boolean;
   name?: string;
 };
+
 export abstract class AbstractLayer {
   static codec<TType extends AbstractLayer, SSerialized>(
     serialize: (instance: TType) => Promise<SSerialized>,
@@ -315,10 +317,10 @@ export abstract class AbstractLayer {
     return filtered;
   };
 
-  markChanged = () => {
+  markChanged() {
     this.changed = true;
     if (this.parent) this.parent.markChanged();
-  };
+  }
 
   abstract render: () => Promise<CanvasImageSource> | void;
 
@@ -462,6 +464,7 @@ export class Img extends AbstractLayer {
     });
 
   render = (
+    slim = false,
     ctx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
     loCtx?: OffscreenCanvasRenderingContext2D,
     parentFilter?: Filter
@@ -488,7 +491,7 @@ export class Img extends AbstractLayer {
     if (type === 'erase') ctx.globalCompositeOperation = 'destination-out';
     else ctx.globalCompositeOperation = this.blend();
 
-    const image = this.applyForm();
+    const image = this.applyForm(slim);
     if (!image) return;
 
     if (this.linearOpacity && loCtx) {
@@ -639,7 +642,7 @@ export class Img extends AbstractLayer {
     ctx.drawImage(mask, 0, 0);
   };
 
-  applyForm = () => {
+  applyForm = (slim: boolean) => {
     if (!this.image) return;
 
     const form = this.form();
@@ -649,7 +652,7 @@ export class Img extends AbstractLayer {
     const ctx = canvas.getContext('2d')!;
 
     if (form === 'full-only' || form === 'slim-only') {
-      if ((form === 'full-only' && !Util.getSlim()) || (form === 'slim-only' && Util.getSlim())) {
+      if ((form === 'full-only' && !slim) || (form === 'slim-only' && slim)) {
         ctx.drawImage(this.image, 0, 0);
         return canvas.transferToImageBitmap();
       }
@@ -661,7 +664,7 @@ export class Img extends AbstractLayer {
 
     const reverse = form !== 'slim-stretch';
 
-    if (reverse === Util.getSlim()) {
+    if (reverse === slim) {
       const from = reverse ? 'to' : 'from';
       const to = reverse ? 'from' : 'to';
 
@@ -902,6 +905,8 @@ export class Layer extends AbstractLayer {
     this.markChanged();
   };
 
+  // TODO:
+  // Update linked color indices
   insertLayer = (index: number, layer: AbstractLayer, color?: Color) => {
     if (index + 1 < this.sublayers.length && this.sublayers[index + 1] instanceof ImgPreview)
       index++;
@@ -914,6 +919,8 @@ export class Layer extends AbstractLayer {
     this.markChanged();
   };
 
+  // TODO:
+  // Same as above
   insertLayers = (index: number, layers: AbstractLayer[], colors?: Color[]) => {
     if (index + 1 < this.sublayers.length && this.sublayers[index + 1] instanceof ImgPreview)
       index++;
@@ -1000,7 +1007,7 @@ export class Layer extends AbstractLayer {
     this.markChanged();
   };
 
-  flattenLayer = async (index: number) => {
+  flattenLayer = async (index: number, slim = false) => {
     const baseLayer = this.sublayers[index];
 
     const flatLayer = new Img();
@@ -1008,7 +1015,7 @@ export class Layer extends AbstractLayer {
 
     await baseLayer.render();
     if (baseLayer instanceof Img) {
-      const image = baseLayer.applyForm();
+      const image = baseLayer.applyForm(slim);
       if (image) await flatLayer.loadImage(image);
     } else await flatLayer.loadUrl(baseLayer.src);
 
@@ -1126,10 +1133,11 @@ export class Layer extends AbstractLayer {
   };
 
   private renderInternal = async (
+    slim: boolean,
     ctx: OffscreenCanvasRenderingContext2D,
     parentFilter?: Filter
   ) => {
-    if (this.changed) await this.render();
+    if (this.changed) await this.render(false, slim);
 
     const filter = parentFilter ? this.filterFilter(parentFilter) : this.copyFilter();
 
@@ -1158,7 +1166,7 @@ export class Layer extends AbstractLayer {
       if (!sublayer.active) continue;
 
       if (sublayer instanceof Layer) {
-        await sublayer.renderInternal(ctx, filter);
+        await sublayer.renderInternal(slim, ctx, filter);
         continue;
       }
       if (!(sublayer instanceof Img)) continue;
@@ -1171,20 +1179,20 @@ export class Layer extends AbstractLayer {
         loIndex = typeof color === 'object' && 'from' in color ? color.from : i;
       }
 
-      sublayer.render(ctx, loCtx, filter);
+      sublayer.render(slim, ctx, loCtx, filter);
     }
 
     if (loCtx) ctx.drawImage(loCtx.canvas, 0, 0);
   };
 
-  render = async (force?: boolean) => {
+  render = async (force?: boolean, slim = false) => {
     if (!force && !this.changed && this.image) return this.image;
     this.changed = false;
 
     const canvas = new OffscreenCanvas(64, 64);
     const ctx = canvas.getContext('2d')!;
 
-    await this.renderInternal(ctx);
+    await this.renderInternal(slim, ctx);
 
     this.src = URL.createObjectURL(await canvas.convertToBlob());
     this.image = canvas.transferToImageBitmap();
@@ -1212,6 +1220,37 @@ export class Layer extends AbstractLayer {
     });
     if (this.image) this.image.close();
   };
+}
+
+export class RootLayer extends Layer {
+  speaker = new Speaker();
+
+  constructor(
+    listener?: () => void,
+    sublayers?: AbstractLayer[],
+    colors?: (Color | UnloadedRelativeColor)[],
+    filter?: Filter
+  ) {
+    super(sublayers, colors, filter);
+    if (listener) this.speaker.registerListener(listener);
+  }
+
+  markChanged = () => {
+    this.changed = true;
+    this.speaker.updateListeners();
+  };
+
+  // this feels so wrong lmao
+  static of(layer: Partial<RootLayer> & Layer, listener?: () => void) {
+    layer.speaker = new Speaker();
+    if (listener) layer.speaker.registerListener(listener);
+
+    layer.markChanged = () => {
+      layer.changed = true;
+      layer.speaker?.updateListeners();
+    };
+    return layer as RootLayer;
+  }
 }
 
 type AbstractLayerCodec = Codec<AbstractLayer, SerializedAbstractLayer>;

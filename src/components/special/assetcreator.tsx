@@ -1,10 +1,11 @@
+// This entire thing gets more useless the more layer manager gets better lol
+// i havent even used it in years
+// dont wanna get rid of it until layer manager fully usurps it tho
+
 import React, { ChangeEvent, Component } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import ColorPicker from '@components/basic/colorpicker';
-
-type AProps = {
-  addLayer: (layer: ImgMod.AbstractLayer) => void;
-};
+import { SkinManager } from '@tools/skinman';
 
 type AState = {
   name: string;
@@ -14,12 +15,13 @@ type AState = {
 };
 
 // the asset testing needs to send unique asset ids but in order to do that you need to make deep copies of the assets ahhhhhhh
-export default class AssetCreator extends Component<AProps, AState> {
-  constructor(props: AProps) {
-    super(props);
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export default class AssetCreator extends Component<{}, AState> {
+  constructor() {
+    super({});
 
-    const layers = new ImgMod.Layer([], []);
-    layers.advanced = [];
+    const layers = new ImgMod.Layer();
+    layers.assertAdvancedArray();
 
     this.state = {
       name: '',
@@ -126,7 +128,7 @@ export default class AssetCreator extends Component<AProps, AState> {
           </select>
         </span>
         <span>
-          <button onClick={() => this.props.addLayer(this.state.layers)}>Test Asset</button>
+          <button onClick={() => SkinManager.addLayer(this.state.layers)}>Test Asset</button>
           <button onClick={this.addLayer}>Add Layer</button>
           <button>Export Asset</button>
         </span>

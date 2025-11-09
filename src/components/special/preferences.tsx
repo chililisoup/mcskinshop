@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  MANAGER,
+  Manager,
   SELECT_PREFS,
   USER_THEME_COLOR_VARS,
   Prefs,
@@ -17,32 +17,32 @@ export default function Preferences() {
       <PropertiesList
         labelWidth="50%"
         stringFallback={(id, value) => {
-          if (id === 'theme') MANAGER.setPrefs({ theme: value as Prefs['theme'] });
+          if (id === 'theme') Manager.setPrefs({ theme: value as Prefs['theme'] });
           if (Object.keys(USER_THEME_COLOR_VARS).includes(id)) {
-            MANAGER.setPrefs({ [id]: value } as unknown as Pick<
+            Manager.setPrefs({ [id]: value } as unknown as Pick<
               Prefs,
               keyof typeof USER_THEME_COLOR_VARS
             >);
           }
         }}
         numberFallback={(id, value) => {
-          if (id === 'curvature') MANAGER.setPrefs({ curvature: value });
+          if (id === 'curvature') Manager.setPrefs({ curvature: value });
         }}
         booleanFallback={(id, value) => {
-          if (id === 'autosaveSession') MANAGER.setPrefs({ [id]: value });
-          if (id === 'useFallbackSkinSource') MANAGER.setPrefs({ [id]: value });
-          if (id === 'showPlaceholderSkins') MANAGER.setPrefs({ [id]: value });
-          if (id === 'autosetImageForm') MANAGER.setPrefs({ [id]: value });
+          if (id === 'autosaveSession') Manager.setPrefs({ [id]: value });
+          if (id === 'useFallbackSkinSource') Manager.setPrefs({ [id]: value });
+          if (id === 'showPlaceholderSkins') Manager.setPrefs({ [id]: value });
+          if (id === 'autosetImageForm') Manager.setPrefs({ [id]: value });
 
-          if (id === 'addDefaultLayer') MANAGER.setPrefs({ [id]: value });
-          if (id === 'animatePlayerOnStart') MANAGER.setPrefs({ [id]: value });
-          if (id === 'showLayerManagerOnStart') MANAGER.setPrefs({ [id]: value });
-          if (id === 'showLayerEditorOnStart') MANAGER.setPrefs({ [id]: value });
-          if (id === 'showPaperDollOnStart') MANAGER.setPrefs({ [id]: value });
-          if (id === 'showPreviewOnStart') MANAGER.setPrefs({ [id]: value });
-          if (id === 'showAssetCreatorOnStart') MANAGER.setPrefs({ [id]: value });
-          if (id === 'showLayerAdderOnStart') MANAGER.setPrefs({ [id]: value });
-          if (id === 'showModelFeaturesOnStart') MANAGER.setPrefs({ [id]: value });
+          if (id === 'addDefaultLayer') Manager.setPrefs({ [id]: value });
+          if (id === 'animatePlayerOnStart') Manager.setPrefs({ [id]: value });
+          if (id === 'showLayerManagerOnStart') Manager.setPrefs({ [id]: value });
+          if (id === 'showLayerEditorOnStart') Manager.setPrefs({ [id]: value });
+          if (id === 'showPaperDollOnStart') Manager.setPrefs({ [id]: value });
+          if (id === 'showPreviewOnStart') Manager.setPrefs({ [id]: value });
+          if (id === 'showAssetCreatorOnStart') Manager.setPrefs({ [id]: value });
+          if (id === 'showLayerAdderOnStart') Manager.setPrefs({ [id]: value });
+          if (id === 'showModelFeaturesOnStart') Manager.setPrefs({ [id]: value });
         }}
         properties={[
           {

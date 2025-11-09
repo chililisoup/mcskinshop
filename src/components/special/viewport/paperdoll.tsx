@@ -13,13 +13,14 @@ import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import skinmodel from '@/skinmodel.json';
 import { SAVE_RENDER } from '@components/svgs';
 import { Features } from '@components/special/modelfeatures';
-import { UndoCallback } from '@components/special/skinmanager';
+import { UndoCallback } from '@components/special/mcskinshop';
 import AnimateMode from '@components/special/viewport/modes/animatemode';
 import PoseMode from '@components/special/viewport/modes/posemode';
-import ViewportPanel from '@components/special/viewport/viewportpanel';
+import ViewportPanel, { ViewportPanelHandle } from '@components/special/viewport/viewportpanel';
 import AbstractMode from './modes/abstractmode';
-import { MANAGER } from '@tools/prefman';
+import { Manager } from '@tools/prefman';
 import ExportRender from './exportRender';
+import { SkinManager } from '@tools/skinman';
 
 export type PoseEntry = {
   rotation?: THREE.EulerTuple;
@@ -28,9 +29,6 @@ export type PoseEntry = {
 };
 
 type AProps = {
-  skin: string;
-  slim: boolean;
-  updateSlim: (slim: boolean) => void;
   modelFeatures: Features;
   addEdit: (name: string, undoCallback: UndoCallback) => void;
 };
@@ -84,7 +82,7 @@ export const defaultViewOptions = {
 
 export default class PaperDoll extends Component<AProps, AState> {
   canvasRef: React.RefObject<HTMLCanvasElement | null> = React.createRef();
-  panelRef: React.RefObject<ViewportPanel | null> = React.createRef();
+  panelRef: React.RefObject<ViewportPanelHandle | null> = React.createRef();
   clock = new THREE.Clock();
   doll = new ModelTool.Model('doll', skinmodel as ModelTool.ModelDefinition);
   activeKeys: Record<string, true> = {};
@@ -192,7 +190,8 @@ export default class PaperDoll extends Component<AProps, AState> {
     window.addEventListener('resize', this.handleWindowResize);
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
-    MANAGER.registerListener(this.updateThemedMaterials);
+    SkinManager.speaker.registerListener(this.updateSkin);
+    Manager.speaker.registerListener(this.updateThemedMaterials);
   }
 
   componentWillUnmount() {
@@ -201,7 +200,8 @@ export default class PaperDoll extends Component<AProps, AState> {
     window.removeEventListener('resize', this.handleWindowResize);
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('keyup', this.onKeyUp);
-    MANAGER.unregisterListener(this.updateThemedMaterials);
+    SkinManager.speaker.unregisterListener(this.updateSkin);
+    Manager.speaker.unregisterListener(this.updateThemedMaterials);
 
     window.cancelAnimationFrame(this.requestID);
     if (this.controls) this.controls.dispose();
@@ -229,14 +229,6 @@ export default class PaperDoll extends Component<AProps, AState> {
     if (this.state.mode !== prevState.mode) this.deselect();
 
     if (this.state.grid !== prevState.grid) this.grid.visible = this.state.grid;
-
-    let updateTextures = false;
-
-    if (this.props.slim !== prevProps.slim) {
-      this.updateSlim();
-      if (this.state.partToggles === prevState.partToggles) this.updatePartToggles();
-      updateTextures = true;
-    }
 
     if (this.state.partToggles !== prevState.partToggles) this.updatePartToggles();
 
@@ -276,14 +268,8 @@ export default class PaperDoll extends Component<AProps, AState> {
 
     if (this.state.shade !== prevState.shade) {
       this.propagateShade(this.doll.root);
-      updateTextures = true;
+      this.textureSetup();
     }
-
-    if (this.props.skin !== prevProps.skin) {
-      updateTextures = true;
-    }
-
-    if (updateTextures) this.textureSetup();
 
     if (this.perspCam) this.perspCam.fov = this.state.fov;
 
@@ -397,6 +383,11 @@ export default class PaperDoll extends Component<AProps, AState> {
     // this.scene.add(this.sphere);
   };
 
+  updateSkin = () => {
+    this.updateSlim();
+    this.textureSetup();
+  };
+
   updateThemedMaterials = () => {
     const gridColor = ImgMod.cssVariableColor('--viewport-widget');
     this.grid.material.color.set(ImgMod.rgbaToHex(gridColor, false));
@@ -449,7 +440,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     } else this.controls.reset();
   };
 
-  textureSetup = () => this.doll.setupTexture(this.props.skin, this.state.shade);
+  textureSetup = () => this.doll.setupTexture(SkinManager.get().src, this.state.shade);
 
   propagateShade = (part: THREE.Object3D) => {
     this.doll.propagateShade(part, this.state.shade);
@@ -485,14 +476,15 @@ export default class PaperDoll extends Component<AProps, AState> {
 
   updateSlim = () => {
     const pivots = this.doll.pivots;
+    const slim = SkinManager.getSlim();
 
-    pivots.rightArm.children[0].visible = !this.props.slim;
-    pivots.rightArm.children[1].visible = this.props.slim;
-    pivots.leftArm.children[0].visible = !this.props.slim;
-    pivots.leftArm.children[1].visible = this.props.slim;
+    pivots.rightArm.children[0].visible = !slim;
+    pivots.rightArm.children[1].visible = slim;
+    pivots.leftArm.children[0].visible = !slim;
+    pivots.leftArm.children[1].visible = slim;
 
-    pivots.rightArm.children[this.props.slim ? 1 : 0].children[1].add(pivots.rightItem);
-    pivots.leftArm.children[this.props.slim ? 1 : 0].children[1].add(pivots.leftItem);
+    pivots.rightArm.children[slim ? 1 : 0].children[1].add(pivots.rightItem);
+    pivots.leftArm.children[slim ? 1 : 0].children[1].add(pivots.leftItem);
   };
 
   updatePartToggles = () => {
@@ -503,7 +495,7 @@ export default class PaperDoll extends Component<AProps, AState> {
 
       const usedPivot =
         pivot === 'rightArm' || pivot === 'leftArm'
-          ? pivots[pivot].getObjectByName(this.props.slim ? 'slim' : 'full')
+          ? pivots[pivot].getObjectByName(SkinManager.getSlim() ? 'slim' : 'full')
           : pivots[pivot];
       if (!usedPivot) continue;
 
@@ -866,9 +858,7 @@ export default class PaperDoll extends Component<AProps, AState> {
               grid: this.state.grid,
               background: this.state.background
             }}
-            slim={this.props.slim}
             updateSetting={this.updateSetting}
-            updateSlim={this.props.updateSlim}
             resetCameraPosition={this.resetCameraPosition}
             addEdit={this.props.addEdit}
             ref={this.panelRef}

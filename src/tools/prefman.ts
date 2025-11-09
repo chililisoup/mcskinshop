@@ -1,5 +1,6 @@
 import * as Util from '@tools/util';
 import { useEffect, useState } from 'react';
+import Speaker from './speaker';
 
 export const SELECT_PREFS = {
   theme: {
@@ -183,42 +184,38 @@ const CATPPUCCIN_THEMES = {
   }
 };
 
-type Listener = (prefs: Prefs) => void;
+const combine = <TPrefs = Partial<Prefs>>(prefs: Prefs, overrides: TPrefs & object) => {
+  let override: keyof typeof overrides;
+  for (override in overrides)
+    if (override in prefs) (prefs as TPrefs)[override] = overrides[override];
 
-export class Manager {
-  private prefs: Prefs;
-  private listeners: Listener[] = [];
+  let selectPref: keyof typeof SELECT_PREFS;
+  for (selectPref in SELECT_PREFS)
+    if (
+      Util.isKeyOfObject(selectPref, overrides) &&
+      !Util.isKeyOfObject(overrides[selectPref], SELECT_PREFS[selectPref])
+    )
+      prefs[selectPref] = defaultPrefs[selectPref];
 
-  constructor() {
-    this.prefs = JSON.parse(JSON.stringify(defaultPrefs)) as Prefs;
-    this.combine(JSON.parse(localStorage.getItem('preferences') ?? '{}'));
+  return prefs;
+};
 
-    this.applyPrefs();
-  }
+export abstract class Manager {
+  static speaker = new Speaker(() => this.get());
+  private static prefs = combine(
+    { ...defaultPrefs },
+    JSON.parse(localStorage.getItem('preferences') ?? '{}')
+  );
 
-  private combine = <TPrefs = Partial<Prefs>>(overrides: TPrefs & object) => {
-    let override: keyof typeof overrides;
-    for (override in overrides)
-      if (override in this.prefs) (this.prefs as TPrefs)[override] = overrides[override];
-
-    let selectPref: keyof typeof SELECT_PREFS;
-    for (selectPref in SELECT_PREFS)
-      if (
-        Util.isKeyOfObject(selectPref, overrides) &&
-        !Util.isKeyOfObject(overrides[selectPref], SELECT_PREFS[selectPref])
-      )
-        this.prefs[selectPref] = defaultPrefs[selectPref];
-  };
-
-  private trimPrefs = <KKey extends keyof Prefs>(prefs: Pick<Prefs, KKey>) => {
+  private static trimPrefs = <KKey extends keyof Prefs>(prefs: Pick<Prefs, KKey>) => {
     const toSave: Partial<Prefs> = {};
     for (const pref in prefs) if (prefs[pref] !== defaultPrefs[pref]) toSave[pref] = prefs[pref];
 
     return toSave;
   };
 
-  setPrefs = <KKey extends keyof Prefs>(prefs: Pick<Prefs, KKey>) => {
-    this.combine(prefs);
+  static setPrefs = <KKey extends keyof Prefs>(prefs: Pick<Prefs, KKey>) => {
+    combine(this.prefs, prefs);
 
     const toSave = this.trimPrefs(this.prefs);
     localStorage.setItem('preferences', JSON.stringify(toSave));
@@ -226,21 +223,9 @@ export class Manager {
     this.applyPrefs();
   };
 
-  get = (): Prefs => {
-    return { ...this.prefs };
-  };
+  static get = (): Prefs => ({ ...this.prefs });
 
-  registerListener = (listener: Listener) => {
-    if (!this.listeners.includes(listener)) this.listeners.push(listener);
-  };
-
-  unregisterListener = (listener: Listener) => {
-    this.listeners = this.listeners.filter(registered => registered !== listener);
-  };
-
-  private applyPrefs = () => {
-    if (!this.prefs.autosaveSession) localStorage.removeItem('savedSession');
-
+  static applyPrefs = () => {
     const root = document.documentElement;
     root.style = '';
     root.style.setProperty(
@@ -407,19 +392,19 @@ export class Manager {
         root.style.setProperty('--input', 'var(--outline)');
     }
 
-    this.listeners.forEach(listener => listener(this.get()));
+    this.speaker.updateListeners();
   };
 }
 
-export const MANAGER = new Manager();
-
 export function usePrefs() {
-  const [prefs, updatePrefs] = useState(MANAGER.get());
+  const [prefs, updatePrefs] = useState(Manager.get());
 
   useEffect(() => {
-    MANAGER.registerListener(updatePrefs);
-    return () => MANAGER.unregisterListener(updatePrefs);
+    Manager.speaker.registerListener(updatePrefs);
+    return () => Manager.speaker.unregisterListener(updatePrefs);
   });
 
   return prefs;
 }
+
+Manager.applyPrefs();

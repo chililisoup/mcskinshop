@@ -4,6 +4,7 @@ import * as Util from '@tools/util';
 import steve from '@assets/steve.png';
 import JSZip from 'jszip';
 import Dropdown from '@components/basic/dropdown';
+import { SkinManager } from '@tools/skinman';
 
 const fakedatabase = await Util.getRemoteJson('/assets/compressed/fake_database.json');
 
@@ -30,7 +31,6 @@ type Asset = {
 */
 
 type AProps = {
-  addLayer: (layer: ImgMod.AbstractLayer) => void;
   addDefaultLayer: () => void;
 };
 
@@ -62,7 +62,7 @@ export default class LayerAdder extends Component<AProps, AState> {
     if (this.state.packs.length) {
       elem = this.state.packs.map(name => (
         <Dropdown title={name}>
-          <AssetPack name={name} addLayer={this.props.addLayer} />
+          <AssetPack name={name} addLayer={SkinManager.addLayer} />
         </Dropdown>
       ));
     }

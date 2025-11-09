@@ -116,6 +116,7 @@ export default class Slider extends Component<AProps, AState> {
 
   startTyping = () => {
     this.closeTimer();
+    if (this.state.typing) return;
     this.props.callback?.(this.prevValues[0], false);
     this.textVal = String(this.prevValues[0]);
     this.setState({ typing: true });
@@ -123,6 +124,7 @@ export default class Slider extends Component<AProps, AState> {
 
   onMouseDown = () => {
     this.closeTimer();
+    if (this.state.typing) return;
     this.timer = setTimeout(this.startTyping, 1000);
     this.firstInput = true;
   };

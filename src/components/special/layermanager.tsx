@@ -2,59 +2,47 @@ import React, { Component, useEffect, useState } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import ColorPicker from '@components/basic/colorpicker';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
-import { MANAGER } from '@tools/prefman';
+import { Manager } from '@tools/prefman';
+import { SkinManager, useRoot } from '@tools/skinman';
 
 type AProps = {
-  layers: ImgMod.Layer;
-  updateSkin: (slim?: boolean) => void;
-  slim: boolean;
   selectForEdit: (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => void;
   selectedLayer?: ImgMod.AbstractLayer;
 };
 
-export default class LayerManager extends Component<AProps> {
-  constructor(props: AProps) {
-    super(props);
+export default function LayerManager(props: AProps) {
+  const root = useRoot();
 
-    this.state = {
-      selectedLayer: undefined
-    };
-  }
-
-  addLayer = () => {
+  function addLayer() {
     const layer = new ImgMod.Img();
     layer.name = 'New Layer';
 
-    this.props.layers.addLayer(layer);
-    this.props.updateSkin();
-  };
+    SkinManager.addLayer(layer);
+  }
 
-  addGroup = () => {
+  function addGroup() {
     const layer = new ImgMod.Layer();
     layer.name = 'New Group';
 
-    this.props.layers.addLayer(layer);
-    this.props.updateSkin();
-  };
-
-  render() {
-    return (
-      <div className="LayerManager">
-        <LayerList
-          layers={this.props.layers}
-          root={this.props.layers}
-          isRoot={true}
-          updateSkin={this.props.updateSkin}
-          selectForEdit={this.props.selectForEdit}
-          selectedLayer={this.props.selectedLayer}
-        />
-        <span className="stretch">
-          <button onClick={this.addLayer}>New Layer</button>
-          <button onClick={this.addGroup}>New Group</button>
-        </span>
-      </div>
-    );
+    SkinManager.addLayer(layer);
   }
+
+  return (
+    <div className="LayerManager">
+      <LayerList
+        layers={root}
+        root={root}
+        isRoot={true}
+        updateSkin={SkinManager.updateSkin}
+        selectForEdit={props.selectForEdit}
+        selectedLayer={props.selectedLayer}
+      />
+      <span className="stretch">
+        <button onClick={addLayer}>New Layer</button>
+        <button onClick={addGroup}>New Group</button>
+      </span>
+    </div>
+  );
 }
 
 type BProps = {
@@ -98,7 +86,7 @@ class LayerList extends Component<BProps, BState> {
   };
 
   flattenLayer: (index: number) => void = async index => {
-    await this.props.layers.flattenLayer(index);
+    await this.props.layers.flattenLayer(index, SkinManager.getSlim());
     this.props.updateSkin();
   };
 
@@ -220,7 +208,7 @@ class LayerList extends Component<BProps, BState> {
       }
 
       const slim = image.detectSlimModel();
-      if (MANAGER.get().autosetImageForm) image.form(slim ? 'slim-stretch' : 'full-squish-inner');
+      if (Manager.get().autosetImageForm) image.form(slim ? 'slim-stretch' : 'full-squish-inner');
 
       this.props.layers.insertLayer(insertingIndex, image);
       this.props.updateSkin();
@@ -240,7 +228,7 @@ class LayerList extends Component<BProps, BState> {
     // const image = new ImgMod.Img();
     // await image.render(layer.src);
     // const slim = image.detectSlimModel();
-    // if (MANAGER.get().autosetImageForm)
+    // if (Manager.get().autosetImageForm)
     //   image.form = slim ? 'slim-stretch' : 'full-squish-inner';
 
     this.props.layers.insertLayer(insertingIndex, layer);
