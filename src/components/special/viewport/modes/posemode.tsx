@@ -5,6 +5,7 @@ import AbstractMode, { Props } from '@components/special/viewport/modes/abstract
 import { PoseEntry } from '@components/special/viewport/paperdoll';
 import PropertiesList from '@components/basic/propertieslist';
 import { MOVE_TOOL, ROTATE_TOOL, SCALE_TOOL } from '@components/svgs';
+import EditManager from '@tools/editman';
 
 const POSE_MODES = ['Position', 'Rotation', 'Scale'] as const;
 
@@ -519,7 +520,7 @@ export default class PoseMode extends AbstractMode<AState> {
 
     for (const [name, pivot] of Object.entries(this.props.instance.doll.pivots)) {
       const entry = this.props.instance.buildPoseEntry(pivot);
-      if (Object.keys(entry).length > 0) poseJson[name] = entry;
+      if (!Util.isEmpty(entry)) poseJson[name] = entry;
     }
 
     return poseJson;
@@ -543,7 +544,7 @@ export default class PoseMode extends AbstractMode<AState> {
     }
 
     const poseJson = this.getPoseJson();
-    if (Object.keys(poseJson).length === 0) {
+    if (Util.isEmpty(poseJson)) {
       window.alert('Unable to save! Empty pose');
       return;
     }
@@ -564,7 +565,7 @@ export default class PoseMode extends AbstractMode<AState> {
       return;
     }
 
-    if (Object.keys(poseJson).length === 0) {
+    if (Util.isEmpty(poseJson)) {
       window.alert('Unable to load! Pose is empty! You should probably delete it :/');
       return;
     }
@@ -635,9 +636,7 @@ export default class PoseMode extends AbstractMode<AState> {
 
     suffix = suffix === undefined ? '' : ' ' + suffix;
 
-    this.props.instance.props.addEdit(prefix + ' ' + obj.name + suffix, () =>
-      this.poseUndo(obj, start)
-    );
+    EditManager.addEdit(prefix + ' ' + obj.name + suffix, () => this.poseUndo(obj, start));
   };
 
   onMouseMove = (e: MouseEvent) => {

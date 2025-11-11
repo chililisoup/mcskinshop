@@ -5,7 +5,7 @@
 import React, { ChangeEvent, Component } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import ColorPicker from '@components/basic/colorpicker';
-import { SkinManager } from '@tools/skinman';
+import SkinManager from '@tools/skinman';
 
 type AState = {
   name: string;
@@ -15,8 +15,7 @@ type AState = {
 };
 
 // the asset testing needs to send unique asset ids but in order to do that you need to make deep copies of the assets ahhhhhhh
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export default class AssetCreator extends Component<{}, AState> {
+export default class AssetCreator extends Component<object, AState> {
   constructor() {
     super({});
 

@@ -1,6 +1,6 @@
-import * as Util from '@tools/util';
 import { useEffect, useState } from 'react';
-import Speaker from './speaker';
+import * as Util from '@tools/util';
+import Speaker from '@tools/speaker';
 
 export const SELECT_PREFS = {
   theme: {
@@ -184,28 +184,28 @@ const CATPPUCCIN_THEMES = {
   }
 };
 
-const combine = <TPrefs = Partial<Prefs>>(prefs: Prefs, overrides: TPrefs & object) => {
-  let override: keyof typeof overrides;
-  for (override in overrides)
-    if (override in prefs) (prefs as TPrefs)[override] = overrides[override];
-
-  let selectPref: keyof typeof SELECT_PREFS;
-  for (selectPref in SELECT_PREFS)
-    if (
-      Util.isKeyOfObject(selectPref, overrides) &&
-      !Util.isKeyOfObject(overrides[selectPref], SELECT_PREFS[selectPref])
-    )
-      prefs[selectPref] = defaultPrefs[selectPref];
-
-  return prefs;
-};
-
 export abstract class Manager {
   static speaker = new Speaker(() => this.get());
-  private static prefs = combine(
+  private static prefs = this.combine(
     { ...defaultPrefs },
     JSON.parse(localStorage.getItem('preferences') ?? '{}')
   );
+
+  private static combine<TPrefs = Partial<Prefs>>(prefs: Prefs, overrides: TPrefs & object) {
+    let override: keyof typeof overrides;
+    for (override in overrides)
+      if (override in prefs) (prefs as TPrefs)[override] = overrides[override];
+
+    let selectPref: keyof typeof SELECT_PREFS;
+    for (selectPref in SELECT_PREFS)
+      if (
+        Util.isKeyOfObject(selectPref, overrides) &&
+        !Util.isKeyOfObject(overrides[selectPref], SELECT_PREFS[selectPref])
+      )
+        prefs[selectPref] = defaultPrefs[selectPref];
+
+    return prefs;
+  }
 
   private static trimPrefs = <KKey extends keyof Prefs>(prefs: Pick<Prefs, KKey>) => {
     const toSave: Partial<Prefs> = {};
@@ -215,7 +215,7 @@ export abstract class Manager {
   };
 
   static setPrefs = <KKey extends keyof Prefs>(prefs: Pick<Prefs, KKey>) => {
-    combine(this.prefs, prefs);
+    this.combine(this.prefs, prefs);
 
     const toSave = this.trimPrefs(this.prefs);
     localStorage.setItem('preferences', JSON.stringify(toSave));

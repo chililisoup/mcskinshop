@@ -5,20 +5,17 @@ import fullref from '@assets/fullref.png';
 import slimref from '@assets/slimref.png';
 import * as ImgMod from '@tools/imgmod';
 import * as Util from '@tools/util';
-import { SkinManager } from '@tools/skinman';
-
-type AProps = {
-  layer?: ImgMod.AbstractLayer;
-};
+import SkinManager, { Selected } from '@tools/skinman';
 
 type AState = {
   guide: boolean;
   grid: boolean;
   gridSize: number;
   focusLayer: boolean;
+  layer: ImgMod.AbstractLayer | null;
 };
 
-export default class LayerEditor extends Component<AProps, AState> {
+export default class LayerEditor extends Component<object, AState> {
   mouseActive: string | boolean = false;
   color = '#000000';
   mousePos = { x: 0, y: 0 };
@@ -28,14 +25,17 @@ export default class LayerEditor extends Component<AProps, AState> {
   previewCtx;
   canvasRef: React.RefObject<HTMLCanvasElement | null> = React.createRef();
 
-  constructor(props: AProps) {
+  constructor(props: object) {
     super(props);
+
+    const selected = SkinManager.getSelected();
 
     this.state = {
       guide: false,
       grid: true,
       gridSize: 8,
-      focusLayer: false
+      focusLayer: false,
+      layer: selected.preview ?? selected.layer
     };
 
     this.layerCtx = this.layerCanvas.getContext('2d')!;
@@ -46,16 +46,18 @@ export default class LayerEditor extends Component<AProps, AState> {
     this.loadLayer();
     this.updateSkin();
     SkinManager.speaker.registerListener(this.updateSkin);
+    SkinManager.selectedSpeaker.registerListener(this.updateLayer);
   }
 
   componentWillUnmount() {
     SkinManager.speaker.unregisterListener(this.updateSkin);
+    SkinManager.selectedSpeaker.unregisterListener(this.updateLayer);
   }
 
-  componentDidUpdate(prevProps: Readonly<AProps>, prevState: Readonly<AState>) {
-    if (prevState.focusLayer !== this.state.focusLayer || prevProps.layer !== this.props.layer)
+  componentDidUpdate(_prevProps: Readonly<object>, prevState: Readonly<AState>) {
+    if (prevState.focusLayer !== this.state.focusLayer || prevState.layer !== this.state.layer)
       this.updateSkin();
-    if (prevProps.layer !== this.props.layer) this.loadLayer();
+    if (prevState.layer !== this.state.layer) this.loadLayer();
   }
 
   updateSkinFocus = () => {
@@ -63,12 +65,12 @@ export default class LayerEditor extends Component<AProps, AState> {
     const ctx = this.canvasRef.current.getContext('2d')!;
 
     ctx.clearRect(0, 0, 64, 64);
-    if (!this.props.layer) return;
+    if (!this.state.layer) return;
 
-    if (this.props.layer instanceof ImgMod.ImgPreview && this.props.layer.base.image)
-      ctx.drawImage(this.props.layer.base.image, 0, 0);
-    else if (this.props.layer.image) {
-      ctx.drawImage(this.props.layer.image, 0, 0);
+    if (this.state.layer instanceof ImgMod.ImgPreview && this.state.layer.base.image)
+      ctx.drawImage(this.state.layer.base.image, 0, 0);
+    else if (this.state.layer.image) {
+      ctx.drawImage(this.state.layer.image, 0, 0);
     }
   };
 
@@ -83,16 +85,20 @@ export default class LayerEditor extends Component<AProps, AState> {
     if (skin) ctx.drawImage(skin, 0, 0);
   };
 
+  updateLayer = (selected: Selected) => {
+    this.setState({ layer: selected.preview ?? selected.layer });
+  };
+
   loadLayer = () => {
-    if (!this.props.layer) {
+    if (!this.state.layer) {
       this.layerCtx.clearRect(0, 0, 64, 64);
       return;
     }
 
     const image =
-      this.props.layer instanceof ImgMod.ImgPreview
-        ? this.props.layer.base.image
-        : this.props.layer.image;
+      this.state.layer instanceof ImgMod.ImgPreview
+        ? this.state.layer.base.image
+        : this.state.layer.image;
     if (image) {
       this.layerCtx.clearRect(0, 0, 64, 64);
       this.layerCtx.drawImage(image, 0, 0);
@@ -134,28 +140,28 @@ export default class LayerEditor extends Component<AProps, AState> {
   };
 
   updateImg: () => void = async () => {
-    if (!(this.props.layer instanceof ImgMod.ImgPreview && !this.props.layer.dynamic)) return;
+    if (!(this.state.layer instanceof ImgMod.ImgPreview && !this.state.layer.dynamic)) return;
 
-    await this.props.layer.base.loadImage(this.layerCanvas);
-    this.props.layer.base.markChanged();
+    await this.state.layer.base.loadImage(this.layerCanvas);
+    this.state.layer.base.markChanged();
     SkinManager.updateSkin();
   };
 
   updatePreview = () => {
-    if (!(this.props.layer instanceof ImgMod.ImgPreview && !this.props.layer.dynamic)) return;
+    if (!(this.state.layer instanceof ImgMod.ImgPreview && !this.state.layer.dynamic)) return;
 
     if (this.state.focusLayer && this.canvasRef.current) {
       const ctx = this.canvasRef.current.getContext('2d')!;
       ctx.drawImage(this.previewCanvas, 0, 0);
     }
 
-    this.props.layer.image = this.previewCanvas.transferToImageBitmap();
-    this.props.layer.markChanged();
+    this.state.layer.image = this.previewCanvas.transferToImageBitmap();
+    this.state.layer.markChanged();
     SkinManager.updateSkin();
   };
 
   drawPixel = () => {
-    if (!(this.props.layer instanceof ImgMod.ImgPreview && !this.props.layer.dynamic)) return;
+    if (!(this.state.layer instanceof ImgMod.ImgPreview && !this.state.layer.dynamic)) return;
 
     this.previewCtx.clearRect(0, 0, 64, 64);
 
@@ -210,7 +216,7 @@ export default class LayerEditor extends Component<AProps, AState> {
           />
         </span>
         <canvas
-          className={`layereditor-canvas${this.props.layer instanceof ImgMod.ImgPreview && !this.props.layer.dynamic ? '' : ' not-allowed'}`}
+          className={`layereditor-canvas${this.state.layer instanceof ImgMod.ImgPreview && !this.state.layer.dynamic ? '' : ' not-allowed'}`}
           ref={this.canvasRef}
           onMouseMove={this.onMouseMove}
           onMouseDown={this.onMouseDown}

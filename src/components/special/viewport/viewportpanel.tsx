@@ -1,10 +1,9 @@
 import React, { useImperativeHandle, useState } from 'react';
 import * as PaperDoll from '@components/special/viewport/paperdoll';
-import { UndoCallback } from '@components/special/mcskinshop';
 import Dropdown from '@components/basic/dropdown';
 import PropertiesList from '@components/basic/propertieslist';
 import FileInput from '@components/basic/fileinput';
-import { SkinManager, useSkin } from '@tools/skinman';
+import SkinManager, { useSkin } from '@tools/skinman';
 
 type AProps = {
   settings: {
@@ -27,7 +26,6 @@ type AProps = {
     saveEdit?: boolean
   ) => void;
   resetCameraPosition: () => void;
-  addEdit: (name: string, undoCallback: UndoCallback) => void;
   ref: React.Ref<ViewportPanelHandle>;
 };
 

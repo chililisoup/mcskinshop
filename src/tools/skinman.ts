@@ -1,19 +1,28 @@
+import { useEffect, useState } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import { Manager } from '@tools/prefman';
 import Speaker from '@tools/speaker';
-import { useEffect, useState } from 'react';
 import steve from '@assets/steve.png';
 import alex from '@assets/alex.png';
+
+export type Selected = {
+  layer: ImgMod.AbstractLayer | null;
+  preview: ImgMod.ImgPreview | null;
+};
 
 export type Skin = {
   src: string;
   slim: boolean;
 };
 
-export abstract class SkinManager {
+export default abstract class SkinManager {
   private static root = new ImgMod.RootLayer(() => this.rootSpeaker.updateListeners());
   private static rendering = false;
   private static awaitingRerender = false;
+  private static selected: Selected = {
+    layer: null,
+    preview: null
+  };
   private static skin: Skin = {
     src: Manager.get().showPlaceholderSkins ? steve : ImgMod.EMPTY_IMAGE_SOURCE,
     slim: false
@@ -21,6 +30,7 @@ export abstract class SkinManager {
 
   static speaker = new Speaker(() => this.get());
   static rootSpeaker = new Speaker(() => this.getRoot());
+  static selectedSpeaker = new Speaker(() => this.getSelected());
 
   static get = (): Skin => ({ ...this.skin });
 
@@ -35,6 +45,8 @@ export abstract class SkinManager {
   static getLayers = () => this.root.getLayers();
 
   static getRoot = () => this.root;
+
+  static getSelected = (): Selected => ({ ...this.selected });
 
   static serializeLayers = () => ImgMod.Layer.CODEC.serialize(this.root);
 
@@ -99,6 +111,42 @@ export abstract class SkinManager {
       return;
     }
   };
+
+  static selectLayer = (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => {
+    this.selectLayerInternal(layer, parent);
+    this.selectedSpeaker.updateListeners();
+  };
+
+  private static selectLayerInternal = (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => {
+    const oldPreview = this.selected.preview;
+    if (oldPreview) {
+      oldPreview.cleanup();
+      if (oldPreview.parent) {
+        const index = oldPreview.parent.getLayers().indexOf(oldPreview);
+        if (index) oldPreview.parent.removeLayer(index, false);
+      }
+    }
+
+    const index = parent.getLayers().indexOf(layer);
+    if (index < 0) {
+      this.selected = { layer: null, preview: null };
+      return;
+    }
+
+    if (layer instanceof ImgMod.Layer) {
+      this.selected = { layer: layer, preview: null };
+      return;
+    }
+
+    if (!(layer instanceof ImgMod.Img)) {
+      this.selected = { layer: null, preview: null };
+      return;
+    }
+
+    const preview = new ImgMod.ImgPreview(layer, parent);
+    parent.insertLayer(index + 1, preview);
+    this.selected = { layer: layer, preview: preview };
+  };
 }
 
 export function useSkin() {
@@ -124,4 +172,15 @@ export function useRoot() {
   });
 
   return root[0];
+}
+
+export function useSelected() {
+  const [selected, setSelected] = useState(SkinManager.getSelected());
+
+  useEffect(() => {
+    SkinManager.selectedSpeaker.registerListener(setSelected);
+    return () => SkinManager.selectedSpeaker.unregisterListener(setSelected);
+  }, [selected]);
+
+  return selected;
 }

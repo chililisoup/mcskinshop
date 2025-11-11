@@ -3,15 +3,11 @@ import * as ImgMod from '@tools/imgmod';
 import ColorPicker from '@components/basic/colorpicker';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
 import { Manager } from '@tools/prefman';
-import { SkinManager, useRoot } from '@tools/skinman';
+import SkinManager, { useRoot, useSelected } from '@tools/skinman';
 
-type AProps = {
-  selectForEdit: (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => void;
-  selectedLayer?: ImgMod.AbstractLayer;
-};
-
-export default function LayerManager(props: AProps) {
+export default function LayerManager() {
   const root = useRoot();
+  const selected = useSelected();
 
   function addLayer() {
     const layer = new ImgMod.Img();
@@ -34,8 +30,7 @@ export default function LayerManager(props: AProps) {
         root={root}
         isRoot={true}
         updateSkin={SkinManager.updateSkin}
-        selectForEdit={props.selectForEdit}
-        selectedLayer={props.selectedLayer}
+        selectedLayer={selected.layer}
       />
       <span className="stretch">
         <button onClick={addLayer}>New Layer</button>
@@ -50,8 +45,7 @@ type BProps = {
   root: ImgMod.Layer;
   isRoot?: boolean;
   updateSkin: () => void;
-  selectForEdit: (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => void;
-  selectedLayer?: ImgMod.AbstractLayer;
+  selectedLayer: ImgMod.AbstractLayer | null;
   path?: string;
 };
 
@@ -250,7 +244,7 @@ class LayerList extends Component<BProps, BState> {
   };
 
   selectForEdit = (layer: ImgMod.AbstractLayer, parent?: ImgMod.Layer) => {
-    this.props.selectForEdit(layer, parent ?? this.props.layers);
+    SkinManager.selectLayer(layer, parent ?? this.props.layers);
   };
 
   render() {
@@ -327,7 +321,7 @@ type CProps = {
   flattenLayer: (index: number) => void;
   mergeLayerDown: (index: number) => void;
   selectForEdit: (layer: ImgMod.AbstractLayer, parent?: ImgMod.Layer) => void;
-  selectedLayer?: ImgMod.AbstractLayer;
+  selectedLayer: ImgMod.AbstractLayer | null;
 };
 
 type CState = Required<ImgMod.Filter> & {
@@ -686,7 +680,6 @@ class Layer extends Component<CProps, CState> {
               layers={this.props.layer}
               root={this.props.root}
               updateSkin={this.props.updateLayer}
-              selectForEdit={this.props.selectForEdit}
               selectedLayer={this.props.selectedLayer}
               path={
                 this.props.path ? `${this.props.path}-${this.props.index}` : `${this.props.index}`

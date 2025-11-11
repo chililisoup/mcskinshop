@@ -3,7 +3,7 @@ import PopUp from '@components/basic/popup';
 import * as Util from '@tools/util';
 import icon from '@assets/icon.png';
 import FileInput from '@components/basic/fileinput';
-import { Manager } from '@tools/prefman';
+import EditManager, { useEditHints } from '@tools/editman';
 
 type Tab = 'file' | 'edit' | 'view' | 'help';
 
@@ -13,9 +13,6 @@ type AProps = {
   uploadSkin: (name: string, url?: string) => void;
   uploadDynamicSkin: () => void;
   downloadSkin: () => void;
-  requestUndo: () => void;
-  requestRedo: () => void;
-  editHints: [undoHint: string, redoHint: string];
   editTab?: [name: string, onClick: () => void][];
   viewTab?: [name: string, visible: boolean, toggle: () => void][];
 };
@@ -23,6 +20,7 @@ type AProps = {
 export default function MenuBar(props: AProps) {
   const [open, setOpen] = useState(null as Tab | null);
   const [fullscreen, setFullscreen] = useState(false);
+  const editHints = useEditHints();
 
   useEffect(() => {
     document.documentElement.addEventListener('fullscreenchange', updateFullscreen);
@@ -92,15 +90,15 @@ export default function MenuBar(props: AProps) {
     <button>Look at that view...</button>
   );
 
-  const undoHint = props.editHints[0] !== '' ? 'Undo ' + props.editHints[0] : false;
-  const redoHint = props.editHints[1] !== '' ? 'Redo ' + props.editHints[1] : false;
+  const undoHint = editHints[0] !== '' ? 'Undo ' + editHints[0] : false;
+  const redoHint = editHints[1] !== '' ? 'Redo ' + editHints[1] : false;
 
   return (
     <div id="MenuBar">
       <img alt="Logo" src={icon} />
       <MenuBarTab tab="file" name="File" {...tabProps}>
         <button onClick={props.newSession}>New Session</button>
-        <button onClick={() => callAndClose(props.saveSession)} disabled={Manager.get().autosaveSession}>Save Session</button>
+        <button onClick={() => callAndClose(props.saveSession)}>Save Session</button>
         <hr />
         <FileInput
           callback={(file, name) =>
@@ -121,10 +119,10 @@ export default function MenuBar(props: AProps) {
         <button onClick={() => callAndClose(props.downloadSkin)}>Save As...</button>
       </MenuBarTab>
       <MenuBarTab tab="edit" name="Edit" {...tabProps}>
-        <button disabled={!undoHint} onClick={props.requestUndo}>
+        <button disabled={!undoHint} onClick={EditManager.requestUndo}>
           {undoHint ? undoHint : 'Undo'}
         </button>
-        <button disabled={!redoHint} onClick={props.requestRedo}>
+        <button disabled={!redoHint} onClick={EditManager.requestRedo}>
           {redoHint ? redoHint : 'Redo'}
         </button>
         {editTabChildren}

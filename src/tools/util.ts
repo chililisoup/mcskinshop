@@ -19,13 +19,13 @@ export const download = async (filename: string, content: string, promptName = t
   }
 
   const name = promptName
-    ? window.prompt('Download as...', filename.split('.')[0])
-    : filename.split('.')[0];
+    ? window.prompt('Download as...', filename.substring(0, filename.lastIndexOf('.')))
+    : filename.substring(0, filename.lastIndexOf('.'));
   if (name === null) return;
 
   const link = document.createElement('a');
   link.href = content;
-  link.download = name + '.' + filename.split('.')[1];
+  link.download = name + filename.substring(filename.lastIndexOf('.'));
 
   link.click();
 };
@@ -71,6 +71,12 @@ export const arraysEqual = (first: unknown[], second: unknown[]) => {
   if (first === null || second === null) return false;
   if (first.length !== second.length) return false;
   for (let i = 0; i < first.length; ++i) if (first[i] !== second[i]) return false;
+  return true;
+};
+
+// https://stackoverflow.com/a/32108184
+export const isEmpty = (obj: object) => {
+  for (const prop in obj) if (Object.prototype.hasOwnProperty.call(obj, prop)) return false;
   return true;
 };
 

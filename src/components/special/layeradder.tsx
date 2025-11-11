@@ -4,7 +4,7 @@ import * as Util from '@tools/util';
 import steve from '@assets/steve.png';
 import JSZip from 'jszip';
 import Dropdown from '@components/basic/dropdown';
-import { SkinManager } from '@tools/skinman';
+import SkinManager from '@tools/skinman';
 
 const fakedatabase = await Util.getRemoteJson('/assets/compressed/fake_database.json');
 

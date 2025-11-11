@@ -281,7 +281,7 @@ export abstract class AbstractLayer {
   };
 
   makeFilterString = (filter = this.filterInternal) => {
-    if (Object.keys(filter).length === 0) return 'none';
+    if (Util.isEmpty(filter)) return 'none';
 
     const strings = [];
 

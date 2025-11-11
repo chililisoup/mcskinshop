@@ -12,25 +12,20 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import skinmodel from '@/skinmodel.json';
 import { SAVE_RENDER } from '@components/svgs';
-import { Features } from '@components/special/modelfeatures';
-import { UndoCallback } from '@components/special/mcskinshop';
 import AnimateMode from '@components/special/viewport/modes/animatemode';
 import PoseMode from '@components/special/viewport/modes/posemode';
 import ViewportPanel, { ViewportPanelHandle } from '@components/special/viewport/viewportpanel';
 import AbstractMode from './modes/abstractmode';
 import { Manager } from '@tools/prefman';
 import ExportRender from './exportRender';
-import { SkinManager } from '@tools/skinman';
+import SkinManager from '@tools/skinman';
+import EditManager from '@tools/editman';
+import ModelFeatureManager, { FeatureKey, FeatureType } from '@tools/modelfeatureman';
 
 export type PoseEntry = {
   rotation?: THREE.EulerTuple;
   position?: THREE.Vector3Tuple;
   scaleOffset?: THREE.Vector3Tuple;
-};
-
-type AProps = {
-  modelFeatures: Features;
-  addEdit: (name: string, undoCallback: UndoCallback) => void;
 };
 
 export type AState = typeof defaultViewOptions & {
@@ -80,7 +75,7 @@ export const defaultViewOptions = {
   grid: true
 };
 
-export default class PaperDoll extends Component<AProps, AState> {
+export default class PaperDoll extends Component<object, AState> {
   canvasRef: React.RefObject<HTMLCanvasElement | null> = React.createRef();
   panelRef: React.RefObject<ViewportPanelHandle | null> = React.createRef();
   clock = new THREE.Clock();
@@ -89,8 +84,7 @@ export default class PaperDoll extends Component<AProps, AState> {
 
   modeProps = {
     instance: this,
-    canvasRef: this.canvasRef,
-    addEdit: this.props.addEdit
+    canvasRef: this.canvasRef
   };
 
   modes = {
@@ -100,7 +94,7 @@ export default class PaperDoll extends Component<AProps, AState> {
   cachedModeStates: Record<string, string> = {};
 
   raycaster = new THREE.Raycaster();
-  scene: THREE.Scene;
+  scene = new THREE.Scene();
   requestID = 0;
   ambientLight = new THREE.AmbientLight(0xffffff, 1);
   directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
@@ -123,47 +117,40 @@ export default class PaperDoll extends Component<AProps, AState> {
   selectedOutlinePass?: OutlinePass;
   SMAAPass?: SMAAPass;
 
-  savedViewOptions: typeof defaultViewOptions;
+  savedViewOptions = this.getSavedLighting();
+  cachedModelFeatures = ModelFeatureManager.getUsedFeatures();
 
-  constructor(props: AProps) {
-    super(props);
-
-    this.savedViewOptions = this.getSavedLighting();
-
-    this.state = {
-      ...this.savedViewOptions,
-      modeElement: this.modes.animate,
-      partToggles: {
-        head: {
-          base: true,
-          hat: true
-        },
-        torso: {
-          base: true,
-          hat: true
-        },
-        leftArm: {
-          base: true,
-          hat: true
-        },
-        rightArm: {
-          base: true,
-          hat: true
-        },
-        leftLeg: {
-          base: true,
-          hat: true
-        },
-        rightLeg: {
-          base: true,
-          hat: true
-        }
+  state: AState = {
+    ...this.savedViewOptions,
+    modeElement: this.modes.animate,
+    partToggles: {
+      head: {
+        base: true,
+        hat: true
       },
-      exportingRender: false
-    };
-
-    this.scene = new THREE.Scene();
-  }
+      torso: {
+        base: true,
+        hat: true
+      },
+      leftArm: {
+        base: true,
+        hat: true
+      },
+      rightArm: {
+        base: true,
+        hat: true
+      },
+      leftLeg: {
+        base: true,
+        hat: true
+      },
+      rightLeg: {
+        base: true,
+        hat: true
+      }
+    },
+    exportingRender: false
+  };
 
   componentDidMount() {
     if (!this.canvasRef.current) return;
@@ -192,6 +179,7 @@ export default class PaperDoll extends Component<AProps, AState> {
     document.addEventListener('keyup', this.onKeyUp);
     SkinManager.speaker.registerListener(this.updateSkin);
     Manager.speaker.registerListener(this.updateThemedMaterials);
+    ModelFeatureManager.speaker.registerListener(this.updateModelFeatures);
   }
 
   componentWillUnmount() {
@@ -202,13 +190,14 @@ export default class PaperDoll extends Component<AProps, AState> {
     document.removeEventListener('keyup', this.onKeyUp);
     SkinManager.speaker.unregisterListener(this.updateSkin);
     Manager.speaker.unregisterListener(this.updateThemedMaterials);
+    ModelFeatureManager.speaker.unregisterListener(this.updateModelFeatures);
 
     window.cancelAnimationFrame(this.requestID);
     if (this.controls) this.controls.dispose();
     if (this.renderer) this.renderer.dispose();
   }
 
-  componentDidUpdate(prevProps: Readonly<AProps>, prevState: Readonly<AState>) {
+  componentDidUpdate(_prevProps: Readonly<object>, prevState: Readonly<AState>) {
     if (
       this.state.usePerspectiveCam !== prevState.usePerspectiveCam &&
       this.perspCam &&
@@ -231,40 +220,6 @@ export default class PaperDoll extends Component<AProps, AState> {
     if (this.state.grid !== prevState.grid) this.grid.visible = this.state.grid;
 
     if (this.state.partToggles !== prevState.partToggles) this.updatePartToggles();
-
-    if (this.props.modelFeatures.cape !== prevProps.modelFeatures.cape) {
-      this.updateCape();
-    }
-
-    if (this.props.modelFeatures.elytra !== prevProps.modelFeatures.elytra) {
-      this.updateElytra();
-    }
-
-    if (this.props.modelFeatures.helmet !== prevProps.modelFeatures.helmet) {
-      this.updateHelmet();
-    }
-
-    if (this.props.modelFeatures.chestplate !== prevProps.modelFeatures.chestplate) {
-      this.updateChestplate();
-    }
-
-    if (this.props.modelFeatures.leggings !== prevProps.modelFeatures.leggings) {
-      this.updateLeggings();
-    }
-
-    if (this.props.modelFeatures.boots !== prevProps.modelFeatures.boots) {
-      this.updateBoots();
-    }
-
-    if (
-      this.props.modelFeatures.rightItem !== prevProps.modelFeatures.rightItem ||
-      this.props.modelFeatures.leftItem !== prevProps.modelFeatures.leftItem
-    ) {
-      this.updateItems(
-        this.props.modelFeatures.rightItem !== prevProps.modelFeatures.rightItem,
-        this.props.modelFeatures.leftItem !== prevProps.modelFeatures.leftItem
-      );
-    }
 
     if (this.state.shade !== prevState.shade) {
       this.propagateShade(this.doll.root);
@@ -514,6 +469,28 @@ export default class PaperDoll extends Component<AProps, AState> {
     }
   };
 
+  updateModelFeatures = (features: Record<FeatureType, FeatureKey>) => {
+    const oldFeatures = this.cachedModelFeatures;
+    this.cachedModelFeatures = features;
+
+    if (this.cachedModelFeatures.cape !== oldFeatures.cape) this.updateCape();
+    if (this.cachedModelFeatures.elytra !== oldFeatures.elytra) this.updateElytra();
+    if (this.cachedModelFeatures.helmet !== oldFeatures.helmet) this.updateHelmet();
+    if (this.cachedModelFeatures.chestplate !== oldFeatures.chestplate) this.updateChestplate();
+    if (this.cachedModelFeatures.leggings !== oldFeatures.leggings) this.updateLeggings();
+    if (this.cachedModelFeatures.boots !== oldFeatures.boots) this.updateBoots();
+
+    if (
+      this.cachedModelFeatures.rightItem !== oldFeatures.rightItem ||
+      this.cachedModelFeatures.leftItem !== oldFeatures.leftItem
+    ) {
+      this.updateItems(
+        this.cachedModelFeatures.rightItem !== oldFeatures.rightItem,
+        this.cachedModelFeatures.leftItem !== oldFeatures.leftItem
+      );
+    }
+  };
+
   updateFeaturePart = (feature: string | false, part: THREE.Object3D, deselect?: boolean) => {
     if (!feature) {
       part.layers.disable(0);
@@ -525,14 +502,14 @@ export default class PaperDoll extends Component<AProps, AState> {
   };
 
   updateFeature = (
-    name: keyof Features,
+    featureType: FeatureType,
     parts: (THREE.Object3D | undefined)[],
     deselect?: boolean
   ) => {
-    const feature = this.props.modelFeatures[name];
+    const feature = ModelFeatureManager.getUsedFeature(featureType);
 
     for (const part of Object.values(parts)) {
-      if (part) this.updateFeaturePart(feature.value, part, deselect);
+      if (part) this.updateFeaturePart(feature ? feature.src : false, part, deselect);
     }
   };
 
@@ -577,17 +554,20 @@ export default class PaperDoll extends Component<AProps, AState> {
     ]);
   };
 
-  updateItem: (name: keyof Features, item: THREE.Object3D) => void = async (name, item) => {
+  updateItem: (featureType: FeatureType, item: THREE.Object3D) => void = async (
+    featureType,
+    item
+  ) => {
     if (this.selectedObject === item) this.selectedObject = undefined;
     item.clear();
-    const feature = this.props.modelFeatures[name];
-    if (!feature.value) return;
+    const feature = ModelFeatureManager.getUsedFeature(featureType);
+    if (!feature) return;
 
-    const model = await ModelTool.buildItemModel(item, feature.value, feature.extra);
+    const model = await ModelTool.buildItemModel(item, feature.src, feature.extra);
     if (!model) return;
 
     item.add(model);
-    this.updateFeature(name, item.children);
+    this.updateFeature(featureType, item.children);
     this.propagateShade(item);
   };
 
@@ -627,7 +607,7 @@ export default class PaperDoll extends Component<AProps, AState> {
   savePose = () => {
     for (const pivot of Object.values(this.doll.pivots)) {
       const entry = this.buildPoseEntry(pivot);
-      if (Object.keys(entry).length > 0) pivot.userData.savedPoseEntry = entry;
+      if (!Util.isEmpty(entry)) pivot.userData.savedPoseEntry = entry;
       else delete pivot.userData.savedPoseEntry;
     }
   };
@@ -794,12 +774,12 @@ export default class PaperDoll extends Component<AProps, AState> {
     this.updateSetting('modeElement', modes[next >= modes.length ? 0 : next]);
   };
 
-  getSavedLighting = () => {
+  getSavedLighting() {
     const base = structuredClone(defaultViewOptions);
     const serialized = localStorage.getItem('savedViewportOptions');
     if (!serialized) return base;
     return Object.assign(base, JSON.parse(serialized) as Partial<typeof base>);
-  };
+  }
 
   updateSavedLighting = <KKey extends keyof typeof defaultViewOptions>(
     setting: KKey,
@@ -826,7 +806,7 @@ export default class PaperDoll extends Component<AProps, AState> {
 
     this.setState({ [setting]: value } as Pick<AState, KKey>);
     if (saveEdit)
-      this.props.addEdit('change ' + setting, () => this.settingEdit(setting, from, value));
+      EditManager.addEdit('change ' + setting, () => this.settingEdit(setting, from, value));
   };
 
   settingEdit = <KKey extends keyof AState>(
@@ -860,7 +840,6 @@ export default class PaperDoll extends Component<AProps, AState> {
             }}
             updateSetting={this.updateSetting}
             resetCameraPosition={this.resetCameraPosition}
-            addEdit={this.props.addEdit}
             ref={this.panelRef}
           />
           {this.state.modeElement}

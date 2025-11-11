@@ -9,22 +9,17 @@ import LayerAdder from '@components/special/layeradder';
 import AssetCreator from '@components/special/assetcreator';
 import MenuBar from '@components/special/menubar';
 import Preview from '@components/special/preview';
-import ModelFeatures, { Features } from '@components/special/modelfeatures';
+import ModelFeatures from '@components/special/modelfeatures';
 import Preferences from '@components/special/preferences';
 import DraggableWindow from '@components/basic/draggablewindow';
 import LayerEditor from '@components/special/layereditor';
 import AppWindow from '@components/basic/appwindow';
 import { Manager } from '@tools/prefman';
-import { SkinManager } from '@tools/skinman';
-
-export type UndoCallback = () => RedoCallback;
-export type RedoCallback = () => UndoCallback;
-
-type UndoEdit = [name: string, undoCallback: RedoCallback];
-type RedoEdit = [name: string, redoCallback: UndoCallback];
+import SkinManager from '@tools/skinman';
+import EditManager from '@tools/editman';
+import ModelFeatureManager, { FeatureKey, FeatureType } from '@tools/modelfeatureman';
 
 type StateCommon = {
-  modelFeatures: Features;
   layerManager: boolean;
   layerEditor: boolean;
   paperDoll: boolean;
@@ -35,22 +30,18 @@ type StateCommon = {
 };
 
 type SavedSession = {
-  layers: ImgMod.FullSerializedLayer;
+  layers?: ImgMod.FullSerializedLayer;
+  modelFeatures: Partial<Record<FeatureType, FeatureKey>>;
   slim: boolean;
 } & StateCommon;
 
 type AState = {
-  editHints: [string, string];
   preferences: boolean;
-  selectedLayer?: ImgMod.AbstractLayer;
-  selectedLayerPreview?: ImgMod.ImgPreview;
   sessionKey: string;
 } & StateCommon;
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export default class MCSkinShop extends Component<{}, AState> {
-  editHistory: UndoEdit[] = [];
-  redoProphecy: RedoEdit[] = [];
+export default class MCSkinShop extends Component<object, AState> {
+  autosaveTimeout?: NodeJS.Timeout;
 
   state = this.defaultState();
 
@@ -58,17 +49,6 @@ export default class MCSkinShop extends Component<{}, AState> {
     const prefs = Manager.get();
 
     return {
-      editHints: ['', ''],
-      modelFeatures: {
-        cape: { value: false },
-        elytra: { value: false },
-        helmet: { value: false },
-        chestplate: { value: false },
-        leggings: { value: false },
-        boots: { value: false },
-        rightItem: { value: false },
-        leftItem: { value: false }
-      },
       layerManager: prefs.showLayerManagerOnStart,
       layerEditor: prefs.showLayerEditorOnStart,
       paperDoll: prefs.showPaperDollOnStart,
@@ -77,8 +57,6 @@ export default class MCSkinShop extends Component<{}, AState> {
       layerAdder: prefs.showLayerAdderOnStart,
       modelFeaturesWindow: prefs.showModelFeaturesOnStart,
       preferences: false,
-      selectedLayer: undefined,
-      selectedLayerPreview: undefined,
       sessionKey: Util.randomKey()
     };
   }
@@ -91,23 +69,20 @@ export default class MCSkinShop extends Component<{}, AState> {
       else SkinManager.updateSkin();
     });
 
-    // this is entirely too often
-    SkinManager.rootSpeaker.registerListener(this.autosave);
+    if (this.autosaveTimeout) clearInterval(this.autosaveTimeout);
+    this.autosaveTimeout = setInterval(this.autosave, 5000);
   }
 
   componentWillUnmount() {
     document.removeEventListener('keydown', this.onKeyDown);
 
     SkinManager.rootSpeaker.unregisterListener(this.autosave);
+
+    if (this.autosaveTimeout) clearInterval(this.autosaveTimeout);
+    this.autosaveTimeout = undefined;
   }
 
-  componentDidUpdate() {
-    this.autosave();
-  }
-
-  autosave = () => {
-    if (Manager.get().autosaveSession) this.saveSession();
-  };
+  autosave = () => Manager.get().autosaveSession && this.saveSession();
 
   setDefaultLayers: (add?: boolean) => void = async add => {
     if (!add && SkinManager.getLayers().length) return;
@@ -138,45 +113,8 @@ export default class MCSkinShop extends Component<{}, AState> {
     )
       return;
 
-    if (e.key === 'z') this.requestUndo();
-    else if (e.key === 'Z' || e.key === 'y') this.requestRedo();
-  };
-
-  requestUndo = () => {
-    const action = this.editHistory.pop();
-    if (!action) return;
-
-    this.redoProphecy.push([action[0], action[1]()]);
-
-    this.setState({
-      editHints: [
-        this.editHistory.length > 0 ? this.editHistory[this.editHistory.length - 1][0] : '',
-        action[0]
-      ]
-    });
-  };
-
-  requestRedo = () => {
-    const action = this.redoProphecy.pop();
-    if (!action) return;
-
-    this.editHistory.push([action[0], action[1]()]);
-
-    this.setState({
-      editHints: [
-        action[0],
-        this.redoProphecy.length > 0 ? this.redoProphecy[this.redoProphecy.length - 1][0] : ''
-      ]
-    });
-  };
-
-  addEdit = (name: string, undoCallback: UndoCallback) => {
-    this.editHistory.push([name, undoCallback]);
-
-    if (this.editHistory.length > 50) this.editHistory.shift();
-
-    this.redoProphecy = [];
-    this.setState({ editHints: [name, ''] });
+    if (e.key === 'z') EditManager.requestUndo();
+    else if (e.key === 'Z' || e.key === 'y') EditManager.requestRedo();
   };
 
   getSkinFromUsername = async (username: string) => {
@@ -295,39 +233,14 @@ export default class MCSkinShop extends Component<{}, AState> {
     this.setState({ [setting]: value } as Pick<AState, KKey>);
   };
 
-  selectForEdit = (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => {
-    const oldPrev = this.state.selectedLayerPreview;
-    if (oldPrev) {
-      oldPrev.cleanup();
-      if (oldPrev.parent) {
-        const index = oldPrev.parent.getLayers().indexOf(oldPrev);
-        if (index) oldPrev.parent.removeLayer(index, false);
-      }
-    }
-
-    const index = parent.getLayers().indexOf(layer);
-    if (index < 0)
-      return this.setState({ selectedLayer: undefined, selectedLayerPreview: undefined });
-
-    if (layer instanceof ImgMod.Layer)
-      return this.setState({ selectedLayer: layer, selectedLayerPreview: undefined });
-
-    if (!(layer instanceof ImgMod.Img))
-      return this.setState({ selectedLayer: undefined, selectedLayerPreview: undefined });
-
-    const preview = new ImgMod.ImgPreview(layer, parent);
-    parent.insertLayer(index + 1, preview);
-    this.setState({ selectedLayer: layer, selectedLayerPreview: preview });
-  };
-
   newSession = () => {
     localStorage.removeItem('savedSession');
     // having a separate thing will probably lead to spaghetti code.
     // don't let it get bad.
     localStorage.removeItem('savedViewportOptions');
 
-    this.editHistory = [];
-    this.redoProphecy = [];
+    EditManager.clear();
+    ModelFeatureManager.resetUsedFeatures();
 
     this.setState(this.defaultState());
     if (Manager.get().addDefaultLayer) this.setDefaultLayers();
@@ -335,10 +248,10 @@ export default class MCSkinShop extends Component<{}, AState> {
   };
 
   saveSession: () => void = async () => {
-    const serialized = JSON.stringify({
+    const sessionSave: SavedSession = {
       layers: SkinManager.getLayers().length ? await SkinManager.serializeLayers() : undefined,
       slim: SkinManager.getSlim(),
-      modelFeatures: this.state.modelFeatures,
+      modelFeatures: ModelFeatureManager.getTrimmedUsedFeatures(),
       layerManager: this.state.layerManager,
       layerEditor: this.state.layerEditor,
       paperDoll: this.state.paperDoll,
@@ -346,7 +259,9 @@ export default class MCSkinShop extends Component<{}, AState> {
       assetCreator: this.state.assetCreator,
       layerAdder: this.state.layerAdder,
       modelFeaturesWindow: this.state.modelFeaturesWindow
-    } as Partial<SavedSession>);
+    };
+
+    const serialized = JSON.stringify(sessionSave);
     localStorage.setItem('savedSession', serialized);
   };
 
@@ -358,7 +273,6 @@ export default class MCSkinShop extends Component<{}, AState> {
 
     const defaultState = this.defaultState();
     const stateUpdate: Partial<AState> = {
-      modelFeatures: session.modelFeatures ?? defaultState.modelFeatures,
       layerManager: session.layerManager ?? defaultState.layerManager,
       layerEditor: session.layerEditor ?? defaultState.layerEditor,
       paperDoll: session.paperDoll ?? defaultState.paperDoll,
@@ -370,6 +284,8 @@ export default class MCSkinShop extends Component<{}, AState> {
 
     if (session.layers) await SkinManager.deserializeLayers(session.layers, session.slim);
     else SkinManager.setSlim(session.slim);
+
+    if (session.modelFeatures) ModelFeatureManager.setUsedFeatures(session.modelFeatures);
 
     this.setState(stateUpdate as Pick<AState, keyof AState>);
 
@@ -385,9 +301,6 @@ export default class MCSkinShop extends Component<{}, AState> {
           uploadSkin={this.uploadSkin}
           uploadDynamicSkin={this.uploadDynamicSkin}
           downloadSkin={this.downloadSkin}
-          requestUndo={this.requestUndo}
-          requestRedo={this.requestRedo}
-          editHints={this.state.editHints}
           editTab={[['Preferences...', () => this.updateState('preferences', true)]]}
           viewTab={[
             [
@@ -426,24 +339,22 @@ export default class MCSkinShop extends Component<{}, AState> {
         <div className="SkinManager">
           {this.state.layerManager && (
             <AppWindow style={{ flex: '0 0 325px' }}>
-              <LayerManager
-                selectForEdit={this.selectForEdit}
-                selectedLayer={this.state.selectedLayer}
-              />
+              <LayerManager />
             </AppWindow>
           )}
           {this.state.layerEditor && (
             <DraggableWindow
-              title={`Layer Editor - ${this.state.selectedLayer?.name ?? 'unselected'}`}
+              // title={`Layer Editor - ${this.state.selectedLayer?.name ?? 'unselected'}`}
+              title={'Layer Editor'}
               startPos={{ x: 350, y: 0 }}
               close={() => this.setState({ layerEditor: false })}
             >
-              <LayerEditor layer={this.state.selectedLayerPreview ?? this.state.selectedLayer} />
+              <LayerEditor />
             </DraggableWindow>
           )}
           {this.state.paperDoll && (
             <AppWindow style={{ flex: '100%' }}>
-              <PaperDoll modelFeatures={this.state.modelFeatures} addEdit={this.addEdit} />
+              <PaperDoll />
             </AppWindow>
           )}
           {this.state.preview && <Preview close={() => this.updateState('preview', false)} />}
@@ -455,10 +366,7 @@ export default class MCSkinShop extends Component<{}, AState> {
           )}
           {this.state.modelFeaturesWindow && (
             <AppWindow style={{ flex: '0 0 325px' }}>
-              <ModelFeatures
-                features={this.state.modelFeatures}
-                updateFeatures={features => this.updateState('modelFeatures', features)}
-              />
+              <ModelFeatures />
             </AppWindow>
           )}
           {this.state.preferences && (

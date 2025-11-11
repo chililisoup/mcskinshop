@@ -1,11 +1,10 @@
 import React, { Component } from 'react';
 import PaperDoll from '../paperdoll';
-import { UndoCallback } from '@components/special/mcskinshop';
+import EditManager from '@tools/editman';
 
 export type Props = {
   instance: PaperDoll;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  addEdit: (name: string, undoCallback: UndoCallback) => void;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -43,7 +42,7 @@ export default abstract class AbstractMode<State = {}> extends Component<Props, 
     this.setState({ [setting]: value } as Pick<State, KKey>);
 
     if (saveEdit)
-      this.props.addEdit('change ' + setting.toString(), () =>
+      EditManager.addEdit('change ' + setting.toString(), () =>
         this.settingEdit(setting, from, value)
       );
   };

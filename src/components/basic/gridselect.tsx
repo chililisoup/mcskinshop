@@ -1,7 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import no from '@assets/no.png';
 
-export type Option = [entry: string, imageSrc: string, hasDeleteButton?: boolean] | false;
+export type Option =
+  | {
+      imageSrc: string;
+      name?: string;
+      hasDeleteButton?: boolean;
+    }
+  | false;
 
 export type Crop = {
   aspectRatio: number;
@@ -14,10 +20,10 @@ export type Crop = {
 type AProps = {
   targetWidth?: number;
   crop?: Crop;
-  options: readonly Option[];
-  default?: Option;
-  select: (option: Option) => void;
-  delete?: (option: Option) => void;
+  options: Readonly<Record<string, Option>>;
+  default?: string | false;
+  select: (id: string | false) => void;
+  delete?: (id: string) => void;
 };
 
 export default function GridSelect(props: AProps) {
@@ -40,46 +46,47 @@ export default function GridSelect(props: AProps) {
     setChildWidth(width / columns);
   }
 
-  function select(option: Option) {
-    props.select(option);
-    setSelected(option);
+  function select(id: string | false) {
+    props.select(id);
+    setSelected(id);
   }
 
-  function addOption(
+  const addOption = (
+    id: string,
     option: Option,
     divStyle: React.CSSProperties,
     imgStyle?: React.CSSProperties
-  ) {
-    return (
-      <div
-        style={divStyle}
-        onClick={() => select(option)}
-        className={
-          (option ? 'true-option' : 'none-option') + (selected === option ? ' highlighted' : '')
-        }
-      >
-        {option ? (
-          <img alt={option[0]} src={option[1]} style={imgStyle} />
-        ) : (
-          <img alt="None" src={no} />
-        )}
-        {option && option[2] && (
-          <button
-            className="delete-button material-symbols-outlined"
-            onClickCapture={e => {
-              e.preventDefault();
-              e.stopPropagation();
+  ) => (
+    <div
+      style={divStyle}
+      onClick={() => select(id)}
+      className={
+        (option ? 'true-option' : 'none-option') +
+        (selected === id || selected === option ? ' highlighted' : '')
+      }
+      key={id}
+    >
+      {option ? (
+        <img alt={option.name ?? id} src={option.imageSrc} style={imgStyle} />
+      ) : (
+        <img alt="None" src={no} />
+      )}
+      {option && option.hasDeleteButton && (
+        <button
+          className="delete-button material-symbols-outlined"
+          onClickCapture={e => {
+            e.preventDefault();
+            e.stopPropagation();
 
-              if (selected === option) select(false);
-              props.delete?.(option);
-            }}
-          >
-            delete
-          </button>
-        )}
-      </div>
-    );
-  }
+            if (selected === id) select(false);
+            props.delete?.(id);
+          }}
+        >
+          delete
+        </button>
+      )}
+    </div>
+  );
 
   let divStyle: React.CSSProperties = {
     width: childWidth - 6
@@ -109,7 +116,9 @@ export default function GridSelect(props: AProps) {
 
   return (
     <div className="grid-select" ref={gridRef}>
-      {props.options.map(option => addOption(option, divStyle, imgStyle))}
+      {Object.entries(props.options).map(([id, option]) =>
+        addOption(id, option, divStyle, imgStyle)
+      )}
     </div>
   );
 }
