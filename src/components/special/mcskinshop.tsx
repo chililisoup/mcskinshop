@@ -82,7 +82,7 @@ export default class MCSkinShop extends Component<object, AState> {
     this.autosaveTimeout = undefined;
   }
 
-  autosave = () => Manager.get().autosaveSession && this.saveSession();
+  autosave = () => Manager.get().autosaveSession && !document.hidden && this.saveSession();
 
   setDefaultLayers: (add?: boolean) => void = async add => {
     if (!add && SkinManager.getLayers().length) return;
