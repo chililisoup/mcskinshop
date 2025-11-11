@@ -70,6 +70,7 @@ body,
 * {
   font-family: 'Noto Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   border: none;
+  user-select: none;
 }
 
 body {
@@ -93,7 +94,6 @@ select {
   min-height: 22px;
   min-width: 22px;
   padding: 0;
-  user-select: none;
 }
 
 button,
@@ -219,7 +219,7 @@ label:has(+ input:disabled) > *:is(img, svg) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  gap: 6px;
+  gap: 2px;
 }
 
 .appRoot > * {
@@ -230,6 +230,8 @@ label:has(+ input:disabled) > *:is(img, svg) {
   position: relative;
   display: flex;
   width: 100%;
+  min-width: 200px;
+  max-width: 67vw;
   margin: 0;
   padding: 4px;
   overflow: hidden;
@@ -243,6 +245,10 @@ label:has(+ input:disabled) > *:is(img, svg) {
   outline-offset: 0;
 }
 
+.window:has(> .paperdoll) {
+  max-width: none;
+}
+
 .hidden {
   display: none;
 }
@@ -251,8 +257,9 @@ label:has(+ input:disabled) > *:is(img, svg) {
   display: flex;
   flex: 1;
   min-height: 0;
-  padding: 0 4px 4px;
+  padding: 4px;
   gap: 2px;
+  overflow: auto;
 }
 
 #MenuBar {
@@ -264,10 +271,6 @@ label:has(+ input:disabled) > *:is(img, svg) {
   box-shadow: var(--box-shadow);
   display: flex;
   padding: 2px;
-}
-
-#MenuBar * {
-  user-select: none;
 }
 
 #MenuBar > div > button,
@@ -426,7 +429,6 @@ label:has(+ input:disabled) > *:is(img, svg) {
   max-width: 100%;
   max-height: 100%;
   image-rendering: auto;
-  user-select: none;
   background: var(--container-alt);
   border-radius: var(--half-curvature);
 }
@@ -505,6 +507,15 @@ hr.vr {
   display: flex;
   flex-direction: column;
   flex: 1;
+}
+
+.draggable-divider {
+  min-width: 10px;
+  width: 10px;
+  margin: 0 -6px;
+  height: 100%;
+  z-index: 500;
+  cursor: ew-resize;
 }
 
 .paperdoll {
@@ -830,7 +841,6 @@ hr.vr {
   padding: 3px;
   margin: 2px;
   pointer-events: initial;
-  user-select: none;
   z-index: 1;
   cursor: grab;
   border-radius: calc(var(--curvature) + 2px);
@@ -1325,7 +1335,6 @@ h3 {
   font-weight: bolder;
   text-shadow: var(--input-text-outline);
   color: var(--input-text);
-  user-select: none;
   pointer-events: none;
   margin: 0;
   padding: 0 3px;
@@ -1363,7 +1372,6 @@ h3 {
 
 .dropdown-bar {
   position: relative;
-  user-select: none;
   cursor: pointer;
   justify-content: space-around;
   flex-wrap: nowrap;
@@ -1424,7 +1432,6 @@ h3 {
 }
 
 .draggable > span {
-  user-select: none;
   cursor: grab;
   display: flex;
   flex-direction: row;
@@ -1572,7 +1579,6 @@ label:has(+ input:disabled) {
 }
 
 label {
-  user-select: none;
   cursor: pointer;
   margin: 10px 5px 0 10px;
 }

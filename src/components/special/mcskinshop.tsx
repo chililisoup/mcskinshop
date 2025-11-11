@@ -18,6 +18,7 @@ import { Manager } from '@tools/prefman';
 import SkinManager from '@tools/skinman';
 import EditManager from '@tools/editman';
 import ModelFeatureManager, { FeatureKey, FeatureType } from '@tools/modelfeatureman';
+import DraggableDivider from '@components/basic/draggabledivider';
 
 type StateCommon = {
   layerManager: boolean;
@@ -35,10 +36,17 @@ type SavedSession = {
   slim: boolean;
 } & StateCommon;
 
+type WindowWidths = {
+  layerManagerWidth: number;
+  layerAdderWidth: number;
+  modelFeaturesWidth: number;
+};
+
 type AState = {
   preferences: boolean;
   sessionKey: string;
-} & StateCommon;
+} & WindowWidths &
+  StateCommon;
 
 export default class MCSkinShop extends Component<object, AState> {
   autosaveTimeout?: NodeJS.Timeout;
@@ -50,12 +58,15 @@ export default class MCSkinShop extends Component<object, AState> {
 
     return {
       layerManager: prefs.showLayerManagerOnStart,
+      layerManagerWidth: 325,
       layerEditor: prefs.showLayerEditorOnStart,
       paperDoll: prefs.showPaperDollOnStart,
       preview: prefs.showPreviewOnStart,
       assetCreator: prefs.showAssetCreatorOnStart,
       layerAdder: prefs.showLayerAdderOnStart,
+      layerAdderWidth: 325,
       modelFeaturesWindow: prefs.showModelFeaturesOnStart,
+      modelFeaturesWidth: 325,
       preferences: false,
       sessionKey: Util.randomKey()
     };
@@ -229,9 +240,14 @@ export default class MCSkinShop extends Component<object, AState> {
 
   downloadSkin: () => void = () => Util.download('My Skin.png', SkinManager.get().src);
 
-  updateState = <KKey extends keyof AState>(setting: KKey, value: AState[KKey]) => {
+  updateState = <KKey extends keyof AState>(setting: KKey, value: AState[KKey]) =>
     this.setState({ [setting]: value } as Pick<AState, KKey>);
-  };
+
+  updateWidth = <KKey extends keyof WindowWidths>(setting: KKey, delta: number) =>
+    this.updateState(
+      setting,
+      Util.clamp(this.state[setting] + delta, 200, window.innerWidth * 0.67)
+    );
 
   newSession = () => {
     localStorage.removeItem('savedSession');
@@ -337,11 +353,15 @@ export default class MCSkinShop extends Component<object, AState> {
           ]}
         />
         <div className="SkinManager">
-          {this.state.layerManager && (
-            <AppWindow style={{ flex: '0 0 325px' }}>
+          {this.state.layerManager && [
+            <AppWindow key="layerManager" style={{ flex: `0 0 ${this.state.layerManagerWidth}px` }}>
               <LayerManager />
-            </AppWindow>
-          )}
+            </AppWindow>,
+            <DraggableDivider
+              key="layerManagerDivider"
+              onChange={delta => this.updateWidth('layerManagerWidth', delta)}
+            />
+          ]}
           {this.state.layerEditor && (
             <DraggableWindow
               // title={`Layer Editor - ${this.state.selectedLayer?.name ?? 'unselected'}`}
@@ -359,16 +379,27 @@ export default class MCSkinShop extends Component<object, AState> {
           )}
           {this.state.preview && <Preview close={() => this.updateState('preview', false)} />}
           {this.state.assetCreator && <AssetCreator />}
-          {this.state.layerAdder && (
-            <AppWindow style={{ flex: '0 0 325px' }}>
+          {this.state.layerAdder && [
+            <DraggableDivider
+              key="layerAdderDivider"
+              onChange={delta => this.updateWidth('layerAdderWidth', -delta)}
+            />,
+            <AppWindow key="layerAdder" style={{ flex: `0 0 ${this.state.layerAdderWidth}px` }}>
               <LayerAdder addDefaultLayer={() => void this.setDefaultLayers(true)} />
             </AppWindow>
-          )}
-          {this.state.modelFeaturesWindow && (
-            <AppWindow style={{ flex: '0 0 325px' }}>
+          ]}
+          {this.state.modelFeaturesWindow && [
+            <DraggableDivider
+              key="modelFeaturesDivider"
+              onChange={delta => this.updateWidth('modelFeaturesWidth', -delta)}
+            />,
+            <AppWindow
+              key="modelFeatures"
+              style={{ flex: `0 0 ${this.state.modelFeaturesWidth}px` }}
+            >
               <ModelFeatures />
             </AppWindow>
-          )}
+          ]}
           {this.state.preferences && (
             <DraggableWindow
               title="Preferences"

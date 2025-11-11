@@ -43,7 +43,7 @@ export default function GridSelect(props: AProps) {
     const width = gridRef.current.clientWidth;
     const columns = Math.max(1, Math.round(width / (props.targetWidth ?? 100)));
 
-    setChildWidth(width / columns);
+    setChildWidth(Math.floor(width / columns));
   }
 
   function select(id: string | false) {
