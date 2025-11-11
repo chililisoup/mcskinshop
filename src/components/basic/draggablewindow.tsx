@@ -235,7 +235,7 @@ export default class DraggableWindow extends Component<AProps, AState> {
         }
         style={{
           left: this.state.pos.x + this.anchorOffset.x,
-          top: this.state.pos.y + this.anchorOffset.y
+          top: this.state.pos.y + this.anchorOffset.y,
         }}
       >
         <div>{this.props.children}</div>

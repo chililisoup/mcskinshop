@@ -4,6 +4,7 @@ import ColorPicker from '@components/basic/colorpicker';
 import Dropdown from '@components/basic/dropdown';
 import FileInput from '@components/basic/fileinput';
 import NumberInput from '@components/basic/numberinput';
+import OrderableList from './orderablelist';
 
 type BaseProperty = {
   name: string;
@@ -59,6 +60,12 @@ type SelectProperty = BaseProperty & {
   onChange?: (value: string) => void;
 };
 
+type OrderableListProperty = BaseProperty & {
+  type: 'orderableList';
+  options: readonly string[];
+  onChange: (value: string[]) => void;
+};
+
 type ButtonProperty = BaseProperty & {
   type: 'button';
   selected?: boolean;
@@ -107,6 +114,7 @@ export type Property =
   | BoolProperty
   | StringProperty
   | SelectProperty
+  | OrderableListProperty
   | ButtonProperty
   | FileProperty
   | ColorProperty
@@ -117,6 +125,7 @@ type ListType =
   | {
       type?: 'list';
       labelWidth?: string;
+      preventDrag?: boolean;
     }
   | {
       type: 'ribbon' | 'toolbar';
@@ -142,6 +151,7 @@ export default function PropertiesList(props: AProps) {
     property.type !== 'divider' &&
     !property.unlabeled &&
     property.type !== 'section' &&
+    property.type !== 'orderableList' &&
     ((property.type !== 'button' && property.type !== 'file') ||
       typeof property.label === 'string');
 
@@ -318,6 +328,15 @@ export default function PropertiesList(props: AProps) {
                 })}
           </select>
         ];
+      case 'orderableList':
+        return [
+          <OrderableList
+            key={property.id}
+            options={property.options}
+            disabled={property.disabled}
+            callback={property.onChange}
+          />
+        ];
       case 'button':
         return [
           <button
@@ -469,11 +488,15 @@ export default function PropertiesList(props: AProps) {
       return (
         <table
           className="properties-list"
-          draggable={true}
-          onDragStart={e => {
-            e.stopPropagation();
-            e.preventDefault();
-          }}
+          draggable={props.preventDrag}
+          onDragStart={
+            props.preventDrag
+              ? e => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }
+              : undefined
+          }
           style={
             props.labelWidth ? ({ '--label-width': props.labelWidth } as React.CSSProperties) : {}
           }

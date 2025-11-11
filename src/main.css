@@ -84,7 +84,6 @@ body {
 .material-symbols-outlined {
   font-size: 1em;
   text-align: center;
-  margin: none;
   padding: 0;
 }
 
@@ -803,7 +802,8 @@ hr.vr {
   position: relative;
 }
 
-.layer-list > hr {
+.layer-list > hr,
+.orderable-list > hr {
   padding: 0;
   position: relative;
   height: 0;
@@ -824,7 +824,8 @@ hr.vr {
 }
 
 .layer-list.dragover > hr::after,
-.root-layer-list.dragover > .layer-list > hr::after {
+.root-layer-list.dragover > .layer-list > hr::after,
+.orderable-list > hr::after {
   content: '';
   position: absolute;
   display: block;
@@ -882,10 +883,6 @@ hr.vr {
 
 .manager-layer:has(.popup) {
   z-index: 2;
-}
-
-.manager-layer.dragging {
-  opacity: 0.5;
 }
 
 .manager-layer-buttons {
@@ -1033,7 +1030,7 @@ span.layer-title button {
   text-overflow: ellipsis;
 }
 
-.properties-list td > * {
+.properties-list td > *:not(.orderable-list) {
   width: 100%;
   padding-top: 0;
   padding-bottom: 0;
@@ -1102,6 +1099,52 @@ span:has(> .reset-button) {
 .asset-layer-list {
   flex-direction: column-reverse;
   background: var(--empty-area);
+}
+
+.dragging {
+  opacity: 0.5;
+}
+
+.orderable-list {
+  background: var(--empty-area);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: calc(var(--curvature));
+}
+
+.orderable-list > span {
+  background-color: var(--input);
+  box-shadow: var(--box-shadow);
+  color: var(--input-text);
+  outline: 2px solid var(--input-outline);
+  border-radius: calc(var(--curvature) - 3px);
+  outline-offset: -2px;
+  margin: 3px 0;
+  height: 22px;
+  cursor: grab;
+}
+
+.orderable-list > span:hover {
+  outline: 2px solid var(--highlight);
+  box-shadow: inset 0 0 0 2px var(--input-outline);
+  outline-offset: 0;
+}
+
+.orderable-list > span > div {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 4px;
+}
+
+.orderable-list > span > p {
+  font-weight: bolder;
+  font-size: 0.833em;
+  height: min-content;
+  flex: 1;
+  margin: auto 0;
 }
 
 h3 {

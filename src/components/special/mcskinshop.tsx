@@ -14,7 +14,7 @@ import Preferences from '@components/special/preferences';
 import DraggableWindow from '@components/basic/draggablewindow';
 import LayerEditor from '@components/special/layereditor';
 import AppWindow from '@components/basic/appwindow';
-import { Manager } from '@tools/prefman';
+import { Manager, OrderableWindow, Prefs, WindowOrder } from '@tools/prefman';
 import SkinManager from '@tools/skinman';
 import EditManager from '@tools/editman';
 import ModelFeatureManager, { FeatureKey, FeatureType } from '@tools/modelfeatureman';
@@ -38,6 +38,7 @@ type SavedSession = {
 
 type WindowWidths = {
   layerManagerWidth: number;
+  layerEditorWidth: number;
   layerAdderWidth: number;
   modelFeaturesWidth: number;
 };
@@ -45,6 +46,7 @@ type WindowWidths = {
 type AState = {
   preferences: boolean;
   sessionKey: string;
+  windowOrder: WindowOrder;
 } & WindowWidths &
   StateCommon;
 
@@ -60,6 +62,7 @@ export default class MCSkinShop extends Component<object, AState> {
       layerManager: prefs.showLayerManagerOnStart,
       layerManagerWidth: 325,
       layerEditor: prefs.showLayerEditorOnStart,
+      layerEditorWidth: 325,
       paperDoll: prefs.showPaperDollOnStart,
       preview: prefs.showPreviewOnStart,
       assetCreator: prefs.showAssetCreatorOnStart,
@@ -68,6 +71,7 @@ export default class MCSkinShop extends Component<object, AState> {
       modelFeaturesWindow: prefs.showModelFeaturesOnStart,
       modelFeaturesWidth: 325,
       preferences: false,
+      windowOrder: Manager.get().windowOrder,
       sessionKey: Util.randomKey()
     };
   }
@@ -82,6 +86,8 @@ export default class MCSkinShop extends Component<object, AState> {
 
     if (this.autosaveTimeout) clearInterval(this.autosaveTimeout);
     this.autosaveTimeout = setInterval(this.autosave, 5000);
+
+    Manager.speaker.registerListener(this.updateWindowOrder);
   }
 
   componentWillUnmount() {
@@ -91,9 +97,15 @@ export default class MCSkinShop extends Component<object, AState> {
 
     if (this.autosaveTimeout) clearInterval(this.autosaveTimeout);
     this.autosaveTimeout = undefined;
+
+    Manager.speaker.unregisterListener(this.updateWindowOrder);
   }
 
   autosave = () => Manager.get().autosaveSession && !document.hidden && this.saveSession();
+
+  updateWindowOrder = (prefs: Prefs) =>
+    prefs.windowOrder !== this.state.windowOrder &&
+    this.setState({ windowOrder: prefs.windowOrder });
 
   setDefaultLayers: (add?: boolean) => void = async add => {
     if (!add && SkinManager.getLayers().length) return;
@@ -126,6 +138,11 @@ export default class MCSkinShop extends Component<object, AState> {
 
     if (e.key === 'z') EditManager.requestUndo();
     else if (e.key === 'Z' || e.key === 'y') EditManager.requestRedo();
+    else if (e.key === 's') {
+      this.saveSession();
+      e.preventDefault();
+      e.stopPropagation();
+    }
   };
 
   getSkinFromUsername = async (username: string) => {
@@ -309,6 +326,79 @@ export default class MCSkinShop extends Component<object, AState> {
   };
 
   render() {
+    const windows: Record<
+      OrderableWindow,
+      [key: keyof AState, window: false | React.JSX.Element, widthKey?: keyof WindowWidths]
+    > = {
+      'Layer Manager': [
+        'layerManager',
+        this.state.layerManager && (
+          <AppWindow key="layerManager" style={{ flex: `0 0 ${this.state.layerManagerWidth}px` }}>
+            <LayerManager />
+          </AppWindow>
+        ),
+        'layerManagerWidth'
+      ],
+      'Layer Editor': [
+        'layerEditor',
+        this.state.layerEditor && (
+          <AppWindow key="layerEditor" style={{ flex: `0 0 ${this.state.layerEditorWidth}px` }}>
+            <LayerEditor />
+          </AppWindow>
+        ),
+        'layerEditorWidth'
+      ],
+      'Paper Doll': [
+        'paperDoll',
+        this.state.paperDoll && (
+          <AppWindow style={{ flex: '100%' }}>
+            <PaperDoll />
+          </AppWindow>
+        )
+      ],
+      'Layer Adder': [
+        'layerAdder',
+        this.state.layerAdder && (
+          <AppWindow key="layerAdder" style={{ flex: `0 0 ${this.state.layerAdderWidth}px` }}>
+            <LayerAdder addDefaultLayer={() => void this.setDefaultLayers(true)} />
+          </AppWindow>
+        ),
+        'layerAdderWidth'
+      ],
+      'Model Features': [
+        'modelFeaturesWindow',
+        this.state.modelFeaturesWindow && (
+          <AppWindow
+            key="modelFeaturesWindow"
+            style={{ flex: `0 0 ${this.state.modelFeaturesWidth}px` }}
+          >
+            <ModelFeatures />
+          </AppWindow>
+        ),
+        'modelFeaturesWidth'
+      ]
+    };
+
+    const windowElements: React.JSX.Element[] = [];
+    const paperDollIndex = this.state.windowOrder.indexOf('Paper Doll');
+    this.state.windowOrder.forEach((window, index) => {
+      const [key, elem, widthKey] = windows[window];
+      if (!elem) return;
+      if (window === 'Paper Doll') windowElements.push(elem);
+      if (!widthKey) return;
+
+      const reverse = index > paperDollIndex;
+      const divider = (
+        <DraggableDivider
+          key={key + 'Divider'}
+          onChange={delta => this.updateWidth(widthKey, reverse ? -delta : delta)}
+        />
+      );
+
+      const elements = reverse ? [divider, elem] : [elem, divider];
+      windowElements.push(...elements);
+    });
+
     return (
       <div className="appRoot" key={this.state.sessionKey}>
         <MenuBar
@@ -353,53 +443,9 @@ export default class MCSkinShop extends Component<object, AState> {
           ]}
         />
         <div className="SkinManager">
-          {this.state.layerManager && [
-            <AppWindow key="layerManager" style={{ flex: `0 0 ${this.state.layerManagerWidth}px` }}>
-              <LayerManager />
-            </AppWindow>,
-            <DraggableDivider
-              key="layerManagerDivider"
-              onChange={delta => this.updateWidth('layerManagerWidth', delta)}
-            />
-          ]}
-          {this.state.layerEditor && (
-            <DraggableWindow
-              // title={`Layer Editor - ${this.state.selectedLayer?.name ?? 'unselected'}`}
-              title={'Layer Editor'}
-              startPos={{ x: 350, y: 0 }}
-              close={() => this.setState({ layerEditor: false })}
-            >
-              <LayerEditor />
-            </DraggableWindow>
-          )}
-          {this.state.paperDoll && (
-            <AppWindow style={{ flex: '100%' }}>
-              <PaperDoll />
-            </AppWindow>
-          )}
+          {windowElements}
           {this.state.preview && <Preview close={() => this.updateState('preview', false)} />}
           {this.state.assetCreator && <AssetCreator />}
-          {this.state.layerAdder && [
-            <DraggableDivider
-              key="layerAdderDivider"
-              onChange={delta => this.updateWidth('layerAdderWidth', -delta)}
-            />,
-            <AppWindow key="layerAdder" style={{ flex: `0 0 ${this.state.layerAdderWidth}px` }}>
-              <LayerAdder addDefaultLayer={() => void this.setDefaultLayers(true)} />
-            </AppWindow>
-          ]}
-          {this.state.modelFeaturesWindow && [
-            <DraggableDivider
-              key="modelFeaturesDivider"
-              onChange={delta => this.updateWidth('modelFeaturesWidth', -delta)}
-            />,
-            <AppWindow
-              key="modelFeatures"
-              style={{ flex: `0 0 ${this.state.modelFeaturesWidth}px` }}
-            >
-              <ModelFeatures />
-            </AppWindow>
-          ]}
           {this.state.preferences && (
             <DraggableWindow
               title="Preferences"

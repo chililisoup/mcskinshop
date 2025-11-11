@@ -39,6 +39,22 @@ export const USER_THEME_COLOR_VARS = {
   '--shadow': 'Shadow'
 } as const;
 
+const WINDOWS = [
+  'Layer Manager',
+  'Layer Editor',
+  'Paper Doll',
+  'Layer Adder',
+  'Model Features'
+] as const;
+export type OrderableWindow = (typeof WINDOWS)[number];
+export type WindowOrder = [
+  OrderableWindow,
+  OrderableWindow,
+  OrderableWindow,
+  OrderableWindow,
+  OrderableWindow
+];
+
 export type Prefs = {
   -readonly [key in keyof typeof SELECT_PREFS]: keyof (typeof SELECT_PREFS)[key];
 } & Record<keyof typeof USER_THEME_COLOR_VARS, string> & {
@@ -56,6 +72,7 @@ export type Prefs = {
     showAssetCreatorOnStart: boolean;
     showLayerAdderOnStart: boolean;
     showModelFeaturesOnStart: boolean;
+    windowOrder: WindowOrder;
   };
 
 export const defaultPrefs: Prefs = {
@@ -90,7 +107,8 @@ export const defaultPrefs: Prefs = {
   showPreviewOnStart: true,
   showAssetCreatorOnStart: false,
   showLayerAdderOnStart: false,
-  showModelFeaturesOnStart: false
+  showModelFeaturesOnStart: false,
+  windowOrder: ['Layer Manager', 'Layer Editor', 'Paper Doll', 'Layer Adder', 'Model Features']
 } as const;
 
 const CATPPUCCIN_THEMES = {
@@ -186,10 +204,37 @@ const CATPPUCCIN_THEMES = {
 
 export abstract class Manager {
   static speaker = new Speaker(() => this.get());
-  private static prefs = this.combine(
-    { ...defaultPrefs },
-    JSON.parse(localStorage.getItem('preferences') ?? '{}')
+  private static prefs = this.clean(
+    this.combine({ ...defaultPrefs }, JSON.parse(localStorage.getItem('preferences') ?? '{}'))
   );
+
+  private static clean(prefs: Prefs) {
+    if (prefs.windowOrder.length !== defaultPrefs.windowOrder.length)
+      prefs.windowOrder = [...defaultPrefs.windowOrder];
+    else {
+      const unseen = [...defaultPrefs.windowOrder];
+
+      let invalid = false;
+      for (const window of prefs.windowOrder) {
+        if (!WINDOWS.includes(window)) {
+          invalid = true;
+          break;
+        }
+
+        const index = unseen.indexOf(window);
+        if (index < 0) {
+          invalid = true;
+          break;
+        }
+
+        unseen.splice(index, 1);
+      }
+
+      prefs.windowOrder = invalid ? [...defaultPrefs.windowOrder] : [...prefs.windowOrder];
+    }
+
+    return prefs;
+  }
 
   private static combine<TPrefs = Partial<Prefs>>(prefs: Prefs, overrides: TPrefs & object) {
     let override: keyof typeof overrides;

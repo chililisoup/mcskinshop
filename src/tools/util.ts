@@ -80,7 +80,7 @@ export const isEmpty = (obj: object) => {
   return true;
 };
 
-export const randomKey = () => Math.random().toString(16).slice(2);
+export const randomKey = () => self?.crypto?.randomUUID() ?? Math.random().toString(16).slice(2);
 
 export const clamp = (value: number, min: number, max: number) =>
   Math.max(Math.min(value, max), min);

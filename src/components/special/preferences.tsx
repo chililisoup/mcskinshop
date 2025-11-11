@@ -5,7 +5,8 @@ import {
   USER_THEME_COLOR_VARS,
   Prefs,
   usePrefs,
-  defaultPrefs
+  defaultPrefs,
+  WindowOrder
 } from '@tools/prefman';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
 
@@ -106,12 +107,12 @@ export default function Preferences() {
             value: prefs.showPlaceholderSkins
           },
           {
-            id: 'startupDivider',
+            id: 'newSessionDivider',
             type: 'divider'
           },
           {
-            name: 'Startup',
-            id: 'startupPreferences',
+            name: 'On New Session',
+            id: 'newSessionPreferences',
             type: 'section',
             properties: [
               {
@@ -167,6 +168,20 @@ export default function Preferences() {
                 id: 'showModelFeaturesOnStart',
                 type: 'checkbox',
                 value: prefs.showModelFeaturesOnStart
+              }
+            ]
+          },
+          {
+            name: 'Window Order',
+            id: 'windowOrderSection',
+            type: 'section',
+            properties: [
+              {
+                name: 'Window Order',
+                id: 'windowOrder',
+                type: 'orderableList',
+                options: prefs.windowOrder,
+                onChange: windows => Manager.setPrefs({ windowOrder: windows as WindowOrder })
               }
             ]
           }

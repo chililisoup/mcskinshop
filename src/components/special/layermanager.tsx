@@ -689,6 +689,7 @@ class Layer extends Component<CProps, CState> {
         )}
         {this.state.fxOpen && (
           <PropertiesList
+            preventDrag={true}
             numberFallback={(id, value) => {
               if (id in this.state) this.updateFilter(id as keyof CState, value);
             }}
