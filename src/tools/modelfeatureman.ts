@@ -81,7 +81,7 @@ export default abstract class ModelFeatureManager {
   static speaker = new Speaker(() => this.getUsedFeatures());
   static featureSetSpeaker = new Speaker(() => this.getFeatureSets());
 
-  static getUsedFeatures = () => structuredClone(this.usedFeatures);
+  static getUsedFeatures = () => ({ ...this.usedFeatures }) as const;
 
   static setUsedFeatures = (features: Partial<Record<FeatureType, FeatureKey>>) => {
     for (const [featureType, featureKey] of Object.entries(features))
