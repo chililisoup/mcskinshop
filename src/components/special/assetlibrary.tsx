@@ -38,7 +38,7 @@ type AState = {
   packs: string[];
 };
 
-export default class LayerAdder extends Component<AProps, AState> {
+export default class AssetLibrary extends Component<AProps, AState> {
   constructor(props: AProps) {
     super(props);
 

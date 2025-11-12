@@ -5,7 +5,7 @@ import steve from '@assets/steve.png';
 import alex from '@assets/alex.png';
 import PaperDoll from '@components/special/viewport/paperdoll';
 import LayerManager from '@components/special/layermanager';
-import LayerAdder from '@components/special/layeradder';
+import AssetLibrary from '@components/special/assetlibrary';
 import AssetCreator from '@components/special/assetcreator';
 import MenuBar from '@components/special/menubar';
 import Preview from '@components/special/preview';
@@ -20,21 +20,15 @@ import EditManager from '@tools/editman';
 import ModelFeatureManager, { FeatureKey, FeatureType } from '@tools/modelfeatureman';
 import DraggableDivider from '@components/basic/draggabledivider';
 
-type StateCommon = {
+type OpenWindows = {
   layerManager: boolean;
   layerEditor: boolean;
   viewport: boolean;
   preview: boolean;
   assetCreator: boolean;
   assetLibrary: boolean;
-  modelFeaturesWindow: boolean;
+  modelFeatures: boolean;
 };
-
-type SavedSession = {
-  layers?: ImgMod.FullSerializedLayer;
-  modelFeatures: Partial<Record<FeatureType, FeatureKey>>;
-  slim: boolean;
-} & StateCommon;
 
 type WindowWidths = {
   layerManagerWidth: number;
@@ -43,12 +37,19 @@ type WindowWidths = {
   modelFeaturesWidth: number;
 };
 
+type SavedSession = {
+  layers?: ImgMod.FullSerializedLayer;
+  usedModelFeatures: Partial<Record<FeatureType, FeatureKey>>;
+  slim: boolean;
+  openWindows: Partial<OpenWindows>;
+};
+
 type AState = {
   preferences: boolean;
   sessionKey: string;
   windowOrder: WindowOrder;
-} & WindowWidths &
-  StateCommon;
+} & OpenWindows &
+  WindowWidths;
 
 export default class MCSkinShop extends Component<object, AState> {
   autosaveTimeout?: NodeJS.Timeout;
@@ -68,7 +69,7 @@ export default class MCSkinShop extends Component<object, AState> {
       assetCreator: prefs.showAssetCreatorOnStart,
       assetLibrary: prefs.showAssetLibraryOnStart,
       assetLibraryWidth: 325,
-      modelFeaturesWindow: prefs.showModelFeaturesOnStart,
+      modelFeatures: prefs.showModelFeaturesOnStart,
       modelFeaturesWidth: 325,
       preferences: false,
       windowOrder: Manager.get().windowOrder,
@@ -284,14 +285,16 @@ export default class MCSkinShop extends Component<object, AState> {
     const sessionSave: SavedSession = {
       layers: SkinManager.getLayers().length ? await SkinManager.serializeLayers() : undefined,
       slim: SkinManager.getSlim(),
-      modelFeatures: ModelFeatureManager.getTrimmedUsedFeatures(),
-      layerManager: this.state.layerManager,
-      layerEditor: this.state.layerEditor,
-      viewport: this.state.viewport,
-      preview: this.state.preview,
-      assetCreator: this.state.assetCreator,
-      assetLibrary: this.state.assetLibrary,
-      modelFeaturesWindow: this.state.modelFeaturesWindow
+      usedModelFeatures: ModelFeatureManager.getTrimmedUsedFeatures(),
+      openWindows: {
+        layerManager: this.state.layerManager,
+        layerEditor: this.state.layerEditor,
+        viewport: this.state.viewport,
+        preview: this.state.preview,
+        assetCreator: this.state.assetCreator,
+        assetLibrary: this.state.assetLibrary,
+        modelFeatures: this.state.modelFeatures
+      }
     };
 
     const serialized = JSON.stringify(sessionSave);
@@ -303,22 +306,25 @@ export default class MCSkinShop extends Component<object, AState> {
     if (!serialized) return Promise.reject(new Error('No saved session.'));
 
     const session = JSON.parse(serialized) as Partial<SavedSession>;
+    const openWindows = session.openWindows;
 
     const defaultState = this.defaultState();
-    const stateUpdate: Partial<AState> = {
-      layerManager: session.layerManager ?? defaultState.layerManager,
-      layerEditor: session.layerEditor ?? defaultState.layerEditor,
-      viewport: session.viewport ?? defaultState.viewport,
-      preview: session.preview ?? defaultState.preview,
-      assetCreator: session.assetCreator ?? defaultState.assetCreator,
-      assetLibrary: session.assetLibrary ?? defaultState.assetLibrary,
-      modelFeaturesWindow: session.modelFeaturesWindow ?? defaultState.modelFeaturesWindow
-    };
+    const stateUpdate: Partial<AState> = openWindows
+      ? {
+          layerManager: openWindows.layerManager ?? defaultState.layerManager,
+          layerEditor: openWindows.layerEditor ?? defaultState.layerEditor,
+          viewport: openWindows.viewport ?? defaultState.viewport,
+          preview: openWindows.preview ?? defaultState.preview,
+          assetCreator: openWindows.assetCreator ?? defaultState.assetCreator,
+          assetLibrary: openWindows.assetLibrary ?? defaultState.assetLibrary,
+          modelFeatures: openWindows.modelFeatures ?? defaultState.modelFeatures
+        }
+      : {};
 
     if (session.layers) await SkinManager.deserializeLayers(session.layers, session.slim);
     else SkinManager.setSlim(session.slim);
 
-    if (session.modelFeatures) ModelFeatureManager.setUsedFeatures(session.modelFeatures);
+    if (session.usedModelFeatures) ModelFeatureManager.setUsedFeatures(session.usedModelFeatures);
 
     this.setState(stateUpdate as Pick<AState, keyof AState>);
 
@@ -327,11 +333,10 @@ export default class MCSkinShop extends Component<object, AState> {
 
   render() {
     const windows: Record<
-      OrderableWindow,
-      [key: keyof AState, window: false | React.JSX.Element, widthKey?: keyof WindowWidths]
+      OrderableWindow & keyof AState,
+      [window: false | React.JSX.Element, widthKey?: keyof WindowWidths]
     > = {
       layerManager: [
-        'layerManager',
         this.state.layerManager && (
           <AppWindow key="layerManager" style={{ flex: `0 0 ${this.state.layerManagerWidth}px` }}>
             <LayerManager />
@@ -340,7 +345,6 @@ export default class MCSkinShop extends Component<object, AState> {
         'layerManagerWidth'
       ],
       layerEditor: [
-        'layerEditor',
         this.state.layerEditor && (
           <AppWindow key="layerEditor" style={{ flex: `0 0 ${this.state.layerEditorWidth}px` }}>
             <LayerEditor />
@@ -349,7 +353,6 @@ export default class MCSkinShop extends Component<object, AState> {
         'layerEditorWidth'
       ],
       viewport: [
-        'viewport',
         this.state.viewport && (
           <AppWindow style={{ flex: '100%' }}>
             <PaperDoll />
@@ -357,21 +360,16 @@ export default class MCSkinShop extends Component<object, AState> {
         )
       ],
       assetLibrary: [
-        'assetLibrary',
         this.state.assetLibrary && (
           <AppWindow key="assetLibrary" style={{ flex: `0 0 ${this.state.assetLibraryWidth}px` }}>
-            <LayerAdder addDefaultLayer={() => void this.setDefaultLayers(true)} />
+            <AssetLibrary addDefaultLayer={() => void this.setDefaultLayers(true)} />
           </AppWindow>
         ),
         'assetLibraryWidth'
       ],
       modelFeatures: [
-        'modelFeaturesWindow',
-        this.state.modelFeaturesWindow && (
-          <AppWindow
-            key="modelFeaturesWindow"
-            style={{ flex: `0 0 ${this.state.modelFeaturesWidth}px` }}
-          >
+        this.state.modelFeatures && (
+          <AppWindow key="modelFeatures" style={{ flex: `0 0 ${this.state.modelFeaturesWidth}px` }}>
             <ModelFeatures />
           </AppWindow>
         ),
@@ -382,7 +380,7 @@ export default class MCSkinShop extends Component<object, AState> {
     const windowElements: React.JSX.Element[] = [];
     const viewportIndex = this.state.windowOrder.indexOf('viewport');
     this.state.windowOrder.forEach((window, index) => {
-      const [key, elem, widthKey] = windows[window];
+      const [elem, widthKey] = windows[window];
       if (!elem) return;
       if (index === viewportIndex) windowElements.push(elem);
       if (!widthKey) return;
@@ -390,7 +388,7 @@ export default class MCSkinShop extends Component<object, AState> {
       const reverse = index > viewportIndex;
       const divider = (
         <DraggableDivider
-          key={key + 'Divider'}
+          key={window + 'Divider'}
           onChange={delta => this.updateWidth(widthKey, reverse ? -delta : delta)}
         />
       );
@@ -437,8 +435,8 @@ export default class MCSkinShop extends Component<object, AState> {
             ],
             [
               'Model Features',
-              this.state.modelFeaturesWindow,
-              () => this.updateState('modelFeaturesWindow', !this.state.modelFeaturesWindow)
+              this.state.modelFeatures,
+              () => this.updateState('modelFeatures', !this.state.modelFeatures)
             ]
           ]}
         />
