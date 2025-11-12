@@ -12,6 +12,7 @@
 # production
 /build
 src/asset_map.json
+src/run_number.txt
 public/assets/compressed
 
 # misc

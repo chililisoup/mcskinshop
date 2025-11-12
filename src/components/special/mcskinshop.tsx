@@ -23,10 +23,10 @@ import DraggableDivider from '@components/basic/draggabledivider';
 type StateCommon = {
   layerManager: boolean;
   layerEditor: boolean;
-  paperDoll: boolean;
+  viewport: boolean;
   preview: boolean;
   assetCreator: boolean;
-  layerAdder: boolean;
+  assetLibrary: boolean;
   modelFeaturesWindow: boolean;
 };
 
@@ -39,7 +39,7 @@ type SavedSession = {
 type WindowWidths = {
   layerManagerWidth: number;
   layerEditorWidth: number;
-  layerAdderWidth: number;
+  assetLibraryWidth: number;
   modelFeaturesWidth: number;
 };
 
@@ -63,11 +63,11 @@ export default class MCSkinShop extends Component<object, AState> {
       layerManagerWidth: 325,
       layerEditor: prefs.showLayerEditorOnStart,
       layerEditorWidth: 325,
-      paperDoll: prefs.showPaperDollOnStart,
+      viewport: prefs.showViewportOnStart,
       preview: prefs.showPreviewOnStart,
       assetCreator: prefs.showAssetCreatorOnStart,
-      layerAdder: prefs.showLayerAdderOnStart,
-      layerAdderWidth: 325,
+      assetLibrary: prefs.showAssetLibraryOnStart,
+      assetLibraryWidth: 325,
       modelFeaturesWindow: prefs.showModelFeaturesOnStart,
       modelFeaturesWidth: 325,
       preferences: false,
@@ -287,10 +287,10 @@ export default class MCSkinShop extends Component<object, AState> {
       modelFeatures: ModelFeatureManager.getTrimmedUsedFeatures(),
       layerManager: this.state.layerManager,
       layerEditor: this.state.layerEditor,
-      paperDoll: this.state.paperDoll,
+      viewport: this.state.viewport,
       preview: this.state.preview,
       assetCreator: this.state.assetCreator,
-      layerAdder: this.state.layerAdder,
+      assetLibrary: this.state.assetLibrary,
       modelFeaturesWindow: this.state.modelFeaturesWindow
     };
 
@@ -308,10 +308,10 @@ export default class MCSkinShop extends Component<object, AState> {
     const stateUpdate: Partial<AState> = {
       layerManager: session.layerManager ?? defaultState.layerManager,
       layerEditor: session.layerEditor ?? defaultState.layerEditor,
-      paperDoll: session.paperDoll ?? defaultState.paperDoll,
+      viewport: session.viewport ?? defaultState.viewport,
       preview: session.preview ?? defaultState.preview,
       assetCreator: session.assetCreator ?? defaultState.assetCreator,
-      layerAdder: session.layerAdder ?? defaultState.layerAdder,
+      assetLibrary: session.assetLibrary ?? defaultState.assetLibrary,
       modelFeaturesWindow: session.modelFeaturesWindow ?? defaultState.modelFeaturesWindow
     };
 
@@ -330,7 +330,7 @@ export default class MCSkinShop extends Component<object, AState> {
       OrderableWindow,
       [key: keyof AState, window: false | React.JSX.Element, widthKey?: keyof WindowWidths]
     > = {
-      'Layer Manager': [
+      layerManager: [
         'layerManager',
         this.state.layerManager && (
           <AppWindow key="layerManager" style={{ flex: `0 0 ${this.state.layerManagerWidth}px` }}>
@@ -339,7 +339,7 @@ export default class MCSkinShop extends Component<object, AState> {
         ),
         'layerManagerWidth'
       ],
-      'Layer Editor': [
+      layerEditor: [
         'layerEditor',
         this.state.layerEditor && (
           <AppWindow key="layerEditor" style={{ flex: `0 0 ${this.state.layerEditorWidth}px` }}>
@@ -348,24 +348,24 @@ export default class MCSkinShop extends Component<object, AState> {
         ),
         'layerEditorWidth'
       ],
-      'Paper Doll': [
-        'paperDoll',
-        this.state.paperDoll && (
+      viewport: [
+        'viewport',
+        this.state.viewport && (
           <AppWindow style={{ flex: '100%' }}>
             <PaperDoll />
           </AppWindow>
         )
       ],
-      'Layer Adder': [
-        'layerAdder',
-        this.state.layerAdder && (
-          <AppWindow key="layerAdder" style={{ flex: `0 0 ${this.state.layerAdderWidth}px` }}>
+      assetLibrary: [
+        'assetLibrary',
+        this.state.assetLibrary && (
+          <AppWindow key="assetLibrary" style={{ flex: `0 0 ${this.state.assetLibraryWidth}px` }}>
             <LayerAdder addDefaultLayer={() => void this.setDefaultLayers(true)} />
           </AppWindow>
         ),
-        'layerAdderWidth'
+        'assetLibraryWidth'
       ],
-      'Model Features': [
+      modelFeatures: [
         'modelFeaturesWindow',
         this.state.modelFeaturesWindow && (
           <AppWindow
@@ -380,14 +380,14 @@ export default class MCSkinShop extends Component<object, AState> {
     };
 
     const windowElements: React.JSX.Element[] = [];
-    const paperDollIndex = this.state.windowOrder.indexOf('Paper Doll');
+    const viewportIndex = this.state.windowOrder.indexOf('viewport');
     this.state.windowOrder.forEach((window, index) => {
       const [key, elem, widthKey] = windows[window];
       if (!elem) return;
-      if (window === 'Paper Doll') windowElements.push(elem);
+      if (index === viewportIndex) windowElements.push(elem);
       if (!widthKey) return;
 
-      const reverse = index > paperDollIndex;
+      const reverse = index > viewportIndex;
       const divider = (
         <DraggableDivider
           key={key + 'Divider'}
@@ -415,14 +415,14 @@ export default class MCSkinShop extends Component<object, AState> {
               () => this.updateState('layerManager', !this.state.layerManager)
             ],
             [
-              'Layer Editor',
+              '2D Editor',
               this.state.layerEditor,
               () => this.updateState('layerEditor', !this.state.layerEditor)
             ],
             [
-              'Paper Doll',
-              this.state.paperDoll,
-              () => this.updateState('paperDoll', !this.state.paperDoll)
+              '3D Viewport',
+              this.state.viewport,
+              () => this.updateState('viewport', !this.state.viewport)
             ],
             ['Preview', this.state.preview, () => this.updateState('preview', !this.state.preview)],
             [
@@ -431,9 +431,9 @@ export default class MCSkinShop extends Component<object, AState> {
               () => this.updateState('assetCreator', !this.state.assetCreator)
             ],
             [
-              'Layer Adder',
-              this.state.layerAdder,
-              () => this.updateState('layerAdder', !this.state.layerAdder)
+              'Asset Library',
+              this.state.assetLibrary,
+              () => this.updateState('assetLibrary', !this.state.assetLibrary)
             ],
             [
               'Model Features',

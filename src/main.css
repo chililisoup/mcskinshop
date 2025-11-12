@@ -395,6 +395,13 @@ label:has(+ input:disabled) > *:is(img, svg) {
   text-align: left;
 }
 
+#MenuBar > i {
+  width: 100%;
+  text-align: end;
+  margin: auto 16px;
+  height: fit-content;
+}
+
 .preferences {
   width: 500px;
   max-width: calc(100vw - 150px);

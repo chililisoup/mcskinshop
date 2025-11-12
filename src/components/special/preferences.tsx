@@ -6,9 +6,11 @@ import {
   Prefs,
   usePrefs,
   defaultPrefs,
-  WindowOrder
+  WindowOrder,
+  WINDOWS
 } from '@tools/prefman';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
+import * as Util from '@tools/util';
 
 export default function Preferences() {
   const prefs = usePrefs();
@@ -26,25 +28,12 @@ export default function Preferences() {
             >);
           }
         }}
-        numberFallback={(id, value) => {
-          if (id === 'curvature') Manager.setPrefs({ curvature: value });
-        }}
-        booleanFallback={(id, value) => {
-          if (id === 'autosaveSession') Manager.setPrefs({ [id]: value });
-          if (id === 'useFallbackSkinSource') Manager.setPrefs({ [id]: value });
-          if (id === 'showPlaceholderSkins') Manager.setPrefs({ [id]: value });
-          if (id === 'autosetImageForm') Manager.setPrefs({ [id]: value });
-
-          if (id === 'addDefaultLayer') Manager.setPrefs({ [id]: value });
-          if (id === 'animatePlayerOnStart') Manager.setPrefs({ [id]: value });
-          if (id === 'showLayerManagerOnStart') Manager.setPrefs({ [id]: value });
-          if (id === 'showLayerEditorOnStart') Manager.setPrefs({ [id]: value });
-          if (id === 'showPaperDollOnStart') Manager.setPrefs({ [id]: value });
-          if (id === 'showPreviewOnStart') Manager.setPrefs({ [id]: value });
-          if (id === 'showAssetCreatorOnStart') Manager.setPrefs({ [id]: value });
-          if (id === 'showLayerAdderOnStart') Manager.setPrefs({ [id]: value });
-          if (id === 'showModelFeaturesOnStart') Manager.setPrefs({ [id]: value });
-        }}
+        numberFallback={(id, value) =>
+          Util.isKeyOfObject(id, defaultPrefs) && Manager.setPref(id, value)
+        }
+        booleanFallback={(id, value) =>
+          Util.isKeyOfObject(id, defaultPrefs) && Manager.setPref(id, value)
+        }
         properties={[
           {
             name: 'Curvature',
@@ -134,16 +123,16 @@ export default function Preferences() {
                 value: prefs.showLayerManagerOnStart
               },
               {
-                name: 'Show Layer Editor',
+                name: 'Show 2D Editor',
                 id: 'showLayerEditorOnStart',
                 type: 'checkbox',
                 value: prefs.showLayerEditorOnStart
               },
               {
-                name: 'Show Paper Doll',
+                name: 'Show 3D Viewport',
                 id: 'showPaperDollOnStart',
                 type: 'checkbox',
-                value: prefs.showPaperDollOnStart
+                value: prefs.showViewportOnStart
               },
               {
                 name: 'Show Preview',
@@ -158,10 +147,10 @@ export default function Preferences() {
                 value: prefs.showAssetCreatorOnStart
               },
               {
-                name: 'Show Layer Adder',
+                name: 'Show Asset Library',
                 id: 'showLayerAdderOnStart',
                 type: 'checkbox',
-                value: prefs.showLayerAdderOnStart
+                value: prefs.showAssetLibraryOnStart
               },
               {
                 name: 'Show Model Features',
@@ -180,8 +169,9 @@ export default function Preferences() {
                 name: 'Window Order',
                 id: 'windowOrder',
                 type: 'orderableList',
-                options: prefs.windowOrder,
-                onChange: windows => Manager.setPrefs({ windowOrder: windows as WindowOrder })
+                options: prefs.windowOrder.map(id => ({ id: id, name: WINDOWS[id] })),
+                onChange: options =>
+                  Manager.setPrefs({ windowOrder: options.map(option => option.id) as WindowOrder })
               }
             ]
           }

@@ -1,8 +1,10 @@
 import React, { useId, useRef, useState } from 'react';
 
+type Option = { id: string; name: string };
+
 type AProps = {
-  callback: (options: string[]) => void;
-  options: readonly string[];
+  callback: (options: Option[]) => void;
+  options: readonly Option[];
   disabled?: boolean;
 };
 
@@ -109,11 +111,11 @@ export default function OrderableList(props: AProps) {
     props.callback(options);
   }
 
-  const listItems = props.options.map((name, index) => (
+  const listItems = props.options.map((option, index) => (
     <OrderableListItem
       listId={listId}
       index={index}
-      name={name}
+      option={option}
       dragging={index === draggingIndex}
     />
   ));
@@ -138,7 +140,7 @@ export default function OrderableList(props: AProps) {
 type BProps = {
   listId: string;
   index: number;
-  name: string;
+  option: Option;
   dragging: boolean;
 };
 
@@ -157,14 +159,14 @@ function OrderableListItem(props: BProps) {
 
   return (
     <span
-      key={`${props.index}_${props.name}`}
+      key={`${props.index}_${props.option.id}`}
       draggable
       onDragStart={onDragStart}
       ref={itemRef}
       className={props.dragging ? 'dragging' : undefined}
     >
       <div className="material-symbols-outlined">drag_indicator</div>
-      <p>{props.name}</p>
+      <p>{props.option.name}</p>
     </span>
   );
 }

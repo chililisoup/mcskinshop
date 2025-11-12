@@ -62,8 +62,8 @@ type SelectProperty = BaseProperty & {
 
 type OrderableListProperty = BaseProperty & {
   type: 'orderableList';
-  options: readonly string[];
-  onChange: (value: string[]) => void;
+  options: readonly { id: string; name: string }[];
+  onChange: (value: { id: string; name: string }[]) => void;
 };
 
 type ButtonProperty = BaseProperty & {

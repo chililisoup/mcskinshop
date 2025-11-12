@@ -39,14 +39,14 @@ export const USER_THEME_COLOR_VARS = {
   '--shadow': 'Shadow'
 } as const;
 
-const WINDOWS = [
-  'Layer Manager',
-  'Layer Editor',
-  'Paper Doll',
-  'Layer Adder',
-  'Model Features'
-] as const;
-export type OrderableWindow = (typeof WINDOWS)[number];
+export const WINDOWS = {
+  layerManager: 'Layer Manager',
+  layerEditor: '2D Editor',
+  viewport: '3D Viewport',
+  assetLibrary: 'Asset Library',
+  modelFeatures: 'Model Features'
+} as const;
+export type OrderableWindow = keyof typeof WINDOWS;
 export type WindowOrder = [
   OrderableWindow,
   OrderableWindow,
@@ -67,10 +67,10 @@ export type Prefs = {
     animatePlayerOnStart: boolean;
     showLayerManagerOnStart: boolean;
     showLayerEditorOnStart: boolean;
-    showPaperDollOnStart: boolean;
+    showViewportOnStart: boolean;
     showPreviewOnStart: boolean;
     showAssetCreatorOnStart: boolean;
-    showLayerAdderOnStart: boolean;
+    showAssetLibraryOnStart: boolean;
     showModelFeaturesOnStart: boolean;
     windowOrder: WindowOrder;
   };
@@ -103,12 +103,12 @@ export const defaultPrefs: Prefs = {
   animatePlayerOnStart: true,
   showLayerManagerOnStart: true,
   showLayerEditorOnStart: false,
-  showPaperDollOnStart: true,
+  showViewportOnStart: true,
   showPreviewOnStart: true,
   showAssetCreatorOnStart: false,
-  showLayerAdderOnStart: false,
+  showAssetLibraryOnStart: false,
   showModelFeaturesOnStart: false,
-  windowOrder: ['Layer Manager', 'Layer Editor', 'Paper Doll', 'Layer Adder', 'Model Features']
+  windowOrder: ['layerManager', 'layerEditor', 'viewport', 'assetLibrary', 'modelFeatures']
 } as const;
 
 const CATPPUCCIN_THEMES = {
@@ -216,7 +216,7 @@ export abstract class Manager {
 
       let invalid = false;
       for (const window of prefs.windowOrder) {
-        if (!WINDOWS.includes(window)) {
+        if (!Object.keys(WINDOWS).includes(window)) {
           invalid = true;
           break;
         }
@@ -267,6 +267,9 @@ export abstract class Manager {
 
     this.applyPrefs();
   };
+
+  static setPref = <KKey extends keyof Prefs>(pref: KKey, value: Prefs[KKey]) =>
+    this.setPrefs({ [pref]: value } as Pick<Prefs, KKey>);
 
   static get = (): Prefs => ({ ...this.prefs });
 

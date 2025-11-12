@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import PopUp from '@components/basic/popup';
 import * as Util from '@tools/util';
 import icon from '@assets/icon.png';
+import mcssVersion from '@/version.json';
 import FileInput from '@components/basic/fileinput';
 import EditManager, { useEditHints } from '@tools/editman';
 
@@ -138,6 +139,7 @@ export default function MenuBar(props: AProps) {
       <MenuBarTab tab="help" name="Help" {...tabProps}>
         <button>Stop it. Get some help.</button>
       </MenuBarTab>
+      <i>{mcssVersion}</i>
     </div>
   );
 }
