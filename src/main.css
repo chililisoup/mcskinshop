@@ -520,7 +520,7 @@ hr.vr {
   width: 10px;
   margin: 0 -6px;
   height: 100%;
-  z-index: 500;
+  z-index: 5;
   cursor: ew-resize;
 }
 
@@ -576,7 +576,8 @@ hr.vr {
   padding: 4px 0 4px 8px;
 }
 
-.viewport-mode-ui > span * {
+.viewport-mode-ui > span *,
+.settings-ribbon > span {
   white-space: nowrap;
   min-width: max-content;
 }
@@ -768,7 +769,48 @@ hr.vr {
   border-radius: var(--half-curvature);
 }
 
-.layereditor-canvas {
+.container:has(.layer-editor) {
+  display: flex;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--viewport-ui);
+}
+
+.layer-editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  border-radius: calc(var(--curvature) - 5px);
+}
+
+.layer-editor > p {
+  text-align: center;
+  font-weight: bold;
+  overflow: visible;
+  margin: 0;
+}
+
+.layer-editor > .settings-ribbon {
+  margin-bottom: 4px;
+  height: 28px;
+  min-height: 28px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.layer-editor .popup {
+  position: fixed !important;
+  z-index: 10;
+}
+
+.layer-editor-canvas-area {
+  flex: 1;
+  background-color: var(--container-alt);
+  box-shadow: inset var(--box-shadow);
+}
+
+.layer-editor-canvas {
   height: 512px;
   width: 512px;
   image-rendering: pixelated;
@@ -1682,8 +1724,4 @@ label {
 .stretch > * {
   flex: 1;
   margin: 0 0 6px;
-}
-
-.not-allowed {
-  cursor: not-allowed;
 }

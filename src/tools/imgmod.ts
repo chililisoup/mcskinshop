@@ -748,6 +748,19 @@ export class Img extends AbstractLayer {
     });
   };
 
+  setImage = async (image: ImageBitmap) => {
+    this.rawImage = await createImageBitmap(image);
+    this.image = await createImageBitmap(image);
+
+    const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
+    const ctx = canvas.getContext('bitmaprenderer')!;
+    ctx.transferFromImageBitmap(image);
+
+    this.src = URL.createObjectURL(await canvas.convertToBlob());
+
+    this.markChanged();
+  };
+
   detectSlimModel = () => {
     if (!this.image) return false;
 

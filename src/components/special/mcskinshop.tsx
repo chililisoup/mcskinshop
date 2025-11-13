@@ -45,7 +45,7 @@ function defaultState(): AState {
     layerManager: openWindows.layerManager ?? prefs.showLayerManagerOnStart,
     layerManagerWidth: 325,
     layerEditor: openWindows.layerEditor ?? prefs.showLayerEditorOnStart,
-    layerEditorWidth: 325,
+    layerEditorWidth: Math.max(325, window.innerWidth / 3),
     viewport: openWindows.viewport ?? prefs.showViewportOnStart,
     preview: openWindows.preview ?? prefs.showPreviewOnStart,
     assetCreator: openWindows.assetCreator ?? prefs.showAssetCreatorOnStart,

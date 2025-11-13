@@ -37,7 +37,7 @@ type RangeProperty = BaseProperty & {
   allowExceed?: boolean;
   enforceStep?: boolean;
   subtype?: SubType;
-  onChange?: (value: number) => void;
+  onChange?: (value: number, finished: boolean) => void;
 };
 
 type BoolProperty = BaseProperty & {
@@ -84,7 +84,7 @@ type ColorProperty = BaseProperty & {
   type: 'color';
   value: string;
   alpha?: boolean;
-  onChange?: (value: string) => void;
+  onChange?: (value: string, finished: boolean) => void;
 } & (
     | {
         resetValue?: string;
@@ -230,7 +230,7 @@ export default function PropertiesList(props: AProps) {
                 <button
                   className="reset-button material-symbols-outlined"
                   onClick={() => {
-                    if (property.onChange) property.onChange(resetValue);
+                    if (property.onChange) property.onChange(resetValue, true);
                     else props.numberFallback?.(property.id, resetValue, true);
                   }}
                 >
@@ -390,7 +390,7 @@ export default function PropertiesList(props: AProps) {
                 <button
                   className="reset-button material-symbols-outlined"
                   onClick={() => {
-                    if (property.onChange) property.onChange(resetValue);
+                    if (property.onChange) property.onChange(resetValue, true);
                     else props.stringFallback?.(property.id, resetValue, true);
                   }}
                 >

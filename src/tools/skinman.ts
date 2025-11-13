@@ -13,6 +13,7 @@ export type Selected = {
 export type Skin = {
   src: string;
   slim: boolean;
+  image?: ImageBitmap;
 };
 
 export default abstract class SkinManager {
@@ -100,6 +101,8 @@ export default abstract class SkinManager {
       await this.root.render(true, this.skin.slim);
       this.skin.src = this.root.src;
     }
+
+    this.skin.image = this.root.image;
 
     this.speaker.updateListeners();
     this.rootSpeaker.updateListeners();
