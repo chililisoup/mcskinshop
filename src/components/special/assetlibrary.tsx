@@ -30,16 +30,12 @@ type Asset = {
 
 */
 
-type AProps = {
-  addDefaultLayer: () => void;
-};
-
 type AState = {
   packs: string[];
 };
 
-export default class AssetLibrary extends Component<AProps, AState> {
-  constructor(props: AProps) {
+export default class AssetLibrary extends Component<object, AState> {
+  constructor(props: object) {
     super(props);
 
     this.state = {
@@ -77,7 +73,7 @@ export default class AssetLibrary extends Component<AProps, AState> {
                 <img src={steve} alt="Steve & Alex" title="Steve & Alex" />
                 <div>
                   <p>Steve & Alex</p>
-                  <button onClick={this.props.addDefaultLayer}>+</button>
+                  <button onClick={() => SkinManager.setDefaultLayers(true)}>+</button>
                 </div>
               </span>
             </div>

@@ -16,11 +16,12 @@ import AnimateMode from '@components/special/viewport/modes/animatemode';
 import PoseMode from '@components/special/viewport/modes/posemode';
 import ViewportPanel, { ViewportPanelHandle } from '@components/special/viewport/viewportpanel';
 import AbstractMode from './modes/abstractmode';
-import { Manager } from '@tools/prefman';
+import { PreferenceManager } from '@tools/prefman';
 import ExportRender from './exportRender';
 import SkinManager from '@tools/skinman';
 import EditManager from '@tools/editman';
 import ModelFeatureManager, { FeatureKey, FeatureType } from '@tools/modelfeatureman';
+import SessionManager from '@tools/sessionman';
 
 export type PoseEntry = {
   rotation?: THREE.EulerTuple;
@@ -28,7 +29,22 @@ export type PoseEntry = {
   scaleOffset?: THREE.Vector3Tuple;
 };
 
-export type AState = typeof defaultViewOptions & {
+export const defaultViewportOptions = {
+  shade: true,
+  lightAngle: Math.PI / 4,
+  lightFocus: Math.SQRT2,
+  ambientLightColor: '#ffffff',
+  ambientLightIntensity: 1,
+  directionalLightColor: '#ffffff',
+  directionalLightIntensity: 2.5,
+  fov: 70,
+  usePerspectiveCam: true,
+  grid: true
+} as const;
+
+export type ViewportOptions = typeof defaultViewportOptions;
+
+export type AState = ViewportOptions & {
   mode?: AbstractMode;
   modeElement: React.JSX.Element;
   partToggles: {
@@ -60,19 +76,6 @@ export type AState = typeof defaultViewOptions & {
   background?: boolean;
   backgroundImage?: string;
   exportingRender: boolean;
-};
-
-export const defaultViewOptions = {
-  shade: true,
-  lightAngle: Math.PI / 4,
-  lightFocus: Math.SQRT2,
-  ambientLightColor: '#ffffff',
-  ambientLightIntensity: 1,
-  directionalLightColor: '#ffffff',
-  directionalLightIntensity: 2.5,
-  fov: 70,
-  usePerspectiveCam: true,
-  grid: true
 };
 
 export default class PaperDoll extends Component<object, AState> {
@@ -117,7 +120,7 @@ export default class PaperDoll extends Component<object, AState> {
   selectedOutlinePass?: OutlinePass;
   SMAAPass?: SMAAPass;
 
-  savedViewOptions = this.getSavedLighting();
+  savedViewOptions = { ...defaultViewportOptions, ...SessionManager.get().viewportOptions };
   cachedModelFeatures = ModelFeatureManager.getUsedFeatures();
 
   state: AState = {
@@ -178,7 +181,7 @@ export default class PaperDoll extends Component<object, AState> {
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
     SkinManager.speaker.registerListener(this.updateSkin);
-    Manager.speaker.registerListener(this.updateThemedMaterials);
+    PreferenceManager.speaker.registerListener(this.updateThemedMaterials);
     ModelFeatureManager.speaker.registerListener(this.updateModelFeatures);
   }
 
@@ -189,7 +192,7 @@ export default class PaperDoll extends Component<object, AState> {
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('keyup', this.onKeyUp);
     SkinManager.speaker.unregisterListener(this.updateSkin);
-    Manager.speaker.unregisterListener(this.updateThemedMaterials);
+    PreferenceManager.speaker.unregisterListener(this.updateThemedMaterials);
     ModelFeatureManager.speaker.unregisterListener(this.updateModelFeatures);
 
     window.cancelAnimationFrame(this.requestID);
@@ -774,20 +777,13 @@ export default class PaperDoll extends Component<object, AState> {
     this.updateSetting('modeElement', modes[next >= modes.length ? 0 : next]);
   };
 
-  getSavedLighting() {
-    const base = structuredClone(defaultViewOptions);
-    const serialized = localStorage.getItem('savedViewportOptions');
-    if (!serialized) return base;
-    return Object.assign(base, JSON.parse(serialized) as Partial<typeof base>);
-  }
-
-  updateSavedLighting = <KKey extends keyof typeof defaultViewOptions>(
+  updateSavedLighting = <KKey extends keyof ViewportOptions>(
     setting: KKey,
-    value: (typeof defaultViewOptions)[KKey]
+    value: ViewportOptions[KKey]
   ) => {
     const from = this.savedViewOptions[setting] as AState[KKey];
     this.savedViewOptions[setting] = value;
-    localStorage.setItem('savedViewportOptions', JSON.stringify(this.savedViewOptions));
+    SessionManager.updateCache('viewportOptions', this.savedViewOptions);
     return from;
   };
 
@@ -800,7 +796,7 @@ export default class PaperDoll extends Component<object, AState> {
       saveEdit && Util.isKeyOfObject(setting, this.savedViewOptions)
         ? (this.updateSavedLighting(
             setting,
-            value as (typeof defaultViewOptions)[typeof setting]
+            value as ViewportOptions[typeof setting]
           ) as AState[KKey])
         : this.state[setting];
 

@@ -299,8 +299,7 @@ export abstract class AbstractLayer {
 
   copyFilter = (): Filter => ({ ...this.filterInternal });
 
-  static defaultFilter = (filter: Filter): Required<Filter> =>
-    Object.assign({ ...DEFAULT_FILTER }, filter);
+  static defaultFilter = (filter: Filter): Required<Filter> => ({ ...DEFAULT_FILTER, ...filter });
 
   filterFilter = (filter: Filter) => {
     const filtered = AbstractLayer.defaultFilter(this.filterInternal);

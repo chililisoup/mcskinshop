@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as ImgMod from '@tools/imgmod';
-import { Manager } from '@tools/prefman';
+import { PreferenceManager } from '@tools/prefman';
 import Speaker from '@tools/speaker';
 import steve from '@assets/steve.png';
 import alex from '@assets/alex.png';
@@ -24,7 +24,7 @@ export default abstract class SkinManager {
     preview: null
   };
   private static skin: Skin = {
-    src: Manager.get().showPlaceholderSkins ? steve : ImgMod.EMPTY_IMAGE_SOURCE,
+    src: PreferenceManager.get().showPlaceholderSkins ? steve : ImgMod.EMPTY_IMAGE_SOURCE,
     slim: false
   };
 
@@ -74,7 +74,7 @@ export default abstract class SkinManager {
   static reset = () => {
     this.root = new ImgMod.RootLayer(this.rootSpeaker.updateListeners);
     this.skin = {
-      src: Manager.get().showPlaceholderSkins ? steve : ImgMod.EMPTY_IMAGE_SOURCE,
+      src: PreferenceManager.get().showPlaceholderSkins ? steve : ImgMod.EMPTY_IMAGE_SOURCE,
       slim: false
     };
     this.speaker.updateListeners();
@@ -91,7 +91,7 @@ export default abstract class SkinManager {
     this.rendering = true;
 
     if (this.root.getLayers().length === 0) {
-      this.skin.src = Manager.get().showPlaceholderSkins
+      this.skin.src = PreferenceManager.get().showPlaceholderSkins
         ? this.skin.slim
           ? alex
           : steve
@@ -146,6 +146,24 @@ export default abstract class SkinManager {
     const preview = new ImgMod.ImgPreview(layer, parent);
     parent.insertLayer(index + 1, preview);
     this.selected = { layer: layer, preview: preview };
+  };
+
+  static setDefaultLayers: (add?: boolean) => void = async add => {
+    if (!add && this.getLayers().length) return;
+
+    const steveImg = new ImgMod.Img('normal', 'full-only');
+    steveImg.name = 'Steve';
+    await steveImg.loadUrl(steve);
+
+    const alexImg = new ImgMod.Img('normal', 'slim-only');
+    alexImg.name = 'Alex';
+    await alexImg.loadUrl(alex);
+
+    const layer = new ImgMod.Layer([steveImg, alexImg]);
+    layer.name = 'Steve & Alex';
+
+    if (add) this.addLayer(layer);
+    else this.replaceLayers(new ImgMod.Layer([layer]));
   };
 }
 

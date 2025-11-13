@@ -202,7 +202,7 @@ const CATPPUCCIN_THEMES = {
   }
 };
 
-export abstract class Manager {
+export abstract class PreferenceManager {
   static speaker = new Speaker(() => this.get());
   private static prefs = this.clean(
     this.combine({ ...defaultPrefs }, JSON.parse(localStorage.getItem('preferences') ?? '{}'))
@@ -444,15 +444,20 @@ export abstract class Manager {
   };
 }
 
-export function usePrefs() {
-  const [prefs, updatePrefs] = useState(Manager.get());
+export function usePrefs(...deps: (keyof Prefs)[]) {
+  const [prefs, updatePrefs] = useState(PreferenceManager.get());
 
   useEffect(() => {
-    Manager.speaker.registerListener(updatePrefs);
-    return () => Manager.speaker.unregisterListener(updatePrefs);
-  });
+    const updatePrefsConditional = (newPrefs: Prefs) => {
+      if (deps.length === 0) return updatePrefs(newPrefs);
+      for (const dep of deps) if (prefs[dep] !== newPrefs[dep]) return updatePrefs(newPrefs);
+    };
+
+    PreferenceManager.speaker.registerListener(updatePrefsConditional);
+    return () => PreferenceManager.speaker.unregisterListener(updatePrefsConditional);
+  }, [prefs]);
 
   return prefs;
 }
 
-Manager.applyPrefs();
+PreferenceManager.applyPrefs();

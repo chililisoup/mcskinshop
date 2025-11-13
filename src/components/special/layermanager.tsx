@@ -2,7 +2,7 @@ import React, { Component, useEffect, useState } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import ColorPicker from '@components/basic/colorpicker';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
-import { Manager } from '@tools/prefman';
+import { PreferenceManager } from '@tools/prefman';
 import SkinManager, { useRoot, useSelected } from '@tools/skinman';
 
 export default function LayerManager() {
@@ -202,7 +202,7 @@ class LayerList extends Component<BProps, BState> {
       }
 
       const slim = image.detectSlimModel();
-      if (Manager.get().autosetImageForm) image.form(slim ? 'slim-stretch' : 'full-squish-inner');
+      if (PreferenceManager.get().autosetImageForm) image.form(slim ? 'slim-stretch' : 'full-squish-inner');
 
       this.props.layers.insertLayer(insertingIndex, image);
       this.props.updateSkin();

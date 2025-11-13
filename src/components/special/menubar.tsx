@@ -5,15 +5,12 @@ import icon from '@assets/icon.png';
 import mcssVersion from '@/version.json';
 import FileInput from '@components/basic/fileinput';
 import EditManager, { useEditHints } from '@tools/editman';
+import SkinDealer from '@tools/skindealer';
+import SessionManager from '@tools/sessionman';
 
 type Tab = 'file' | 'edit' | 'view' | 'help';
 
 type AProps = {
-  newSession: () => void;
-  saveSession: () => void;
-  uploadSkin: (name: string, url?: string) => void;
-  uploadDynamicSkin: () => void;
-  downloadSkin: () => void;
   editTab?: [name: string, onClick: () => void][];
   viewTab?: [name: string, visible: boolean, toggle: () => void][];
 };
@@ -39,7 +36,7 @@ export default function MenuBar(props: AProps) {
     const input = prompt('Enter username:');
     if (!input) return;
 
-    props.uploadSkin(input.replace(/[^0-9A-Za-z_]/g, ''));
+    SkinDealer.uploadSkin(input.replace(/[^0-9A-Za-z_]/g, ''));
   }
 
   function addLayerFromUrl() {
@@ -48,7 +45,7 @@ export default function MenuBar(props: AProps) {
     const input = prompt('Enter skin image URL:');
     if (!input) return;
 
-    props.uploadSkin(input.split('/').pop()?.split('.')[0] ?? input, Util.corsProxy(input));
+    SkinDealer.uploadSkin(input.split('/').pop()?.split('.')[0] ?? input, Util.corsProxy(input));
   }
 
   function updateFullscreen() {
@@ -98,26 +95,26 @@ export default function MenuBar(props: AProps) {
     <div id="MenuBar">
       <img alt="Logo" src={icon} />
       <MenuBarTab tab="file" name="File" {...tabProps}>
-        <button onClick={props.newSession}>New Session</button>
-        <button onClick={() => callAndClose(props.saveSession)}>Save Session</button>
+        <button onClick={SessionManager.newSession}>New Session</button>
+        <button onClick={() => callAndClose(SessionManager.saveSession)}>Save Session</button>
         <hr />
         <FileInput
           callback={(file, name) =>
-            callAndClose(() => props.uploadSkin(name, URL.createObjectURL(file)))
+            callAndClose(() => SkinDealer.uploadSkin(name, URL.createObjectURL(file)))
           }
           accept="image/png"
         >
           Import File...
         </FileInput>
         {Util.fileSystemAccess && (
-          <button onClick={() => callAndClose(props.uploadDynamicSkin)}>
+          <button onClick={() => callAndClose(SkinDealer.uploadDynamicSkin)}>
             Dynamically Import File...
           </button>
         )}
         <button onClick={addLayerFromUsername}>Import from Username...</button>
         <button onClick={addLayerFromUrl}>Import from URL...</button>
         <hr />
-        <button onClick={() => callAndClose(props.downloadSkin)}>Save As...</button>
+        <button onClick={() => callAndClose(SkinDealer.downloadSkin)}>Save As...</button>
       </MenuBarTab>
       <MenuBarTab tab="edit" name="Edit" {...tabProps}>
         <button disabled={!undoHint} onClick={EditManager.requestUndo}>
