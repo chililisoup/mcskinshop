@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import * as Util from '@tools/util';
 import PaperDoll from '@components/special/viewport/paperdoll';
 import LayerManager from '@components/special/layermanager';
@@ -12,9 +12,8 @@ import DraggableWindow from '@components/basic/draggablewindow';
 import LayerEditor from '@components/special/layereditor';
 import AppWindow from '@components/basic/appwindow';
 import { PreferenceManager, OrderableWindow, usePrefs } from '@tools/prefman';
-import EditManager from '@tools/editman';
 import DraggableDivider from '@components/basic/draggabledivider';
-import SessionManager, { SessionCache } from '@tools/sessionman';
+import SessionManager from '@tools/sessionman';
 
 export type OpenWindows = {
   layerManager: boolean;
@@ -38,8 +37,6 @@ type AState = {
 } & OpenWindows &
   WindowWidths;
 
-const reducer = (state: AState, change: Partial<AState>) => ({ ...state, ...change });
-
 function defaultState(): AState {
   const prefs = PreferenceManager.get();
   const openWindows = SessionManager.get().openWindows;
@@ -61,18 +58,13 @@ function defaultState(): AState {
 }
 
 export default function MCSkinShop() {
-  const [state, setState] = useReducer(reducer, defaultState());
+  const [state, setFullState] = useState(defaultState());
   const [sessionKey, setSessionKey] = useState(Util.randomKey());
   const prefs = usePrefs('windowOrder');
 
   useEffect(() => {
-    document.addEventListener('keydown', onKeyDown);
     SessionManager.speaker.registerListener(onSessionChange);
-
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      SessionManager.speaker.unregisterListener(onSessionChange);
-    };
+    return () => SessionManager.speaker.unregisterListener(onSessionChange);
   });
 
   useEffect(() => {
@@ -87,25 +79,7 @@ export default function MCSkinShop() {
     });
   }, [state]);
 
-  function onKeyDown(e: KeyboardEvent) {
-    if (!e.ctrlKey) return;
-
-    if (
-      document.hasFocus() &&
-      document.activeElement instanceof HTMLInputElement &&
-      document.activeElement.type !== 'checkbox' &&
-      document.activeElement.type !== 'range'
-    )
-      return;
-
-    if (e.key === 'z') EditManager.requestUndo();
-    else if (e.key === 'Z' || e.key === 'y') EditManager.requestRedo();
-    else if (e.key === 's') {
-      SessionManager.saveSession();
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }
+  const setState = (change: Partial<AState>) => setFullState({ ...state, ...change });
 
   const updateState = <KKey extends keyof AState>(setting: KKey, value: AState[KKey]) =>
     setState({ [setting]: value });
@@ -113,9 +87,9 @@ export default function MCSkinShop() {
   const updateWidth = <KKey extends keyof WindowWidths>(setting: KKey, delta: number) =>
     updateState(setting, Util.clamp(state[setting] + delta, 200, window.innerWidth * 0.67));
 
-  function onSessionChange(session: SessionCache) {
+  function onSessionChange() {
     setSessionKey(Util.randomKey());
-    setState({ ...defaultState(), ...session.openWindows });
+    setState({ ...defaultState(), ...SessionManager.get().openWindows });
   }
 
   const windows: Record<
@@ -140,7 +114,7 @@ export default function MCSkinShop() {
     ],
     viewport: [
       state.viewport && (
-        <AppWindow style={{ flex: '100%' }}>
+        <AppWindow key="viewport" style={{ flex: '100%' }}>
           <PaperDoll />
         </AppWindow>
       )

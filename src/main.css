@@ -838,8 +838,8 @@ hr.vr {
   display: block;
   height: 4px;
   width: 100%;
-  background-color: var(--accent);
-  box-shadow: 0 0 4px 2px var(--accent);
+  background-color: var(--hovered-accent);
+  box-shadow: 0 0 4px 2px var(--hovered-accent);
   z-index: 2;
 }
 

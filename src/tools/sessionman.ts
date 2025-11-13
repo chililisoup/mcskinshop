@@ -15,7 +15,7 @@ type SavedSession = {
   viewportOptions: Partial<ViewportOptions>;
 };
 
-export type SessionCache = {
+type SessionCache = {
   openWindows: Partial<OpenWindows>;
   viewportOptions: Partial<ViewportOptions>;
 };
@@ -28,7 +28,7 @@ export default abstract class SessionManager {
   private static sessionCache = this.emptySessionCache();
   static initialized = false;
 
-  static speaker = new Speaker(() => this.get());
+  static speaker = new Speaker();
 
   static get = (): SessionCache => ({
     openWindows: { ...this.sessionCache.openWindows },
@@ -38,7 +38,7 @@ export default abstract class SessionManager {
   static updateCache = <KKey extends keyof SessionCache>(key: KKey, value: SessionCache[KKey]) =>
     (this.sessionCache[key] = { ...value });
 
-  static initialize = async () => {
+  static init = async () => {
     if (this.initialized) return;
     this.initialized = true;
 
