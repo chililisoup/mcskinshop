@@ -52,11 +52,21 @@ export default function LayerEditor() {
       });
     };
 
+    const shortcuts = (e: KeyboardEvent) => {
+      if (!canvasRef.current?.closest('.window')?.classList.contains('active')) return;
+
+      const key = e.key.toUpperCase();
+      if (key === 'B') PaintManager.updateBrush({ type: 'pencil' });
+      else if (key === 'E') PaintManager.updateBrush({ type: 'eraser' });
+    };
+
     document.addEventListener('mouseup', endPan);
     document.addEventListener('mousemove', pan);
+    document.addEventListener('keydown', shortcuts);
     return () => {
       document.removeEventListener('mouseup', endPan);
       document.removeEventListener('mousemove', pan);
+      document.removeEventListener('keydown', shortcuts);
     };
   });
 

@@ -29,7 +29,7 @@ export default abstract class PaintManager {
 
   static updateBrush = (update: Partial<Brush>) => {
     this.brush = { ...this.brush, ...update };
-    this.applyPreview();
+    this.updatePreview();
     this.brushSpeaker.updateListeners();
   };
 
