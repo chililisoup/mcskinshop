@@ -543,14 +543,15 @@ hr.vr {
   pointer-events: initial;
 }
 
-.viewport-ui *:is(button, label) > *:is(img, svg) {
+*:is(.viewport-ui, .toolbar) *:is(button, label) > *:is(img, svg) {
   width: 32px;
   height: 32px;
 }
 
-.viewport-ui *:is(button, label):has(> *:is(img, svg)) {
+*:is(.viewport-ui, .toolbar) *:is(button, label):has(> *:is(img, svg)) {
   display: inline-flex;
   padding: 4px;
+  z-index: 1;
 }
 
 .viewport-ui > .bottom.left {
@@ -613,12 +614,12 @@ hr.vr {
   stroke-width: 8.1px;
 }
 
-.toolbar button > svg > g:first-child {
+.toolbar button > svg > :first-child {
   stroke: var(--input);
   fill: var(--input);
 }
 
-.toolbar button > svg > g:nth-child(2) {
+.toolbar button > svg > *:nth-child(2) {
   stroke: var(--input-text);
   fill: var(--input-text);
 }
@@ -799,20 +800,29 @@ hr.vr {
   overflow-x: auto;
 }
 
+.layer-editor > div:has(> .toolbar) {
+  margin-top: 73px;
+  margin-left: 19px;
+}
+
 .layer-editor .popup {
   position: fixed !important;
   z-index: 10;
 }
 
 .layer-editor-canvas-area {
+  position: relative;
+  display: flex;
   flex: 1;
   background-color: var(--container-alt);
   box-shadow: inset var(--box-shadow);
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
 }
 
 .layer-editor-canvas {
-  height: 512px;
-  width: 512px;
+  position: absolute;
   image-rendering: pixelated;
   cursor: crosshair;
 }

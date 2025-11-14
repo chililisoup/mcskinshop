@@ -3,10 +3,12 @@ import Speaker from '@tools/speaker';
 import SkinManager from './skinman';
 import * as ImgMod from '@tools/imgmod';
 
+export const BRUSH_TYPES = ['pencil', 'eraser'] as const;
+
 type Brush = {
   color: string;
   size: number;
-  type: 'pencil' | 'eraser';
+  type: (typeof BRUSH_TYPES)[number];
 };
 
 type BrushPos = { x: number; y: number } | null;
@@ -26,7 +28,7 @@ export default abstract class PaintManager {
   static getBrush = (): Brush => ({ ...this.brush });
 
   static updateBrush = (update: Partial<Brush>) => {
-    if (update.type && update.type !== this.brush.type) Object.assign(this.brush, update);
+    this.brush = { ...this.brush, ...update };
     this.applyPreview();
     this.brushSpeaker.updateListeners();
   };
@@ -53,7 +55,7 @@ export default abstract class PaintManager {
   static updatePreview = () => {
     if (!this.brushActive) this.context.clearRect(0, 0, 64, 64);
 
-    if (this.brushPos && this.brush.type !== 'eraser') {
+    if (this.brushPos) {
       this.context.fillStyle = this.brush.color;
       this.context.fillRect(this.brushPos.x, this.brushPos.y, 1, 1);
     }
@@ -64,6 +66,7 @@ export default abstract class PaintManager {
     preview.image = this.context.canvas.transferToImageBitmap();
     if (this.brushActive) this.context.drawImage(preview.image, 0, 0);
 
+    preview.type(this.brush.type === 'eraser' ? 'erase' : 'normal');
     preview.markChanged();
     SkinManager.updateSkin();
   };
@@ -78,7 +81,9 @@ export default abstract class PaintManager {
     const stroke = this.context.canvas.transferToImageBitmap();
 
     if (layer.rawImage) this.context.drawImage(layer.rawImage, 0, 0);
+    if (this.brush.type === 'eraser') this.context.globalCompositeOperation = 'destination-out';
     this.context.drawImage(stroke, 0, 0);
+    this.context.globalCompositeOperation = 'source-over';
 
     await layer.setImage(this.context.canvas.transferToImageBitmap());
 
@@ -92,6 +97,7 @@ export default abstract class PaintManager {
 export function useBrush() {
   const [brush, setBrush] = useState(PaintManager.getBrush());
 
+  PaintManager.brushSpeaker.registerListener(setBrush);
   useEffect(() => {
     PaintManager.brushSpeaker.registerListener(setBrush);
     return () => PaintManager.brushSpeaker.unregisterListener(setBrush);

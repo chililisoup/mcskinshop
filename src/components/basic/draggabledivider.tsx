@@ -1,14 +1,19 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 
 type AProps = {
   onChange: (delta: number) => void;
 };
 
 export default function DraggableDivider({ onChange }: AProps) {
+  const divRef = useRef(null as HTMLDivElement | null);
   const dragging = useRef(false);
 
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => dragging.current && onChange(e.movementX);
+  useLayoutEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragging.current || !divRef.current) return;
+      const rect = divRef.current.getBoundingClientRect();
+      onChange(e.clientX - (rect.left + rect.right) / 2);
+    };
     const onMouseUp = () => (dragging.current = false);
 
     document.addEventListener('mousemove', onMouseMove);
@@ -20,5 +25,7 @@ export default function DraggableDivider({ onChange }: AProps) {
     };
   });
 
-  return <div className="draggable-divider" onMouseDown={() => (dragging.current = true)} />;
+  return (
+    <div className="draggable-divider" onMouseDown={() => (dragging.current = true)} ref={divRef} />
+  );
 }

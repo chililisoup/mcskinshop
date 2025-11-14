@@ -70,6 +70,7 @@ type ButtonProperty = BaseProperty & {
   type: 'button';
   selected?: boolean;
   label?: string | React.JSX.Element;
+  isIcon?: boolean;
   onClick?: () => void;
 };
 
@@ -337,7 +338,10 @@ export default function PropertiesList(props: AProps) {
             callback={property.onChange}
           />
         ];
-      case 'button':
+      case 'button': {
+        const classNames = [];
+        if (property.selected) classNames.push('selected');
+        if (property.isIcon) classNames.push('material-symbols-outlined');
         return [
           <button
             id={id}
@@ -345,11 +349,12 @@ export default function PropertiesList(props: AProps) {
             title={property.name}
             disabled={property.disabled}
             onClick={property.onClick ?? (() => props.buttonFallback?.(property.id))}
-            className={property.selected ? 'selected' : ''}
+            className={classNames.join(' ')}
           >
             {property.label ?? property.name}
           </button>
         ];
+      }
       case 'file':
         return [
           <FileInput

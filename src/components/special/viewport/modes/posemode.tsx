@@ -796,9 +796,7 @@ export default class PoseMode extends AbstractMode<AState> {
     return (
       <PropertiesList
         type="toolbar"
-        buttonFallback={id => {
-          if (Util.includes(POSE_MODES, id)) this.updateSetting('mode', id);
-        }}
+        buttonFallback={id => Util.includes(POSE_MODES, id) && this.updateSetting('mode', id)}
         properties={[
           {
             name: 'Move',

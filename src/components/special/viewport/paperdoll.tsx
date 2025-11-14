@@ -40,7 +40,7 @@ export const defaultViewportOptions = {
   fov: 70,
   usePerspectiveCam: true,
   grid: true
-} as const;
+};
 
 export type ViewportOptions = typeof defaultViewportOptions;
 

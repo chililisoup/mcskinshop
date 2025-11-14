@@ -818,7 +818,7 @@ export class ImgPreview extends Img {
     this.parent = parent;
   }
 
-  type = () => this.base.type();
+  // type = () => this.base.type();
   form = () => this.base.form();
   blend = () => this.base.blend();
   filter = () => this.base.filter();

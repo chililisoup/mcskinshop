@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import no from '@assets/no.png';
 
 export type Option =
@@ -31,7 +31,7 @@ export default function GridSelect(props: AProps) {
   const [selected, setSelected] = useState(props.default ?? false);
   const [childWidth, setChildWidth] = useState(1);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     window.addEventListener('resize', handleWindowResize);
     handleWindowResize();
     return () => window.removeEventListener('resize', handleWindowResize);
