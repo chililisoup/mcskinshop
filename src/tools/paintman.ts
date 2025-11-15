@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Speaker from '@tools/speaker';
 import SkinManager from './skinman';
 import * as ImgMod from '@tools/imgmod';
+import EditManager from './editman';
 
 export const BRUSH_TYPES = ['pencil', 'eraser'] as const;
 
@@ -136,12 +137,21 @@ export default abstract class PaintManager {
     this.ctx.globalCompositeOperation = 'source-over';
     this.ctx.globalAlpha = 1;
 
+    const before = await selected.getImageBlobSrc(selected.rawImage);
     await selected.setImage(this.ctx.canvas.transferToImageBitmap());
+    const after = await selected.getImageBlobSrc(selected.rawImage);
 
     preview.image = this.ctx.canvas.transferToImageBitmap();
     preview.markChanged(true);
 
     SkinManager.updateSkin();
+    EditManager.addEdit('brush stroke', async () => await this.strokeUndo(selected, before, after));
+  };
+
+  static strokeUndo = async (img: ImgMod.Img, before?: string, after?: string) => {
+    await img.loadUrl(before ?? ImgMod.EMPTY_IMAGE_SOURCE);
+    SkinManager.updateSkin();
+    return () => this.strokeUndo(img, after, before);
   };
 }
 

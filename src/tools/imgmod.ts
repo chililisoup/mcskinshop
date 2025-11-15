@@ -852,13 +852,10 @@ export class ImgPreview extends Img {
     loCtx?: OffscreenCanvasRenderingContext2D,
     parentFilter?: Filter
   ) => {
-    if (!this.base) return super.render(slim, ctx, loCtx, parentFilter);
-
     const canvas = new OffscreenCanvas(64, 64);
     const context = canvas.getContext('2d')!;
 
     this.base.render(slim, context, loCtx, undefined, false, false);
-    if (!this.base.image) return;
 
     context.filter = `opacity(${this.opacity * 100}%)`;
     if (this.type() === 'erase') context.globalCompositeOperation = 'destination-out';
@@ -1223,7 +1220,6 @@ export class Layer extends AbstractLayer {
         continue;
       }
       if (!(sublayer instanceof Img)) continue;
-      if (!sublayer.image) continue;
 
       if (sublayer.linearOpacity && !loCtx) {
         const loCanvas = new OffscreenCanvas(64, 64);

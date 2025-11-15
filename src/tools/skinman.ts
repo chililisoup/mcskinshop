@@ -89,12 +89,13 @@ export default abstract class SkinManager {
           ? alex
           : steve
         : ImgMod.EMPTY_IMAGE_SOURCE;
+      this.skin.image?.close();
+      this.skin.image = undefined;
     } else {
       await this.root.render(true, this.skin.slim, true);
       this.skin.src = this.root.src;
+      this.skin.image = this.root.image;
     }
-
-    this.skin.image = this.root.image;
 
     this.speaker.updateListeners();
     this.rootSpeaker.updateListeners();

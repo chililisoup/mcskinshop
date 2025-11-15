@@ -625,7 +625,7 @@ export default class PoseMode extends AbstractMode<AState> {
     const redoProphecy = () => this.poseUndo(part, redoStart);
     this.props.instance.applyPoseEntry(part, start);
 
-    return redoProphecy;
+    return Promise.resolve(redoProphecy);
   };
 
   addPoseEdit = (prefix: string, suffix?: string) => {

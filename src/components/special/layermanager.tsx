@@ -26,13 +26,7 @@ export default function LayerManager() {
 
   return (
     <div className="LayerManager">
-      <LayerList
-        layers={root}
-        root={root}
-        isRoot={true}
-        updateSkin={SkinManager.updateSkin}
-        selectedLayer={selected}
-      />
+      <LayerList layers={root} root={root} isRoot={true} selectedLayer={selected} />
       <span className="stretch">
         <button onClick={addLayer}>New Layer</button>
         <button onClick={addGroup}>New Group</button>
@@ -45,7 +39,6 @@ type BProps = {
   layers: ImgMod.Layer;
   root: ImgMod.Layer;
   isRoot?: boolean;
-  updateSkin: () => void;
   selectedLayer: ImgMod.AbstractLayer | null;
   path?: string;
 };
@@ -67,22 +60,22 @@ class LayerList extends Component<BProps, BState> {
 
   moveLayer = (index: number, change: number) => {
     this.props.layers.moveLayer(index, change);
-    this.props.updateSkin();
+    SkinManager.updateSkin();
   };
 
   duplicateLayer: (index: number) => void = async index => {
     await this.props.layers.duplicateLayer(index);
-    this.props.updateSkin();
+    SkinManager.updateSkin();
   };
 
   removeLayer = (index: number) => {
     this.props.layers.removeLayer(index);
-    this.props.updateSkin();
+    SkinManager.updateSkin();
   };
 
   flattenLayer: (index: number) => void = async index => {
     await this.props.layers.flattenLayer(index, SkinManager.getSlim());
-    this.props.updateSkin();
+    SkinManager.updateSkin();
   };
 
   mergeLayerDown = (index: number) => {
@@ -91,7 +84,7 @@ class LayerList extends Component<BProps, BState> {
     const mergedLayer = this.props.layers.mergeLayers(index, index - 1);
     if (!mergedLayer) return;
 
-    this.props.updateSkin();
+    SkinManager.updateSkin();
   };
 
   onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -178,7 +171,7 @@ class LayerList extends Component<BProps, BState> {
     if (!layer) return;
 
     this.props.layers.insertLayer(insertingIndex, layer);
-    this.props.updateSkin();
+    SkinManager.updateSkin();
   };
 
   onDropFiles: (files: FileList, insertingIndex: number) => void = async (
@@ -207,7 +200,7 @@ class LayerList extends Component<BProps, BState> {
         image.form(slim ? 'slim-stretch' : 'full-squish-inner');
 
       this.props.layers.insertLayer(insertingIndex, image);
-      this.props.updateSkin();
+      SkinManager.updateSkin();
 
       return;
     }
@@ -228,7 +221,7 @@ class LayerList extends Component<BProps, BState> {
     //   image.form = slim ? 'slim-stretch' : 'full-squish-inner';
 
     this.props.layers.insertLayer(insertingIndex, layer);
-    this.props.updateSkin();
+    SkinManager.updateSkin();
   };
 
   onDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -256,7 +249,6 @@ class LayerList extends Component<BProps, BState> {
           index={i}
           root={this.props.root}
           path={this.props.path}
-          updateLayer={this.props.updateSkin}
           duplicateLayer={this.duplicateLayer}
           removeLayer={this.removeLayer}
           flattenLayer={this.flattenLayer}
@@ -312,7 +304,6 @@ type CProps = {
   root: ImgMod.Layer;
   index: number;
   path?: string;
-  updateLayer: () => void;
   duplicateLayer: (index: number) => void;
   removeLayer: (index: number) => void;
   flattenLayer: (index: number) => void;
@@ -347,20 +338,20 @@ class Layer extends Component<CProps, CState> {
 
     this.props.layer.setColor(colorIndex, color);
     await this.props.layer.color();
-    this.props.updateLayer();
+    SkinManager.updateSkin();
   };
 
   toggleActive = () => {
     this.props.layer.active = !this.props.layer.active;
     this.props.layer.markChanged();
-    this.props.updateLayer();
+    SkinManager.updateSkin();
   };
 
   changeBlendMode = (blend: GlobalCompositeOperation) => {
     if (!(this.props.layer instanceof ImgMod.Img)) return;
 
     this.props.layer.blend(blend);
-    this.props.updateLayer();
+    SkinManager.updateSkin();
   };
 
   updateFilter = <KKey extends keyof CState>(filter: KKey, value: number) => {
@@ -375,13 +366,13 @@ class Layer extends Component<CProps, CState> {
         sepia: this.state.sepia
       });
 
-      this.props.updateLayer();
+      SkinManager.updateSkin();
     });
   };
 
   renameLayer = (name: string) => {
     this.props.layer.name = name;
-    this.props.updateLayer();
+    SkinManager.updateSkin();
   };
 
   onDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -424,7 +415,7 @@ class Layer extends Component<CProps, CState> {
                 linked={true}
                 unlink={() => {
                   layer.setColor(i, layer.getTrueColor(i));
-                  this.props.updateLayer();
+                  SkinManager.updateSkin();
                 }}
               />
             );
@@ -687,7 +678,6 @@ class Layer extends Component<CProps, CState> {
             <LayerList
               layers={this.props.layer}
               root={this.props.root}
-              updateSkin={this.props.updateLayer}
               selectedLayer={this.props.selectedLayer}
               path={
                 this.props.path ? `${this.props.path}-${this.props.index}` : `${this.props.index}`
@@ -705,11 +695,11 @@ class Layer extends Component<CProps, CState> {
               if (id === 'blend') this.changeBlendMode(value as GlobalCompositeOperation);
               if (id === 'type' && this.props.layer instanceof ImgMod.Img) {
                 this.props.layer.type(value as ImgMod.LayerType);
-                this.props.updateLayer();
+                SkinManager.updateSkin();
               }
               if (id === 'form' && this.props.layer instanceof ImgMod.Img) {
                 this.props.layer.form(value as ImgMod.LayerForm);
-                this.props.updateLayer();
+                SkinManager.updateSkin();
               }
             }}
             properties={properties}

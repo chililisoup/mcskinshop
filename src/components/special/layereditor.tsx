@@ -45,7 +45,8 @@ export default function LayerEditor() {
       const ctx = canvasRef.current.getContext('2d')!;
       ctx.clearRect(0, 0, 64, 64);
 
-      if (focus) {
+      if (skin.image && !focus) ctx.drawImage(skin.image, 0, 0);
+      else {
         if (selected?.image) ctx.drawImage(selected.image, 0, 0);
         if (selected instanceof ImgMod.Img && selected.preview?.image) {
           if (brush.type === 'eraser') ctx.globalCompositeOperation = 'destination-out';
@@ -54,11 +55,11 @@ export default function LayerEditor() {
           ctx.globalCompositeOperation = 'source-over';
           ctx.globalAlpha = 1;
         }
-      } else if (skin.image) ctx.drawImage(skin.image, 0, 0);
+      }
     }
 
     const onMouseUp = (e: MouseEvent) =>
-      (e.button === 2 && (panning.current = false)) ||
+      ((e.button === 2 || (e.button === 0 && e.shiftKey)) && (panning.current = false)) ||
       (e.button === 0 && PaintManager.setBrushActive(false));
 
     const pan = (e: MouseEvent) => {
@@ -221,12 +222,14 @@ export default function LayerEditor() {
           onContextMenu={e => e.preventDefault()}
           onWheel={onWheel}
           onMouseMove={onMouseMove}
-          onMouseDown={e => e.button === 2 && (panning.current = true)}
+          onMouseDown={e =>
+            (e.button === 2 || (e.button === 0 && e.shiftKey)) && (panning.current = true)
+          }
           onMouseLeave={() => PaintManager.setBrushPos(null)}
         >
           <canvas
             className="layer-editor-canvas"
-            onMouseDown={e => e.button === 0 && PaintManager.setBrushActive(true)}
+            onMouseDown={e => e.button === 0 && !e.shiftKey && PaintManager.setBrushActive(true)}
             width={64}
             height={64}
             style={{

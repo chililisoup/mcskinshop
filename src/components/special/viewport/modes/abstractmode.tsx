@@ -50,7 +50,7 @@ export default abstract class AbstractMode<State = {}> extends Component<Props, 
   settingEdit = <KKey extends keyof State>(setting: KKey, from: State[KKey], to: State[KKey]) => {
     this.updateSetting(setting, from);
 
-    return () => this.settingEdit(setting, to, from);
+    return Promise.resolve(() => this.settingEdit(setting, to, from));
   };
 
   onKeyDown?: (e: KeyboardEvent) => void;

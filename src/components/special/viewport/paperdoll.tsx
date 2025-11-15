@@ -812,7 +812,7 @@ export default class PaperDoll extends Component<object, AState> {
   ) => {
     this.updateSetting(setting, from);
 
-    return () => this.settingEdit(setting, to, from);
+    return Promise.resolve(() => this.settingEdit(setting, to, from));
   };
 
   render() {
