@@ -14,7 +14,7 @@ export default function LayerManager() {
     layer.name = 'New Layer';
 
     SkinManager.addLayer(layer);
-    SkinManager.selectLayer(layer, root);
+    SkinManager.selectLayer(layer);
   }
 
   function addGroup() {
@@ -31,7 +31,7 @@ export default function LayerManager() {
         root={root}
         isRoot={true}
         updateSkin={SkinManager.updateSkin}
-        selectedLayer={selected.layer}
+        selectedLayer={selected}
       />
       <span className="stretch">
         <button onClick={addLayer}>New Layer</button>
@@ -245,17 +245,13 @@ class LayerList extends Component<BProps, BState> {
     e.preventDefault();
   };
 
-  selectForEdit = (layer: ImgMod.AbstractLayer, parent?: ImgMod.Layer) => {
-    SkinManager.selectLayer(layer, parent ?? this.props.layers);
-  };
-
   render() {
     const layers = this.props.layers
       .getLayers()
       .filter(layer => !(layer instanceof ImgMod.ImgPreview))
       .map((layer, i) => (
         <Layer
-          key={layer.id}
+          key={'layer-' + layer.id}
           layer={layer}
           index={i}
           root={this.props.root}
@@ -265,7 +261,6 @@ class LayerList extends Component<BProps, BState> {
           removeLayer={this.removeLayer}
           flattenLayer={this.flattenLayer}
           mergeLayerDown={this.mergeLayerDown}
-          selectForEdit={this.selectForEdit}
           selectedLayer={this.props.selectedLayer}
         />
       ));
@@ -276,7 +271,7 @@ class LayerList extends Component<BProps, BState> {
       (!this.props.isRoot ||
         (this.state.insertingIndex > 0 && this.state.insertingIndex !== layers.length))
     ) {
-      layers.splice(this.state.insertingIndex, 0, <hr />);
+      layers.splice(this.state.insertingIndex, 0, <hr key="insert-indicator" />);
       canRootAddRule = false;
     }
 
@@ -322,7 +317,6 @@ type CProps = {
   removeLayer: (index: number) => void;
   flattenLayer: (index: number) => void;
   mergeLayerDown: (index: number) => void;
-  selectForEdit: (layer: ImgMod.AbstractLayer, parent?: ImgMod.Layer) => void;
   selectedLayer: ImgMod.AbstractLayer | null;
 };
 
@@ -585,7 +579,7 @@ class Layer extends Component<CProps, CState> {
         onDragStart={this.onDragStart}
         onDragEnd={this.onDragEnd}
         onClick={e => {
-          this.props.selectForEdit(this.props.layer);
+          SkinManager.selectLayer(this.props.layer);
           e.stopPropagation();
         }}
         ref={this.layerRef}
@@ -646,28 +640,40 @@ class Layer extends Component<CProps, CState> {
           <LayerPreview asset={this.props.layer} />
           <div className="manager-layer-buttons">
             <button
-              onClick={() => this.props.duplicateLayer(this.props.index)}
+              onClick={e => {
+                this.props.duplicateLayer(this.props.index);
+                e.stopPropagation();
+              }}
               title="Duplicate Layer"
               className="material-symbols-outlined"
             >
               content_copy
             </button>
             <button
-              onClick={() => this.props.removeLayer(this.props.index)}
+              onClick={e => {
+                this.props.removeLayer(this.props.index);
+                e.stopPropagation();
+              }}
               title="Delete Layer"
               className="delete-button material-symbols-outlined"
             >
               delete
             </button>
             <button
-              onClick={() => this.props.flattenLayer(this.props.index)}
+              onClick={e => {
+                this.props.flattenLayer(this.props.index);
+                e.stopPropagation();
+              }}
               title="Flatten Layer"
               className="material-symbols-outlined"
             >
               vertical_align_center
             </button>
             <button
-              onClick={() => this.props.mergeLayerDown(this.props.index)}
+              onClick={e => {
+                this.props.mergeLayerDown(this.props.index);
+                e.stopPropagation();
+              }}
               title="Merge Layer Down"
               className="material-symbols-outlined"
             >

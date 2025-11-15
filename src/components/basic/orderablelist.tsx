@@ -113,6 +113,7 @@ export default function OrderableList(props: AProps) {
 
   const listItems = props.options.map((option, index) => (
     <OrderableListItem
+      key={'item-' + option.id}
       listId={listId}
       index={index}
       option={option}
@@ -120,7 +121,7 @@ export default function OrderableList(props: AProps) {
     />
   ));
 
-  if (insertingIndex !== null) listItems.splice(insertingIndex, 0, <hr />);
+  if (insertingIndex !== null) listItems.splice(insertingIndex, 0, <hr key="insert-indicator" />);
 
   return (
     <div

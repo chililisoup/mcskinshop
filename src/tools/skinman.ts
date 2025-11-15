@@ -5,11 +5,6 @@ import Speaker from '@tools/speaker';
 import steve from '@assets/steve.png';
 import alex from '@assets/alex.png';
 
-export type Selected = {
-  layer: ImgMod.AbstractLayer | null;
-  preview: ImgMod.ImgPreview | null;
-};
-
 export type Skin = {
   src: string;
   slim: boolean;
@@ -20,10 +15,7 @@ export default abstract class SkinManager {
   private static root = new ImgMod.RootLayer(() => this.rootSpeaker.updateListeners());
   private static rendering = false;
   private static awaitingRerender = false;
-  private static selected: Selected = {
-    layer: null,
-    preview: null
-  };
+  private static selected: ImgMod.AbstractLayer | null = null;
   private static skin: Skin = {
     src: PreferenceManager.get().showPlaceholderSkins ? steve : ImgMod.EMPTY_IMAGE_SOURCE,
     slim: false
@@ -47,7 +39,7 @@ export default abstract class SkinManager {
 
   static getRoot = () => this.root;
 
-  static getSelected = (): Selected => ({ ...this.selected });
+  static getSelected = () => this.selected;
 
   static serializeLayers = () => ImgMod.Layer.CODEC.serialize(this.root);
 
@@ -98,7 +90,7 @@ export default abstract class SkinManager {
           : steve
         : ImgMod.EMPTY_IMAGE_SOURCE;
     } else {
-      await this.root.render(true, this.skin.slim);
+      await this.root.render(true, this.skin.slim, true);
       this.skin.src = this.root.src;
     }
 
@@ -115,40 +107,23 @@ export default abstract class SkinManager {
     }
   };
 
-  static selectLayer = (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => {
-    this.selectLayerInternal(layer, parent);
+  static selectLayer = (layer: ImgMod.AbstractLayer | null) => {
+    if (layer) this.selectLayerInternal(layer);
+    else this.selected = layer;
     this.selectedSpeaker.updateListeners();
   };
 
-  private static selectLayerInternal = (layer: ImgMod.AbstractLayer, parent: ImgMod.Layer) => {
-    const oldPreview = this.selected.preview;
-    if (oldPreview) {
-      oldPreview.cleanup();
-      if (oldPreview.parent) {
-        const index = oldPreview.parent.getLayers().indexOf(oldPreview);
-        if (index) oldPreview.parent.removeLayer(index, false);
-      }
+  private static selectLayerInternal = (layer: ImgMod.AbstractLayer) => {
+    if (this.selected instanceof ImgMod.Img && this.selected.preview) {
+      const preview = this.selected.preview;
+      preview.cleanup();
+      this.selected.preview = undefined;
     }
 
-    const index = parent.getLayers().indexOf(layer);
-    if (index < 0) {
-      this.selected = { layer: null, preview: null };
-      return;
-    }
+    if (layer instanceof ImgMod.Img)
+      layer.preview = new ImgMod.ImgPreview(layer, () => this.selectLayer(null));
 
-    if (layer instanceof ImgMod.Layer) {
-      this.selected = { layer: layer, preview: null };
-      return;
-    }
-
-    if (!(layer instanceof ImgMod.Img)) {
-      this.selected = { layer: null, preview: null };
-      return;
-    }
-
-    const preview = new ImgMod.ImgPreview(layer, parent);
-    parent.insertLayer(index + 1, preview);
-    this.selected = { layer: layer, preview: preview };
+    this.selected = layer;
   };
 
   static setDefaultLayers: (add?: boolean) => void = async add => {

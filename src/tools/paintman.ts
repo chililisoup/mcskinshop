@@ -65,6 +65,8 @@ export default abstract class PaintManager {
     else this.applyPreview();
   };
 
+  static isBrushActive = () => this.brushActive;
+
   static updatePreview = () => {
     if (!this.brushActive) this.ctx.clearRect(0, 0, 64, 64);
 
@@ -105,7 +107,8 @@ export default abstract class PaintManager {
       }
     }
 
-    const preview = SkinManager.getSelected().preview;
+    const selected = SkinManager.getSelected();
+    const preview = selected instanceof ImgMod.Img && selected.preview;
     if (!preview) return;
 
     preview.image = this.ctx.canvas.transferToImageBitmap();
@@ -113,30 +116,30 @@ export default abstract class PaintManager {
 
     preview.type(this.brush.type === 'eraser' ? 'erase' : 'normal');
     preview.opacity = this.brush.opacity;
-    preview.markChanged();
     SkinManager.updateSkin();
   };
 
   static applyPreview: () => void = async () => {
-    const { layer, preview } = SkinManager.getSelected();
-    if (!layer || !preview || !(layer instanceof ImgMod.Img)) {
+    const selected = SkinManager.getSelected();
+    const preview = selected instanceof ImgMod.Img && selected.preview;
+    if (!selected || !preview || !(selected instanceof ImgMod.Img)) {
       this.ctx.clearRect(0, 0, 64, 64);
       return;
     }
 
     const stroke = this.ctx.canvas.transferToImageBitmap();
 
-    if (layer.rawImage) this.ctx.drawImage(layer.rawImage, 0, 0);
+    if (selected.rawImage) this.ctx.drawImage(selected.rawImage, 0, 0);
     if (this.brush.type === 'eraser') this.ctx.globalCompositeOperation = 'destination-out';
     this.ctx.globalAlpha = this.brush.opacity;
     this.ctx.drawImage(stroke, 0, 0);
     this.ctx.globalCompositeOperation = 'source-over';
     this.ctx.globalAlpha = 1;
 
-    await layer.setImage(this.ctx.canvas.transferToImageBitmap());
+    await selected.setImage(this.ctx.canvas.transferToImageBitmap());
 
     preview.image = this.ctx.canvas.transferToImageBitmap();
-    preview.markChanged();
+    preview.markChanged(true);
 
     SkinManager.updateSkin();
   };

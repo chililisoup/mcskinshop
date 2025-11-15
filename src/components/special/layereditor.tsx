@@ -46,8 +46,8 @@ export default function LayerEditor() {
       ctx.clearRect(0, 0, 64, 64);
 
       if (focus) {
-        if (selected.layer?.image) ctx.drawImage(selected.layer.image, 0, 0);
-        if (selected.preview?.image) {
+        if (selected?.image) ctx.drawImage(selected.image, 0, 0);
+        if (selected instanceof ImgMod.Img && selected.preview?.image) {
           if (brush.type === 'eraser') ctx.globalCompositeOperation = 'destination-out';
           ctx.globalAlpha = brush.opacity;
           ctx.drawImage(selected.preview.image, 0, 0);
@@ -124,7 +124,7 @@ export default function LayerEditor() {
   return (
     <div className="container">
       <div className="layer-editor">
-        <p>{selected.layer?.name ?? 'No layer selected.'}</p>
+        <p>{selected?.name ?? 'No layer selected.'}</p>
         <PropertiesList
           type="ribbon"
           properties={[
@@ -222,6 +222,7 @@ export default function LayerEditor() {
           onWheel={onWheel}
           onMouseMove={onMouseMove}
           onMouseDown={e => e.button === 2 && (panning.current = true)}
+          onMouseLeave={() => PaintManager.setBrushPos(null)}
         >
           <canvas
             className="layer-editor-canvas"
@@ -230,9 +231,7 @@ export default function LayerEditor() {
             height={64}
             style={{
               cursor:
-                selected.layer instanceof ImgMod.Img && !selected.layer.dynamic
-                  ? undefined
-                  : 'not-allowed',
+                selected instanceof ImgMod.Img && !selected.dynamic ? undefined : 'not-allowed',
               backgroundImage:
                 (guide ? `url(${SkinManager.getSlim() ? slimref : fullref})` : 'none') +
                 `, url(${checkerboard})`,

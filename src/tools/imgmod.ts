@@ -369,6 +369,7 @@ export class Img extends AbstractLayer {
   linearOpacity = false;
   fileHandle?: FileSystemFileHandle;
   observer?: FileSystemObserver;
+  preview?: ImgPreview;
   internalUpdateCallback?: () => void;
 
   constructor(
@@ -462,12 +463,32 @@ export class Img extends AbstractLayer {
       image.src = url;
     });
 
+  setupCtx = (
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    parentFilter?: Filter
+  ) => {
+    const filter = parentFilter
+      ? this.makeFilterString(this.filterFilter(parentFilter))
+      : this.filter();
+
+    ctx.filter = filter;
+    if (this.type() === 'erase') ctx.globalCompositeOperation = 'destination-out';
+    else ctx.globalCompositeOperation = this.blend();
+  };
+
   render(
     slim = false,
     ctx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
     loCtx?: OffscreenCanvasRenderingContext2D,
-    parentFilter?: Filter
+    parentFilter?: Filter,
+    applyFilter = true,
+    renderPreview = true
   ) {
+    if (renderPreview && this.preview) {
+      this.preview.renderBase(slim, ctx, loCtx, parentFilter);
+      return;
+    }
+
     this.changed = false;
     if (!this.image) return;
 
@@ -482,13 +503,7 @@ export class Img extends AbstractLayer {
       return;
     }
 
-    const filter = parentFilter
-      ? this.makeFilterString(this.filterFilter(parentFilter))
-      : this.filter();
-
-    ctx.filter = filter;
-    if (type === 'erase') ctx.globalCompositeOperation = 'destination-out';
-    else ctx.globalCompositeOperation = this.blend();
+    if (applyFilter) this.setupCtx(ctx, parentFilter);
 
     const image = this.applyForm(slim);
     if (!image) return;
@@ -803,6 +818,7 @@ export class Img extends AbstractLayer {
       this.fileHandle = undefined;
       this.observer.disconnect();
     }
+    if (this.preview) this.preview.detach();
     // if (this.image) this.image.close();
     // if (this.rawImage) this.rawImage.close();
   };
@@ -810,26 +826,20 @@ export class Img extends AbstractLayer {
 
 export class ImgPreview extends Img {
   base;
+  detach;
   opacity = 1;
 
-  constructor(base: Img, parent: Layer) {
+  constructor(base: Img, detach: () => void) {
     super();
-
     this.base = base;
-    this.parent = parent;
+    this.detach = detach;
   }
 
   form = () => this.base.form();
   blend = () => this.base.blend();
   filter = () => this.makeFilterString();
 
-  makeFilterString(filter?: Filter) {
-    if (this.base) {
-      if (filter) filter = this.base.filterFilter(filter);
-      else filter = this.base.copyFilter();
-    }
-
-    filter ??= this.base ? this.base.copyFilter() : this.copyFilter();
+  makeFilterString(filter: Filter = {}) {
     return super.makeFilterString({
       ...filter,
       opacity: filter.opacity ? filter.opacity * this.opacity : this.opacity * 100
@@ -847,18 +857,27 @@ export class ImgPreview extends Img {
     const canvas = new OffscreenCanvas(64, 64);
     const context = canvas.getContext('2d')!;
 
-    this.base.render(slim, context, loCtx, parentFilter);
+    this.base.render(slim, context, loCtx, undefined, false, false);
     if (!this.base.image) return;
 
-    super.render(slim, context, loCtx, parentFilter);
+    context.filter = `opacity(${this.opacity * 100}%)`;
+    if (this.type() === 'erase') context.globalCompositeOperation = 'destination-out';
+    super.render(slim, context, loCtx, undefined, false);
 
     if (!ctx) {
       const canvas = new OffscreenCanvas(64, 64);
       ctx = canvas.getContext('2d')!;
     }
 
+    this.base.setupCtx(ctx, parentFilter);
+
     ctx.drawImage(canvas.transferToImageBitmap(), 0, 0);
   };
+
+  markChanged(propagate = false) {
+    super.markChanged();
+    if (propagate) this.base.markChanged();
+  }
 }
 
 type SerializedLayer = {
@@ -872,9 +891,7 @@ export class Layer extends AbstractLayer {
     async layer => {
       return {
         sublayers: await Promise.all(
-          layer.sublayers
-            .filter(sublayer => !(sublayer instanceof ImgPreview))
-            .map(sublayer => sublayer.getCodec().serialize(sublayer))
+          layer.sublayers.map(sublayer => sublayer.getCodec().serialize(sublayer))
         ),
         colors: [...layer.colors],
         advanced: layer.advanced ? [...layer.advanced] : undefined
@@ -957,9 +974,6 @@ export class Layer extends AbstractLayer {
   // TODO:
   // Update linked color indices
   insertLayer = (index: number, layer: AbstractLayer, color?: Color) => {
-    if (index + 1 < this.sublayers.length && this.sublayers[index + 1] instanceof ImgPreview)
-      index++;
-
     this.sublayers.splice(index, 0, layer);
     this.colors.splice(index, 0, color);
 
@@ -971,9 +985,6 @@ export class Layer extends AbstractLayer {
   // TODO:
   // Same as above
   insertLayers = (index: number, layers: AbstractLayer[], colors?: Color[]) => {
-    if (index + 1 < this.sublayers.length && this.sublayers[index + 1] instanceof ImgPreview)
-      index++;
-
     if (!colors || colors.length !== layers.length)
       colors = new Array(layers.length).fill(undefined);
 
@@ -990,9 +1001,6 @@ export class Layer extends AbstractLayer {
   replaceLayer = (index: number, layers: AbstractLayer | AbstractLayer[]) => {
     this.sublayers[index].parent = undefined;
     this.sublayers[index].cleanup();
-
-    if (index + 1 < this.sublayers.length && this.sublayers[index + 1] instanceof ImgPreview)
-      this.removeLayer(index + 1);
 
     if (Array.isArray(layers)) {
       this.sublayers.splice(index, 1, ...layers);
@@ -1015,11 +1023,6 @@ export class Layer extends AbstractLayer {
     if (index + change < 0) change = this.sublayers.length - 1;
     if (index + change >= this.sublayers.length) change = 0 - (this.sublayers.length - 1);
 
-    const previewIndex = this.sublayers.findIndex(layer => layer instanceof ImgPreview);
-    const preview: ImgPreview | undefined =
-      previewIndex >= 0 ? (this.sublayers[previewIndex] as ImgPreview) : undefined;
-    if (preview) this.removeLayer(previewIndex, false);
-
     const layer = this.sublayers[index];
     this.sublayers.splice(index, 1);
     this.sublayers.splice(index + change, 0, layer);
@@ -1028,10 +1031,7 @@ export class Layer extends AbstractLayer {
     this.colors.splice(index, 1);
     this.colors.splice(index + change, 0, color);
 
-    if (preview) {
-      const baseIndex = this.sublayers.indexOf(preview.base);
-      if (baseIndex >= 0) this.insertLayer(baseIndex + 1, preview);
-    } else this.markChanged();
+    this.markChanged();
   };
 
   duplicateLayer = async (index: number) => {
@@ -1062,11 +1062,14 @@ export class Layer extends AbstractLayer {
     const flatLayer = new Img();
     flatLayer.name = baseLayer.name;
 
-    await baseLayer.render();
-    if (baseLayer instanceof Img) {
-      const image = baseLayer.applyForm(slim);
-      if (image) await flatLayer.loadImage(image);
-    } else await flatLayer.loadUrl(baseLayer.src);
+    const canvas = new OffscreenCanvas(64, 64);
+    const ctx = canvas.getContext('2d')!;
+
+    if (baseLayer instanceof Img) baseLayer.render(slim, ctx);
+    else if (baseLayer instanceof Layer) await baseLayer.renderInternal(slim, ctx);
+    else return;
+
+    await flatLayer.setImage(canvas.transferToImageBitmap());
 
     this.replaceLayer(index, flatLayer);
   };
@@ -1184,7 +1187,8 @@ export class Layer extends AbstractLayer {
   private renderInternal = async (
     slim: boolean,
     ctx: OffscreenCanvasRenderingContext2D,
-    parentFilter?: Filter
+    parentFilter?: Filter,
+    renderPreviews?: boolean
   ) => {
     if (this.changed) await this.render(false, slim);
 
@@ -1215,7 +1219,7 @@ export class Layer extends AbstractLayer {
       if (!sublayer.active) continue;
 
       if (sublayer instanceof Layer) {
-        await sublayer.renderInternal(slim, ctx, filter);
+        await sublayer.renderInternal(slim, ctx, filter, renderPreviews);
         continue;
       }
       if (!(sublayer instanceof Img)) continue;
@@ -1228,24 +1232,20 @@ export class Layer extends AbstractLayer {
         loIndex = typeof color === 'object' && 'from' in color ? color.from : i;
       }
 
-      const preview = this.sublayers[i + 1];
-      if (preview instanceof ImgPreview && preview.type() === 'erase') {
-        preview.renderBase(slim, ctx, loCtx, filter);
-        i++;
-      } else sublayer.render(slim, ctx, loCtx, filter);
+      sublayer.render(slim, ctx, loCtx, filter, true, renderPreviews);
     }
 
     if (loCtx) ctx.drawImage(loCtx.canvas, 0, 0);
   };
 
-  render = async (force?: boolean, slim = false) => {
+  render = async (force?: boolean, slim = false, renderPreviews = false) => {
     if (!force && !this.changed && this.image) return this.image;
     this.changed = false;
 
     const canvas = new OffscreenCanvas(64, 64);
     const ctx = canvas.getContext('2d')!;
 
-    await this.renderInternal(slim, ctx);
+    await this.renderInternal(slim, ctx, undefined, renderPreviews);
 
     this.src = URL.createObjectURL(await canvas.convertToBlob());
     this.image = canvas.transferToImageBitmap();
@@ -1267,10 +1267,7 @@ export class Layer extends AbstractLayer {
   };
 
   cleanup = () => {
-    this.sublayers.forEach(sublayer => {
-      if (!sublayer) return;
-      sublayer.cleanup();
-    });
+    this.sublayers.forEach(sublayer => sublayer?.cleanup());
     if (this.image) this.image.close();
   };
 }
