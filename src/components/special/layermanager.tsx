@@ -14,6 +14,7 @@ export default function LayerManager() {
     layer.name = 'New Layer';
 
     SkinManager.addLayer(layer);
+    SkinManager.selectLayer(layer, root);
   }
 
   function addGroup() {
@@ -202,7 +203,8 @@ class LayerList extends Component<BProps, BState> {
       }
 
       const slim = image.detectSlimModel();
-      if (PreferenceManager.get().autosetImageForm) image.form(slim ? 'slim-stretch' : 'full-squish-inner');
+      if (PreferenceManager.get().autosetImageForm)
+        image.form(slim ? 'slim-stretch' : 'full-squish-inner');
 
       this.props.layers.insertLayer(insertingIndex, image);
       this.props.updateSkin();

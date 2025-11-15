@@ -272,7 +272,7 @@ export abstract class AbstractLayer {
   }
 
   filter = (filter?: Filter) => {
-    if (filter !== undefined) {
+    if (filter) {
       this.filterInternal = filter;
       this.filterStringInternal = this.makeFilterString();
       this.markChanged();
@@ -280,7 +280,9 @@ export abstract class AbstractLayer {
     return this.filterStringInternal;
   };
 
-  makeFilterString = (filter = this.filterInternal) => {
+  copyFilter = (): Filter => ({ ...this.filterInternal });
+
+  makeFilterString(filter = this.filterInternal) {
     if (Util.isEmpty(filter)) return 'none';
 
     const strings = [];
@@ -295,9 +297,7 @@ export abstract class AbstractLayer {
     if (filter.sepia) strings.push(`sepia(${filter.sepia}%)`);
 
     return strings.join(' ');
-  };
-
-  copyFilter = (): Filter => ({ ...this.filterInternal });
+  }
 
   static defaultFilter = (filter: Filter): Required<Filter> => ({ ...DEFAULT_FILTER, ...filter });
 
@@ -321,7 +321,7 @@ export abstract class AbstractLayer {
     if (this.parent) this.parent.markChanged();
   }
 
-  abstract render: () => Promise<CanvasImageSource> | void;
+  abstract render(): Promise<CanvasImageSource> | void;
 
   abstract copy: () => Promise<AbstractLayer>;
 
@@ -385,7 +385,7 @@ export class Img extends AbstractLayer {
   }
 
   blend = (blend?: GlobalCompositeOperation) => {
-    if (blend !== undefined) {
+    if (blend) {
       this.blendInternal = blend;
       this.markChanged();
     }
@@ -393,7 +393,7 @@ export class Img extends AbstractLayer {
   };
 
   type = (type?: LayerType) => {
-    if (type !== undefined) {
+    if (type) {
       this.typeInternal = type;
       this.markChanged();
     }
@@ -401,7 +401,7 @@ export class Img extends AbstractLayer {
   };
 
   form = (form?: LayerForm) => {
-    if (form !== undefined) {
+    if (form) {
       this.formInternal = form;
       this.markChanged();
     }
@@ -462,12 +462,12 @@ export class Img extends AbstractLayer {
       image.src = url;
     });
 
-  render = (
+  render(
     slim = false,
     ctx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
     loCtx?: OffscreenCanvasRenderingContext2D,
     parentFilter?: Filter
-  ) => {
+  ) {
     this.changed = false;
     if (!this.image) return;
 
@@ -526,7 +526,7 @@ export class Img extends AbstractLayer {
     }
 
     ctx.drawImage(image, 0, 0);
-  };
+  }
 
   copy = async () => {
     const copy = new Img(this.type(), this.form(), this.blend(), this.copyFilter());
@@ -810,6 +810,7 @@ export class Img extends AbstractLayer {
 
 export class ImgPreview extends Img {
   base;
+  opacity = 1;
 
   constructor(base: Img, parent: Layer) {
     super();
@@ -818,10 +819,46 @@ export class ImgPreview extends Img {
     this.parent = parent;
   }
 
-  // type = () => this.base.type();
   form = () => this.base.form();
   blend = () => this.base.blend();
-  filter = () => this.base.filter();
+  filter = () => this.makeFilterString();
+
+  makeFilterString(filter?: Filter) {
+    if (this.base) {
+      if (filter) filter = this.base.filterFilter(filter);
+      else filter = this.base.copyFilter();
+    }
+
+    filter ??= this.base ? this.base.copyFilter() : this.copyFilter();
+    return super.makeFilterString({
+      ...filter,
+      opacity: filter.opacity ? filter.opacity * this.opacity : this.opacity * 100
+    });
+  }
+
+  renderBase = (
+    slim = false,
+    ctx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    loCtx?: OffscreenCanvasRenderingContext2D,
+    parentFilter?: Filter
+  ) => {
+    if (!this.base) return super.render(slim, ctx, loCtx, parentFilter);
+
+    const canvas = new OffscreenCanvas(64, 64);
+    const context = canvas.getContext('2d')!;
+
+    this.base.render(slim, context, loCtx, parentFilter);
+    if (!this.base.image) return;
+
+    super.render(slim, context, loCtx, parentFilter);
+
+    if (!ctx) {
+      const canvas = new OffscreenCanvas(64, 64);
+      ctx = canvas.getContext('2d')!;
+    }
+
+    ctx.drawImage(canvas.transferToImageBitmap(), 0, 0);
+  };
 }
 
 type SerializedLayer = {
@@ -1191,7 +1228,11 @@ export class Layer extends AbstractLayer {
         loIndex = typeof color === 'object' && 'from' in color ? color.from : i;
       }
 
-      sublayer.render(slim, ctx, loCtx, filter);
+      const preview = this.sublayers[i + 1];
+      if (preview instanceof ImgPreview && preview.type() === 'erase') {
+        preview.renderBase(slim, ctx, loCtx, filter);
+        i++;
+      } else sublayer.render(slim, ctx, loCtx, filter);
     }
 
     if (loCtx) ctx.drawImage(loCtx.canvas, 0, 0);

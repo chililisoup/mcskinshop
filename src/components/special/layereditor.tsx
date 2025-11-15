@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import * as Util from '@tools/util';
 import PropertiesList from '@components/basic/propertieslist';
@@ -25,6 +25,21 @@ export default function LayerEditor() {
   // (512 / 100) / 64 = 0.08
   const getCanvasSize = (zoom: number) => Math.round(Math.exp(zoom) * 0.08) * 64;
 
+  useLayoutEffect(() => {
+    const pan = (e: MouseEvent) => {
+      if (!panning.current) return;
+
+      setTransform({
+        ...transform,
+        x: transform.x + e.movementX * 2,
+        y: transform.y + e.movementY * 2
+      });
+    };
+
+    document.addEventListener('mousemove', pan);
+    return () => document.removeEventListener('mousemove', pan);
+  });
+
   useEffect(() => {
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d')!;
@@ -34,13 +49,17 @@ export default function LayerEditor() {
         if (selected.layer?.image) ctx.drawImage(selected.layer.image, 0, 0);
         if (selected.preview?.image) {
           if (brush.type === 'eraser') ctx.globalCompositeOperation = 'destination-out';
+          ctx.globalAlpha = brush.opacity;
           ctx.drawImage(selected.preview.image, 0, 0);
           ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = 1;
         }
       } else if (skin.image) ctx.drawImage(skin.image, 0, 0);
     }
 
-    const endPan = (e: MouseEvent) => e.button === 2 && (panning.current = false);
+    const onMouseUp = (e: MouseEvent) =>
+      (e.button === 2 && (panning.current = false)) ||
+      (e.button === 0 && PaintManager.setBrushActive(false));
 
     const pan = (e: MouseEvent) => {
       if (!panning.current) return;
@@ -60,11 +79,11 @@ export default function LayerEditor() {
       else if (key === 'E') PaintManager.updateBrush({ type: 'eraser' });
     };
 
-    document.addEventListener('mouseup', endPan);
+    document.addEventListener('mouseup', onMouseUp);
     document.addEventListener('mousemove', pan);
     document.addEventListener('keydown', shortcuts);
     return () => {
-      document.removeEventListener('mouseup', endPan);
+      document.removeEventListener('mouseup', onMouseUp);
       document.removeEventListener('mousemove', pan);
       document.removeEventListener('keydown', shortcuts);
     };
@@ -100,11 +119,6 @@ export default function LayerEditor() {
     PaintManager.setBrushPos(brushPos);
   }
 
-  function onMouseLeave() {
-    PaintManager.setBrushPos(null);
-    PaintManager.setBrushActive(false);
-  }
-
   const canvasSize = `${getCanvasSize(transform.zoom)}px`;
 
   return (
@@ -121,7 +135,18 @@ export default function LayerEditor() {
               value: brush.color,
               unlabeled: true,
               controlled: true,
+              alpha: true,
               onChange: value => PaintManager.updateBrush({ color: value })
+            },
+            {
+              name: 'Size',
+              id: 'brushSize',
+              type: 'range',
+              step: 1,
+              min: 1,
+              max: 10,
+              value: brush.size,
+              onChange: value => PaintManager.updateBrush({ size: value })
             },
             {
               name: 'Guide',
@@ -195,14 +220,12 @@ export default function LayerEditor() {
           className="layer-editor-canvas-area"
           onContextMenu={e => e.preventDefault()}
           onWheel={onWheel}
+          onMouseMove={onMouseMove}
           onMouseDown={e => e.button === 2 && (panning.current = true)}
         >
           <canvas
             className="layer-editor-canvas"
-            onMouseMove={onMouseMove}
-            onMouseLeave={onMouseLeave}
             onMouseDown={e => e.button === 0 && PaintManager.setBrushActive(true)}
-            onMouseUp={e => e.button === 0 && PaintManager.setBrushActive(false)}
             width={64}
             height={64}
             style={{
