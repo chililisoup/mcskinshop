@@ -455,7 +455,7 @@ export function usePrefs(...deps: (keyof Prefs)[]) {
 
     PreferenceManager.speaker.registerListener(updatePrefsConditional);
     return () => PreferenceManager.speaker.unregisterListener(updatePrefsConditional);
-  }, [prefs]);
+  }, [prefs, deps]);
 
   return prefs;
 }

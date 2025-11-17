@@ -819,8 +819,9 @@ export class Img extends AbstractLayer {
       this.observer.disconnect();
     }
     if (this.preview) this.preview.detach();
-    // if (this.image) this.image.close();
-    // if (this.rawImage) this.rawImage.close();
+    this.parent = undefined;
+    if (this.image) this.image.close();
+    if (this.rawImage) this.rawImage.close();
   };
 }
 
@@ -1120,7 +1121,7 @@ export class Layer extends AbstractLayer {
     } else if (layer instanceof Layer) return layer.popLayer(path.slice(1));
   };
 
-  getColors = () => this.colors as readonly Color[];
+  getColors = () => [...this.colors] as const;
 
   setColor = (index: number, color: Color) => {
     this.colors[index] = color;
@@ -1264,6 +1265,7 @@ export class Layer extends AbstractLayer {
 
   cleanup = () => {
     this.sublayers.forEach(sublayer => sublayer?.cleanup());
+    this.parent = undefined;
     if (this.image) this.image.close();
   };
 }
@@ -1286,16 +1288,18 @@ export class RootLayer extends Layer {
     this.speaker.updateListeners();
   };
 
-  // this feels so wrong lmao
-  static of(layer: Partial<RootLayer> & Layer, listener?: () => void) {
-    layer.speaker = new Speaker();
-    if (listener) layer.speaker.registerListener(listener);
+  static async copyOf(layer: Partial<RootLayer> & Layer, listener?: () => void) {
+    const root = new RootLayer(
+      listener,
+      await Promise.all(layer.getLayers().map(sublayer => sublayer.copy())),
+      [...layer.getColors()],
+      layer.copyFilter()
+    );
+    root.src = layer.src;
+    root.advanced = layer.advanced ? [...layer.advanced] : undefined;
+    root.name = layer.name;
 
-    layer.markChanged = () => {
-      layer.changed = true;
-      layer.speaker?.updateListeners();
-    };
-    return layer as RootLayer;
+    return root;
   }
 }
 

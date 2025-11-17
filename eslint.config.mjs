@@ -1,11 +1,14 @@
 import eslint from '@eslint/js';
+import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
 
-export default tseslint.config(
+export default defineConfig(
   eslint.configs.recommended,
   tseslint.configs.recommendedTypeChecked,
   tseslint.configs.stylisticTypeChecked,
+  reactHooks.configs.recommended,
   {
     ignores: ['eslint.config.mjs', 'rsbuild.config.mts', '**/*.js', '**/*.d.ts']
   },

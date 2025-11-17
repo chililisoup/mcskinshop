@@ -32,19 +32,19 @@ export default function GridSelect(props: AProps) {
   const [childWidth, setChildWidth] = useState(1);
 
   useLayoutEffect(() => {
+    const handleWindowResize = () => {
+      if (!gridRef.current) return;
+
+      const width = gridRef.current.clientWidth;
+      const columns = Math.max(1, Math.round(width / (props.targetWidth ?? 100)));
+
+      setChildWidth(Math.floor(width / columns));
+    };
+
     window.addEventListener('resize', handleWindowResize);
     handleWindowResize();
     return () => window.removeEventListener('resize', handleWindowResize);
   });
-
-  function handleWindowResize() {
-    if (!gridRef.current) return;
-
-    const width = gridRef.current.clientWidth;
-    const columns = Math.max(1, Math.round(width / (props.targetWidth ?? 100)));
-
-    setChildWidth(Math.floor(width / columns));
-  }
 
   function select(id: string | false) {
     props.select(id);

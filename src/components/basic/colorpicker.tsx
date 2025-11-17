@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useEffectEvent, useRef, useState } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import PopUp from '@components/basic/popup';
 import checker from '@assets/checkerboard.png';
@@ -28,7 +28,7 @@ export default function ColorPicker(props: AProps) {
   const [open, setOpen] = useState(false);
   const [bottom, setBottom] = useState(false);
 
-  useEffect(() => {
+  const updateColors = useEffectEvent(() => {
     if (!props.default || props.default === colorValue) return;
     if (!props.controlled && !props.linked) return;
 
@@ -36,7 +36,9 @@ export default function ColorPicker(props: AProps) {
     setHslaValue(hsla);
     setColorValue(ImgMod.hslaToString(hsla));
     setHexValue(ImgMod.hslaToHex(hsla));
-  }, [props.default, props.controlled, props.linked]);
+  });
+
+  useEffect(() => updateColors(), [props.default, props.controlled, props.linked]);
 
   function setHsla(hsla: ImgMod.Hsla, hex?: string) {
     const color = ImgMod.hslaToString(hsla);
@@ -47,25 +49,25 @@ export default function ColorPicker(props: AProps) {
   }
 
   function updateHue(hue: number) {
-    const newHsla = hslaValue;
+    const newHsla: ImgMod.Hsla = [...hslaValue];
     newHsla[0] = hue;
     setHsla(newHsla);
   }
 
   function updateSaturation(saturation: number) {
-    const newHsla = hslaValue;
+    const newHsla: ImgMod.Hsla = [...hslaValue];
     newHsla[1] = saturation;
     setHsla(newHsla);
   }
 
   function updateLightness(lightness: number) {
-    const newHsla = hslaValue;
+    const newHsla: ImgMod.Hsla = [...hslaValue];
     newHsla[2] = lightness;
     setHsla(newHsla);
   }
 
   function updateAlpha(alpha: number) {
-    const newHsla = hslaValue;
+    const newHsla: ImgMod.Hsla = [...hslaValue];
     newHsla[3] = alpha;
     setHsla(newHsla);
   }

@@ -167,10 +167,12 @@ class LayerList extends Component<BProps, BState> {
 
     if (this.props.path?.startsWith(from)) return;
 
+    const selected = SkinManager.getSelected();
     const layer = this.props.root.popLayer(fromPath);
     if (!layer) return;
 
     this.props.layers.insertLayer(insertingIndex, layer);
+    if (selected === layer) SkinManager.selectLayer(layer);
     SkinManager.updateSkin();
   };
 

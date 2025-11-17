@@ -222,7 +222,7 @@ type BProps = {
   children?: React.ReactNode;
 };
 
-const FeatureEntry = (props: BProps) => (
+const FeatureEntry = React.memo((props: BProps) => (
   <Dropdown title={props.title}>
     <span>
       {props.children ?? (
@@ -240,4 +240,4 @@ const FeatureEntry = (props: BProps) => (
       />
     </span>
   </Dropdown>
-);
+));

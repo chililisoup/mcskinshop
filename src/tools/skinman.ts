@@ -12,7 +12,7 @@ export type Skin = {
 };
 
 export default abstract class SkinManager {
-  private static root = new ImgMod.RootLayer(() => this.rootSpeaker.updateListeners());
+  private static root = new ImgMod.RootLayer(() => this.updateRoot());
   private static rendering = false;
   private static awaitingRerender = false;
   private static selected: ImgMod.AbstractLayer | null = null;
@@ -45,9 +45,9 @@ export default abstract class SkinManager {
 
   static deserializeLayers = async (serialized: ImgMod.FullSerializedLayer, slim = false) => {
     this.skin.slim = slim;
-    this.root = ImgMod.RootLayer.of(
+    this.root = await ImgMod.RootLayer.copyOf(
       await ImgMod.Layer.CODEC.deserialize(serialized),
-      this.rootSpeaker.updateListeners
+      this.updateRoot
     );
     await this.root.color();
     await this.updateSkinInternal();
@@ -59,18 +59,23 @@ export default abstract class SkinManager {
     this.updateSkin();
   };
 
-  static replaceLayers = (layers: ImgMod.Layer) => {
-    this.root = ImgMod.RootLayer.of(layers, this.rootSpeaker.updateListeners);
+  static replaceLayers = async (layers: ImgMod.Layer) => {
+    this.root = await ImgMod.RootLayer.copyOf(layers, this.updateRoot);
     this.updateSkin();
   };
 
   static reset = () => {
-    this.root = new ImgMod.RootLayer(this.rootSpeaker.updateListeners);
+    this.root = new ImgMod.RootLayer(this.updateRoot);
     this.skin = {
       src: PreferenceManager.get().showPlaceholderSkins ? steve : ImgMod.EMPTY_IMAGE_SOURCE,
       slim: false
     };
     this.speaker.updateListeners();
+    this.rootSpeaker.updateListeners();
+  };
+
+  static updateRoot = () => {
+    if (this.selected && !this.selected.parent) this.selectLayer(null);
     this.rootSpeaker.updateListeners();
   };
 
@@ -109,6 +114,7 @@ export default abstract class SkinManager {
   };
 
   static selectLayer = (layer: ImgMod.AbstractLayer | null) => {
+    if (this.selected === layer) return;
     if (layer) this.selectLayerInternal(layer);
     else this.selected = layer;
     this.selectedSpeaker.updateListeners();
@@ -142,7 +148,7 @@ export default abstract class SkinManager {
     layer.name = 'Steve & Alex';
 
     if (add) this.addLayer(layer);
-    else this.replaceLayers(new ImgMod.Layer([layer]));
+    else await this.replaceLayers(new ImgMod.Layer([layer]));
   };
 }
 

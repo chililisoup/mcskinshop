@@ -62,7 +62,14 @@ export default function MCSkinShop() {
   const [sessionKey, setSessionKey] = useState(Util.randomKey());
   const prefs = usePrefs('windowOrder');
 
+  const setState = (change: Partial<AState>) => setFullState({ ...state, ...change });
+
   useEffect(() => {
+    const onSessionChange = () => {
+      setSessionKey(Util.randomKey());
+      setState({ ...defaultState(), ...SessionManager.get().openWindows });
+    };
+
     SessionManager.speaker.registerListener(onSessionChange);
     return () => SessionManager.speaker.unregisterListener(onSessionChange);
   });
@@ -79,18 +86,11 @@ export default function MCSkinShop() {
     });
   }, [state]);
 
-  const setState = (change: Partial<AState>) => setFullState({ ...state, ...change });
-
   const updateState = <KKey extends keyof AState>(setting: KKey, value: AState[KKey]) =>
     setState({ [setting]: value });
 
   const updateWidth = <KKey extends keyof WindowWidths>(setting: KKey, delta: number) =>
     updateState(setting, Util.clamp(state[setting] + delta, 200, window.innerWidth * 0.67));
-
-  function onSessionChange() {
-    setSessionKey(Util.randomKey());
-    setState({ ...defaultState(), ...SessionManager.get().openWindows });
-  }
 
   const windows: Record<
     OrderableWindow & keyof AState,

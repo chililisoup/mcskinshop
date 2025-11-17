@@ -21,6 +21,9 @@ export default function MenuBar(props: AProps) {
   const editHints = useEditHints();
 
   useEffect(() => {
+    const updateFullscreen = () =>
+      fullscreen !== !!document.fullscreenElement && setFullscreen(!fullscreen);
+
     document.documentElement.addEventListener('fullscreenchange', updateFullscreen);
     return () => document.documentElement.removeEventListener('fullscreenchange', updateFullscreen);
   });
@@ -46,11 +49,6 @@ export default function MenuBar(props: AProps) {
     if (!input) return;
 
     SkinDealer.uploadSkin(input.split('/').pop()?.split('.')[0] ?? input, Util.corsProxy(input));
-  }
-
-  function updateFullscreen() {
-    const isFullscreen = !!document.fullscreenElement;
-    if (fullscreen !== isFullscreen) setFullscreen(isFullscreen);
   }
 
   async function toggleFullscreen() {
