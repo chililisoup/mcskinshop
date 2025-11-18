@@ -12,6 +12,7 @@ type Brush = {
   opacity: number;
   size: number;
   type: (typeof BRUSH_TYPES)[number];
+  eyedropper: boolean;
 };
 
 type BrushPos = { x: number; y: number } | null;
@@ -21,17 +22,21 @@ export default abstract class PaintManager {
   private static brushActive = false;
   private static brushPos: BrushPos = null;
   private static lastPos: BrushPos = null;
+  private static applying = false;
   private static brush: Brush = {
     color: '#000000',
     opaqueColor: '#000000',
     opacity: 1,
     size: 1,
-    type: 'pencil'
+    type: 'pencil',
+    eyedropper: false
   };
 
   static brushSpeaker = new Speaker(() => this.getBrush());
 
   static getBrush = (): Brush => ({ ...this.brush });
+
+  static getBrushPos = (): BrushPos => (this.brushPos ? { ...this.brushPos } : null);
 
   static updateBrush = (update: Partial<Brush>) => {
     this.brush = { ...this.brush, ...update };
@@ -40,6 +45,7 @@ export default abstract class PaintManager {
       this.brush.opaqueColor = ImgMod.rgbaToHex(rgba, false);
       this.brush.opacity = rgba[3] / 255;
     }
+    if (update.type && update.eyedropper === undefined) this.brush.eyedropper = false;
 
     this.updatePreview();
     this.brushSpeaker.updateListeners();
@@ -69,9 +75,14 @@ export default abstract class PaintManager {
   static isBrushActive = () => this.brushActive;
 
   static updatePreview = () => {
+    if (this.applying) return;
     if (!this.brushActive) this.ctx.clearRect(0, 0, 64, 64);
 
-    if (this.brushPos) {
+    if (
+      this.brushPos &&
+      !this.brush.eyedropper &&
+      (this.brushActive || this.brush.type !== 'eraser')
+    ) {
       const size = this.brush.size;
       const offset = Math.floor(this.brush.size / 2);
 
@@ -121,10 +132,14 @@ export default abstract class PaintManager {
   };
 
   static applyPreview: () => void = async () => {
+    if (this.applying) return;
+    this.applying = true;
+
     const selected = SkinManager.getSelected();
     const preview = selected instanceof ImgMod.Img && selected.preview;
     if (!selected || !preview || !(selected instanceof ImgMod.Img)) {
       this.ctx.clearRect(0, 0, 64, 64);
+      this.applying = false;
       return;
     }
 
@@ -146,12 +161,31 @@ export default abstract class PaintManager {
 
     SkinManager.updateSkin();
     EditManager.addEdit('brush stroke', async () => await this.strokeUndo(selected, before, after));
+
+    this.applying = false;
   };
 
   static strokeUndo = async (img: ImgMod.Img, before?: string, after?: string) => {
     await img.loadUrl(before ?? ImgMod.EMPTY_IMAGE_SOURCE);
     SkinManager.updateSkin();
     return () => this.strokeUndo(img, after, before);
+  };
+
+  static getRgba = (x: number, y: number, focus: boolean) =>
+    (focus ? SkinManager.getSelected() : SkinManager.getRoot())?.getPixelColor(x, y) ?? [
+      0, 0, 0, 0
+    ];
+
+  static pickColor = (focus: boolean) => {
+    if (!this.brushPos) return;
+
+    const rgba = this.getRgba(this.brushPos.x, this.brushPos.y, focus);
+    if (!rgba) return;
+
+    this.updateBrush({
+      color: ImgMod.rgbaToHex(rgba),
+      eyedropper: false
+    });
   };
 }
 

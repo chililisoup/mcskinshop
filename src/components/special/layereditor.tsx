@@ -7,7 +7,7 @@ import SkinManager, { useSelected, useSkin } from '@tools/skinman';
 import checkerboard from '@assets/checkerboard.png';
 import fullref from '@assets/fullref.png';
 import slimref from '@assets/slimref.png';
-import { ERASER, PENCIL } from '@components/svgs';
+import { ERASER, EYEDROPPER, PENCIL } from '@components/svgs';
 
 export default function LayerEditor() {
   const selected = useSelected();
@@ -15,6 +15,7 @@ export default function LayerEditor() {
   const skin = useSkin();
 
   const canvasRef = useRef(null as HTMLCanvasElement | null);
+  const overlayRef = useRef(null as HTMLCanvasElement | null);
   const [guide, setGuide] = useState(false);
   const [grid, setGrid] = useState(true);
   const [gridSize, setGridSize] = useState(3);
@@ -58,6 +59,42 @@ export default function LayerEditor() {
       }
     }
 
+    if (overlayRef.current) {
+      const ctx = overlayRef.current.getContext('2d')!;
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+      const pos = PaintManager.getBrushPos();
+      if (pos && (brush.type === 'eraser' || brush.eyedropper)) {
+        const scale = ctx.canvas.width / 64;
+        const size = brush.eyedropper ? 1 : brush.size;
+
+        const left = Math.round(pos.x - size / 2);
+        const top = Math.round(pos.y - size / 2);
+
+        for (let x = 0; x < size; x++) {
+          for (let y = 0; y < size; y++) {
+            const l = x === 0;
+            const r = x === size - 1;
+            const u = y === 0;
+            const d = y === size - 1;
+
+            if (!(l || r || u || d)) continue;
+
+            const rgba = PaintManager.getRgba(left + x, top + y, focus);
+            ctx.fillStyle = rgba[3] < 128 || rgba[0] + rgba[1] + rgba[2] > 192 ? 'black' : 'white';
+
+            const sx = (left + x) * scale;
+            const sy = (top + y) * scale;
+
+            if (l) ctx.fillRect(sx, sy, 1, scale);
+            if (r) ctx.fillRect(sx + scale - 1, sy, 1, scale);
+            if (u) ctx.fillRect(sx, sy, scale, 1);
+            if (d) ctx.fillRect(sx, sy + scale - 1, scale, 1);
+          }
+        }
+      }
+    }
+
     const onMouseUp = (e: MouseEvent) =>
       ((e.button === 2 || (e.button === 0 && e.shiftKey)) && (panning.current = false)) ||
       (e.button === 0 && PaintManager.setBrushActive(false));
@@ -78,35 +115,50 @@ export default function LayerEditor() {
       const key = e.key.toUpperCase();
       if (key === 'B') PaintManager.updateBrush({ type: 'pencil' });
       else if (key === 'E') PaintManager.updateBrush({ type: 'eraser' });
+      else if (key === 'I') PaintManager.updateBrush({ eyedropper: !brush.eyedropper });
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      if (!canvasRef.current) return;
+
+      if (e.ctrlKey) {
+        const change = e.deltaY < 0 ? 1 : -1;
+        const size = Util.clamp(brush.size + change, 1, 16);
+
+        if (size !== brush.size) PaintManager.updateBrush({ size: size });
+
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      const zoom = Util.clamp(transform.zoom - e.deltaY / 500, 3, 7);
+
+      const rect = canvasRef.current.getBoundingClientRect();
+      const delta = rect.width - getCanvasSize(zoom);
+
+      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+
+      setTransform({
+        x: Math.round(transform.x + delta * x),
+        y: Math.round(transform.y + delta * y),
+        zoom: zoom
+      });
     };
 
     document.addEventListener('mouseup', onMouseUp);
     document.addEventListener('mousemove', pan);
     document.addEventListener('keydown', shortcuts);
+    const area = canvasRef.current?.parentElement?.parentElement;
+    area?.addEventListener('wheel', onWheel, { passive: false });
     return () => {
       document.removeEventListener('mouseup', onMouseUp);
       document.removeEventListener('mousemove', pan);
       document.removeEventListener('keydown', shortcuts);
+      area?.removeEventListener('wheel', onWheel);
     };
   });
-
-  function onWheel(e: React.WheelEvent) {
-    if (!canvasRef.current) return;
-
-    const zoom = Util.clamp(transform.zoom - e.deltaY / 500, 3, 7);
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const delta = rect.width - getCanvasSize(zoom);
-
-    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = ((e.clientY - rect.top) / rect.height) * 2 - 1;
-
-    setTransform({
-      x: Math.round(transform.x + delta * x),
-      y: Math.round(transform.y + delta * y),
-      zoom: zoom
-    });
-  }
 
   function onMouseMove(e: React.MouseEvent) {
     if (!canvasRef.current) return;
@@ -121,78 +173,86 @@ export default function LayerEditor() {
   }
 
   const canvasSize = `${getCanvasSize(transform.zoom)}px`;
+  const overlaySize = Math.max(Math.round(Math.exp(transform.zoom) * 0.015), 1) * 128;
 
   return (
     <div className="container">
       <div className="layer-editor">
         <p>{selected?.name ?? 'No layer selected.'}</p>
-        <PropertiesList
-          type="ribbon"
-          properties={[
-            {
-              name: 'Brush Color',
-              id: 'brushColor',
-              type: 'color',
-              value: brush.color,
-              unlabeled: true,
-              controlled: true,
-              alpha: true,
-              onChange: value => PaintManager.updateBrush({ color: value })
-            },
-            {
-              name: 'Size',
-              id: 'brushSize',
-              type: 'range',
-              step: 1,
-              min: 1,
-              max: 10,
-              value: brush.size,
-              onChange: value => PaintManager.updateBrush({ size: value })
-            },
-            {
-              name: 'Guide',
-              id: 'guide',
-              type: 'checkbox',
-              value: guide,
-              onChange: setGuide
-            },
-            {
-              name: 'Grid',
-              id: 'grid',
-              type: 'checkbox',
-              value: grid,
-              onChange: setGrid,
-              siblings: [
-                {
-                  name: 'Grid Size',
-                  id: 'gridSize',
-                  type: 'range',
-                  step: 1,
-                  min: 0,
-                  max: 5,
-                  value: gridSize,
-                  onChange: setGridSize
-                }
-              ]
-            },
-            {
-              name: 'Focus Layer',
-              id: 'focus',
-              type: 'checkbox',
-              value: focus,
-              onChange: setFocus
-            },
-            {
-              name: 'Recenter',
-              id: 'recenter',
-              type: 'button',
-              label: 'recenter',
-              unlabeled: true,
-              isIcon: true,
-              onClick: () => setTransform({ ...transform, x: 0, y: 0 })
-            }
-          ]}
-        />
+        <div>
+          <PropertiesList
+            type="ribbon"
+            properties={[
+              {
+                name: 'Guide',
+                id: 'guide',
+                type: 'checkbox',
+                value: guide,
+                onChange: setGuide
+              },
+              {
+                name: 'Grid',
+                id: 'grid',
+                type: 'checkbox',
+                value: grid,
+                onChange: setGrid,
+                siblings: [
+                  {
+                    name: 'Grid Size',
+                    id: 'gridSize',
+                    type: 'range',
+                    step: 1,
+                    min: 0,
+                    max: 5,
+                    value: gridSize,
+                    onChange: setGridSize
+                  }
+                ]
+              },
+              {
+                name: 'Focus Layer',
+                id: 'focus',
+                type: 'checkbox',
+                value: focus,
+                onChange: setFocus
+              },
+              {
+                name: 'Recenter',
+                id: 'recenter',
+                type: 'button',
+                label: 'recenter',
+                unlabeled: true,
+                isIcon: true,
+                onClick: () => setTransform({ ...transform, x: 0, y: 0 })
+              }
+            ]}
+          />
+          <PropertiesList
+            type="ribbon"
+            properties={[
+              {
+                name: 'Brush Color',
+                id: 'brushColor',
+                type: 'color',
+                value: brush.color,
+                unlabeled: true,
+                controlled: true,
+                alpha: true,
+                onChange: value => PaintManager.updateBrush({ color: value })
+              },
+              {
+                name: 'Size',
+                id: 'brushSize',
+                type: 'range',
+                step: 1,
+                min: 1,
+                max: 16,
+                value: brush.size,
+                onChange: value => PaintManager.updateBrush({ size: value })
+              }
+            ]}
+          />
+        </div>
         <div className="top left">
           <PropertiesList
             type="toolbar"
@@ -201,18 +261,26 @@ export default function LayerEditor() {
             }
             properties={[
               {
-                name: 'Pencil',
+                name: 'Pencil (B)',
                 label: PENCIL,
                 id: 'pencil',
                 type: 'button',
-                selected: brush.type === 'pencil'
+                selected: !brush.eyedropper && brush.type === 'pencil'
               },
               {
-                name: 'Eraser',
+                name: 'Eraser (E)',
                 label: ERASER,
                 id: 'eraser',
                 type: 'button',
-                selected: brush.type === 'eraser'
+                selected: !brush.eyedropper && brush.type === 'eraser'
+              },
+              {
+                name: 'Eyedropper (I)',
+                label: EYEDROPPER,
+                id: 'eyedropper',
+                type: 'button',
+                selected: brush.eyedropper,
+                onClick: () => PaintManager.updateBrush({ eyedropper: !brush.eyedropper })
               }
             ]}
           />
@@ -220,18 +288,19 @@ export default function LayerEditor() {
         <div
           className="layer-editor-canvas-area"
           onContextMenu={e => e.preventDefault()}
-          onWheel={onWheel}
           onMouseMove={onMouseMove}
           onMouseDown={e =>
             (e.button === 2 || (e.button === 0 && e.shiftKey)) && (panning.current = true)
           }
           onMouseLeave={() => PaintManager.setBrushPos(null)}
         >
-          <canvas
-            className="layer-editor-canvas"
-            onMouseDown={e => e.button === 0 && !e.shiftKey && PaintManager.setBrushActive(true)}
-            width={64}
-            height={64}
+          <div
+            className="layer-editor-canvases"
+            onMouseDown={e =>
+              e.button === 0 &&
+              !e.shiftKey &&
+              (brush.eyedropper ? PaintManager.pickColor(focus) : PaintManager.setBrushActive(true))
+            }
             style={{
               cursor:
                 selected instanceof ImgMod.Img && !selected.dynamic ? undefined : 'not-allowed',
@@ -244,8 +313,10 @@ export default function LayerEditor() {
               width: canvasSize,
               height: canvasSize
             }}
-            ref={canvasRef}
-          />
+          >
+            <canvas width={64} height={64} ref={canvasRef} />
+            <canvas width={overlaySize} height={overlaySize} ref={overlayRef} />
+          </div>
         </div>
       </div>
     </div>

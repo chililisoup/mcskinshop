@@ -792,16 +792,19 @@ hr.vr {
   margin: 0;
 }
 
-.layer-editor > .settings-ribbon {
+.layer-editor > div:has(.settings-ribbon) {
+  overflow: auto hidden;
+}
+
+.layer-editor > div > .settings-ribbon {
   margin-bottom: 4px;
   height: 28px;
   min-height: 28px;
   flex-wrap: nowrap;
-  overflow-x: auto;
 }
 
 .layer-editor > div:has(> .toolbar) {
-  margin-top: 73px;
+  margin-top: 105px;
   margin-left: 19px;
 }
 
@@ -821,10 +824,18 @@ hr.vr {
   overflow: hidden;
 }
 
-.layer-editor-canvas {
+.layer-editor-canvases {
   position: absolute;
-  image-rendering: pixelated;
   cursor: crosshair;
+  image-rendering: pixelated;
+}
+
+.layer-editor-canvases > canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
 }
 
 .LayerManager {

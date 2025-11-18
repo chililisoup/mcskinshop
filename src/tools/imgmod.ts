@@ -316,6 +316,32 @@ export abstract class AbstractLayer {
     return filtered;
   };
 
+  getImageData = (image?: ImageBitmap) => {
+    image ??= this.image;
+    if (!image) return;
+
+    const canvas = new OffscreenCanvas(image.width, image.height);
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.drawImage(image, 0, 0);
+    return ctx.getImageData(0, 0, image.width, image.height);
+  };
+
+  getPixelColor = (x: number, y: number): Rgba | undefined => {
+    if (x < 0 || y < 0) return;
+    const imageData = this.getImageData();
+    if (!imageData) return;
+    if (x >= imageData.width || y >= imageData.height) return;
+
+    const pixelIndex = (x + y * imageData.height) * 4;
+    return [
+      imageData.data[pixelIndex],
+      imageData.data[pixelIndex + 1],
+      imageData.data[pixelIndex + 2],
+      imageData.data[pixelIndex + 3]
+    ];
+  };
+
   markChanged() {
     this.changed = true;
     if (this.parent) this.parent.markChanged();
@@ -730,19 +756,8 @@ export class Img extends AbstractLayer {
     return canvas.transferToImageBitmap();
   };
 
-  getImageData = (image?: ImageBitmap) => {
-    image = image ?? this.image;
-    if (!image) return;
-
-    const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
-    const ctx = canvas.getContext('2d')!;
-
-    ctx.drawImage(image, 0, 0);
-    return ctx.getImageData(0, 0, this.size[0], this.size[1]);
-  };
-
   getImageBlobSrc = async (image?: ImageBitmap) => {
-    image = image ?? this.image;
+    image ??= this.image;
     if (!image) return;
 
     const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
