@@ -196,6 +196,8 @@ export const invertRgba = (rgba: Rgba) =>
   [255 - rgba[0], 255 - rgba[1], 255 - rgba[2], rgba[3]] as Rgba;
 
 export const compareRgba = (first: Rgba, second: Rgba) => {
+  if (first[3] === 0 || second[3] === 0) return first[3] === 0 && second[3] === 0 ? 0 : 1;
+
   const diff: Rgba = [
     first[0] - second[0],
     first[1] - second[1],
