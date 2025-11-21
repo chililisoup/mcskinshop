@@ -177,9 +177,10 @@ export default abstract class PaintManager {
     ];
     const startRgba = selectedRgba((this.brushPos.x + this.brushPos.y * 64) * 4);
 
-    if (this.brush.continuous) {
+    if (this.brush.continuous && this.brush.tolerance < 1) {
       const indices = new Set([] as number[]);
 
+      // this should probably wrap around 3D space
       const floodFill = (x: number, y: number) => {
         const index = (x + y * 64) * 4;
         if (indices.has(index)) return;
@@ -206,8 +207,10 @@ export default abstract class PaintManager {
         for (let x = x1; x < x2; x++)
           for (let y = y1; y < y2; y++) {
             const index = (x + y * 64) * 4;
-            const difference = ImgMod.compareRgba(startRgba, selectedRgba(index));
-            if (difference > this.brush.tolerance) continue;
+            if (this.brush.tolerance < 1) {
+              const difference = ImgMod.compareRgba(startRgba, selectedRgba(index));
+              if (difference > this.brush.tolerance) continue;
+            }
             data[index] = rgba[0];
             data[index + 1] = rgba[1];
             data[index + 2] = rgba[2];
