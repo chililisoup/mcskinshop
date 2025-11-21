@@ -614,12 +614,12 @@ hr.vr {
   stroke-width: 8.1px;
 }
 
-.toolbar button > svg > :first-child {
+.toolbar button > svg > *:is(:first-child, :nth-child(3)) {
   stroke: var(--input);
   fill: var(--input);
 }
 
-.toolbar button > svg > *:nth-child(2) {
+.toolbar button > svg > *:is(:nth-child(2), :nth-child(4)) {
   stroke: var(--input-text);
   fill: var(--input-text);
 }

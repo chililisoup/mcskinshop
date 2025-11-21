@@ -24,21 +24,25 @@ const HAT_FLATTENER_OFFSETS = [
 
 const SLIM_STRETCH_OFFSETS = [
   // right arm base
-  { width: 9, height: 16, from: [45, 16], to: [46, 16] },
-  { width: 2, height: 12, from: [52, 20], to: [54, 20] },
+  { width: 4, height: 4, from: [45, 16], to: [46, 16] },
   { width: 2, height: 4, from: [48, 16], to: [50, 16] },
+  { width: 8, height: 12, from: [45, 20], to: [46, 20] },
+  { width: 2, height: 12, from: [52, 20], to: [54, 20] },
   // right arm hat
-  { width: 9, height: 16, from: [45, 32], to: [46, 32] },
-  { width: 2, height: 12, from: [52, 36], to: [54, 36] },
+  { width: 4, height: 4, from: [45, 32], to: [46, 32] },
   { width: 2, height: 4, from: [48, 32], to: [50, 32] },
+  { width: 8, height: 12, from: [45, 36], to: [46, 36] },
+  { width: 2, height: 12, from: [52, 36], to: [54, 36] },
   // left arm base
-  { width: 9, height: 16, from: [37, 48], to: [38, 48] },
-  { width: 2, height: 12, from: [44, 52], to: [46, 52] },
+  { width: 4, height: 4, from: [37, 48], to: [38, 48] },
   { width: 2, height: 4, from: [40, 48], to: [42, 48] },
+  { width: 8, height: 12, from: [37, 52], to: [38, 52] },
+  { width: 2, height: 12, from: [44, 52], to: [46, 52] },
   // left arm hat
-  { width: 9, height: 16, from: [53, 48], to: [54, 48] },
-  { width: 2, height: 12, from: [60, 52], to: [62, 52] },
-  { width: 2, height: 4, from: [56, 48], to: [58, 48] }
+  { width: 4, height: 4, from: [53, 48], to: [54, 48] },
+  { width: 2, height: 4, from: [56, 48], to: [58, 48] },
+  { width: 8, height: 12, from: [53, 52], to: [54, 52] },
+  { width: 2, height: 12, from: [60, 52], to: [62, 52] }
 ] as Readonly<Offset>[];
 
 const FULL_SQUISH_OFFSETS = [
@@ -190,6 +194,19 @@ export const cssVariableColor = (variable: string) => colorAsRgba(Util.getCssVar
 
 export const invertRgba = (rgba: Rgba) =>
   [255 - rgba[0], 255 - rgba[1], 255 - rgba[2], rgba[3]] as Rgba;
+
+export const compareRgba = (first: Rgba, second: Rgba) => {
+  const diff: Rgba = [
+    first[0] - second[0],
+    first[1] - second[1],
+    first[2] - second[2],
+    first[3] - second[3]
+  ];
+  return Math.pow(
+    (diff[0] * diff[0] + diff[1] * diff[1] + diff[2] * diff[2] + diff[3] * diff[3]) / 260100,
+    0.25
+  );
+};
 
 export type Filter = {
   opacity?: number;
@@ -754,6 +771,40 @@ export class Img extends AbstractLayer {
     }
 
     return canvas.transferToImageBitmap();
+  };
+
+  getFormPos = (x: number, y: number, slim: boolean) => {
+    if (x < 0 || x >= 64 || y < 0 || y >= 64) return { x: x, y: y };
+    const slimOverride = this.getSlimOverride();
+    if (slimOverride === undefined || slimOverride === slim) return { x: x, y: y };
+
+    // inconsistent for mapping slim -> full for forms other than full squish - average
+    // also full squish - average should probably map to both pixels
+    // fix pls
+    for (const offset of SLIM_STRETCH_OFFSETS) {
+      const from = slimOverride ? offset.to : offset.from;
+      const to = slimOverride ? offset.from : offset.to;
+
+      if (x >= from[0] && x < from[0] + offset.width && y >= from[1] && y < from[1] + offset.height)
+        return { x: x + to[0] - from[0], y: y + to[1] - from[1] };
+    }
+
+    return { x: x, y: y };
+  };
+
+  getSlimOverride = (slim?: boolean) => {
+    switch (this.form()) {
+      case 'universal':
+        return slim;
+      case 'full-squish-inner':
+      case 'full-squish-outer':
+      case 'full-squish-average':
+      case 'full-only':
+        return false;
+      case 'slim-stretch':
+      case 'slim-only':
+        return true;
+    }
   };
 
   getImageBlobSrc = async (image?: ImageBitmap) => {

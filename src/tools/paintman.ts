@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import Speaker from '@tools/speaker';
 import SkinManager from './skinman';
 import * as ImgMod from '@tools/imgmod';
+import * as Boundaries from '@tools/boundaries';
 import EditManager from './editman';
 
-export const BRUSH_TYPES = ['pencil', 'eraser'] as const;
+export const BRUSH_TYPES = ['pencil', 'eraser', 'bucket'] as const;
+export const FILL_BOUNDARIES = ['face', 'part', 'none'] as const;
 
 type Brush = {
   color: string;
@@ -13,6 +15,9 @@ type Brush = {
   size: number;
   type: (typeof BRUSH_TYPES)[number];
   eyedropper: boolean;
+  tolerance: number;
+  continuous: boolean;
+  fillBoundary: (typeof FILL_BOUNDARIES)[number];
 };
 
 type BrushPos = { x: number; y: number } | null;
@@ -29,7 +34,10 @@ export default abstract class PaintManager {
     opacity: 1,
     size: 1,
     type: 'pencil',
-    eyedropper: false
+    eyedropper: false,
+    tolerance: 0,
+    continuous: true,
+    fillBoundary: 'face'
   };
 
   static brushSpeaker = new Speaker(() => this.getBrush());
@@ -68,6 +76,11 @@ export default abstract class PaintManager {
     this.brushActive = active;
     this.lastPos = null;
 
+    if (this.brush.type === 'bucket' && !this.brush.eyedropper) {
+      if (this.brushActive) this.fill();
+      return;
+    }
+
     if (this.brushActive) this.updatePreview();
     else this.applyPreview();
   };
@@ -81,6 +94,7 @@ export default abstract class PaintManager {
     if (
       this.brushPos &&
       !this.brush.eyedropper &&
+      this.brush.type !== 'bucket' &&
       (this.brushActive || this.brush.type !== 'eraser')
     ) {
       const size = this.brush.size;
@@ -129,6 +143,80 @@ export default abstract class PaintManager {
     preview.type(this.brush.type === 'eraser' ? 'erase' : 'normal');
     preview.opacity = this.brush.opacity;
     SkinManager.updateSkin();
+  };
+
+  static fill = () => {
+    if (this.applying || !this.brushPos) return;
+
+    const selected = SkinManager.getSelected();
+    if (!(selected instanceof ImgMod.Img)) return;
+
+    const boundaries =
+      this.brush.fillBoundary === 'none'
+        ? [{ x1: 0, y1: 0, x2: 64, y2: 64 }]
+        : Boundaries.getBoundaries(
+            this.brushPos.x,
+            this.brushPos.y,
+            !!selected.getSlimOverride(SkinManager.getSlim()),
+            this.brush.fillBoundary === 'face'
+          );
+    if (!boundaries) return;
+
+    const selectedData = selected.getImageData()?.data;
+    if (!selectedData) return;
+
+    const imageData = this.ctx.getImageData(0, 0, 64, 64);
+    const data = imageData.data;
+    const rgba = ImgMod.colorAsRgba(this.brush.color);
+
+    const selectedRgba = (index: number): ImgMod.Rgba => [
+      selectedData[index],
+      selectedData[index + 1],
+      selectedData[index + 2],
+      selectedData[index + 3]
+    ];
+    const startRgba = selectedRgba((this.brushPos.x + this.brushPos.y * 64) * 4);
+
+    if (this.brush.continuous) {
+      const indices = new Set([] as number[]);
+
+      const floodFill = (x: number, y: number) => {
+        const index = (x + y * 64) * 4;
+        if (indices.has(index)) return;
+        indices.add(index);
+
+        if (!Boundaries.checkBoundarySet(x, y, boundaries)) return;
+        const difference = ImgMod.compareRgba(startRgba, selectedRgba(index));
+        if (difference > this.brush.tolerance) return;
+
+        data[index] = rgba[0];
+        data[index + 1] = rgba[1];
+        data[index + 2] = rgba[2];
+        data[index + 3] = 255;
+
+        if (x > 0) floodFill(x - 1, y);
+        if (x < 63) floodFill(x + 1, y);
+        if (y > 0) floodFill(x, y - 1);
+        if (y < 63) floodFill(x, y + 1);
+      };
+
+      floodFill(this.brushPos.x, this.brushPos.y);
+    } else
+      for (const { x1, y1, x2, y2 } of boundaries)
+        for (let x = x1; x < x2; x++)
+          for (let y = y1; y < y2; y++) {
+            const index = (x + y * 64) * 4;
+            const difference = ImgMod.compareRgba(startRgba, selectedRgba(index));
+            if (difference > this.brush.tolerance) continue;
+            data[index] = rgba[0];
+            data[index + 1] = rgba[1];
+            data[index + 2] = rgba[2];
+            data[index + 3] = 255;
+          }
+
+    this.ctx.putImageData(imageData, 0, 0);
+
+    this.applyPreview();
   };
 
   static applyPreview: () => void = async () => {
