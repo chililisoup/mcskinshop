@@ -11,9 +11,10 @@ import Preferences from '@components/special/preferences';
 import DraggableWindow from '@components/basic/draggablewindow';
 import LayerEditor from '@components/special/layereditor';
 import AppWindow from '@components/basic/appwindow';
-import { PreferenceManager, OrderableWindow, usePrefs } from '@tools/prefman';
+import { PreferenceManager, usePrefs } from '@tools/prefman';
 import DraggableDivider from '@components/basic/draggabledivider';
 import SessionManager from '@tools/sessionman';
+import { OrderableWindow } from '@tools/prefconsts';
 
 export type OpenWindows = {
   layerManager: boolean;

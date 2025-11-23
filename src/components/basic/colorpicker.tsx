@@ -82,7 +82,7 @@ export default function ColorPicker(props: AProps) {
     if (!pickerRef.current) return;
 
     setOpen(!open);
-    if (open) return;
+    if (open) return props.update?.(colorValue, true);
 
     const rect = pickerRef.current.getBoundingClientRect();
     const height = window.innerHeight;

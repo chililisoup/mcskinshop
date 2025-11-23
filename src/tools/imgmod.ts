@@ -2,7 +2,7 @@ import * as Util from '@tools/util';
 import Codec, { PairCodec } from '@tools/codec';
 import Speaker from '@tools/speaker';
 
-type Offset = {
+export type Offset = {
   width: number;
   height: number;
   from: [x: number, y: number];
@@ -160,7 +160,8 @@ export const rgbaToHex = (rgba: Rgba, includeAlpha?: boolean) => {
   );
 };
 
-export const hslaToString = (hsla: Hsla) => `hsla(${hsla[0]},${hsla[1]}%,${hsla[2]}%,${hsla[3]})`;
+export const hslaToString = (hsla: Hsla) =>
+  `hsla(${hsla[0]},${hsla[1]}%,${hsla[2]}%,${Number(hsla[3]).toFixed(2)})`;
 
 export const hslToString = (hsl: Hsla) => `hsl(${hsl[0]},${hsl[1]}%,${hsl[2]}%)`;
 

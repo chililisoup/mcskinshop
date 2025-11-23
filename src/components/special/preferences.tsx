@@ -1,14 +1,13 @@
 import React from 'react';
+import { PreferenceManager, usePrefs } from '@tools/prefman';
 import {
-  PreferenceManager,
   SELECT_PREFS,
   USER_THEME_COLOR_VARS,
   Prefs,
-  usePrefs,
-  defaultPrefs,
+  DEFAULT_PREFS,
   WindowOrder,
   WINDOWS
-} from '@tools/prefman';
+} from '@tools/prefconsts';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
 import * as Util from '@tools/util';
 
@@ -29,10 +28,10 @@ export default function Preferences() {
           }
         }}
         numberFallback={(id, value) =>
-          Util.isKeyOfObject(id, defaultPrefs) && PreferenceManager.setPref(id, value)
+          Util.isKeyOfObject(id, DEFAULT_PREFS) && PreferenceManager.setPref(id, value)
         }
         booleanFallback={(id, value) =>
-          Util.isKeyOfObject(id, defaultPrefs) && PreferenceManager.setPref(id, value)
+          Util.isKeyOfObject(id, DEFAULT_PREFS) && PreferenceManager.setPref(id, value)
         }
         properties={[
           {
@@ -61,7 +60,7 @@ export default function Preferences() {
                 id: key,
                 type: 'color',
                 value: prefs[key as keyof typeof USER_THEME_COLOR_VARS],
-                resetValue: defaultPrefs[key as keyof typeof USER_THEME_COLOR_VARS],
+                resetValue: DEFAULT_PREFS[key as keyof typeof USER_THEME_COLOR_VARS],
                 controlled: true,
                 alpha: true
               };
@@ -171,7 +170,9 @@ export default function Preferences() {
                 type: 'orderableList',
                 options: prefs.windowOrder.map(id => ({ id: id, name: WINDOWS[id] })),
                 onChange: options =>
-                  PreferenceManager.setPrefs({ windowOrder: options.map(option => option.id) as WindowOrder })
+                  PreferenceManager.setPrefs({
+                    windowOrder: options.map(option => option.id) as WindowOrder
+                  })
               }
             ]
           }

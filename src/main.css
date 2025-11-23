@@ -138,6 +138,7 @@ input[type='checkbox'] {
 input[type='checkbox']:checked,
 button.selected {
   background-color: var(--accent);
+  text-shadow: var(--input-text-outline);
 }
 
 input[type='checkbox']:checked:hover,
@@ -183,7 +184,7 @@ input[type='number']:enabled {
   cursor: text;
 }
 
-button:hover:enabled:not(:has(img, svg)),
+button:hover:enabled:not(.selectable),
 .dropdown-bar:hover > span > button:enabled {
   background-color: var(--hovered-accent);
   text-shadow: var(--input-text-outline);

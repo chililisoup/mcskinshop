@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import Speaker from '@tools/speaker';
-import SkinManager from './skinman';
+import SkinManager from '../skinman';
 import * as ImgMod from '@tools/imgmod';
-import * as Boundaries from '@tools/boundaries';
-import EditManager from './editman';
+import * as Boundaries from '@tools/painting/boundaries';
+import * as Mirrors from '@tools/painting/mirrors';
+import EditManager from '../editman';
 
 export const BRUSH_TYPES = ['pencil', 'eraser', 'bucket'] as const;
 export const FILL_BOUNDARIES = ['face', 'part', 'none'] as const;
@@ -18,6 +19,8 @@ type Brush = {
   tolerance: number;
   continuous: boolean;
   fillBoundary: (typeof FILL_BOUNDARIES)[number];
+  mirrorX: boolean;
+  mirrorZ: boolean;
 };
 
 type BrushPos = { x: number; y: number } | null;
@@ -37,7 +40,9 @@ export default abstract class PaintManager {
     eyedropper: false,
     tolerance: 0,
     continuous: true,
-    fillBoundary: 'face'
+    fillBoundary: 'part',
+    mirrorX: false,
+    mirrorZ: false
   };
 
   static brushSpeaker = new Speaker(() => this.getBrush());
@@ -137,7 +142,12 @@ export default abstract class PaintManager {
     const preview = selected instanceof ImgMod.Img && selected.preview;
     if (!preview) return;
 
-    preview.image = this.ctx.canvas.transferToImageBitmap();
+    preview.image = Mirrors.mirrorImage(
+      this.ctx.canvas.transferToImageBitmap(),
+      SkinManager.getSlim(),
+      this.brush.mirrorX,
+      this.brush.mirrorZ
+    );
     if (this.brushActive) this.ctx.drawImage(preview.image, 0, 0);
 
     preview.type(this.brush.type === 'eraser' ? 'erase' : 'normal');
@@ -163,18 +173,20 @@ export default abstract class PaintManager {
     if (!boundaries) return;
 
     const selectedData = selected.getImageData()?.data;
-    if (!selectedData) return;
 
     const imageData = this.ctx.getImageData(0, 0, 64, 64);
     const data = imageData.data;
     const rgba = ImgMod.colorAsRgba(this.brush.color);
 
-    const selectedRgba = (index: number): ImgMod.Rgba => [
-      selectedData[index],
-      selectedData[index + 1],
-      selectedData[index + 2],
-      selectedData[index + 3]
-    ];
+    const selectedRgba = (index: number): ImgMod.Rgba =>
+      selectedData
+        ? [
+            selectedData[index],
+            selectedData[index + 1],
+            selectedData[index + 2],
+            selectedData[index + 3]
+          ]
+        : [0, 0, 0, 0];
     const startRgba = selectedRgba((this.brushPos.x + this.brushPos.y * 64) * 4);
 
     if (this.brush.continuous && this.brush.tolerance < 1) {

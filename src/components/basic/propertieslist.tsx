@@ -104,6 +104,7 @@ type SectionProperty = BaseProperty & {
 };
 
 type DividerProperty = {
+  name?: string;
   id: string;
   type: 'divider';
   siblings?: Property[];
@@ -146,15 +147,14 @@ export default function PropertiesList(props: AProps) {
 
   const getId = (property: Property) => `${property.id}-${property.type}-${key}`;
 
-  const isLabeled = (
-    property: Property
-  ): property is Exclude<Property, { type: 'divider' }> & boolean =>
-    property.type !== 'divider' &&
-    !property.unlabeled &&
-    property.type !== 'section' &&
-    property.type !== 'orderableList' &&
-    ((property.type !== 'button' && property.type !== 'file') ||
-      typeof property.label === 'string');
+  const isLabeled = (property: Property) =>
+    property.type === 'divider'
+      ? !!property.name
+      : !property.unlabeled &&
+        property.type !== 'section' &&
+        property.type !== 'orderableList' &&
+        ((property.type !== 'button' && property.type !== 'file') ||
+          typeof property.label === 'string');
 
   const propertyElements = props.properties.map(addProperty);
 
@@ -340,6 +340,7 @@ export default function PropertiesList(props: AProps) {
         ];
       case 'button': {
         const classNames = [];
+        if (property.selected !== undefined) classNames.push('selectable');
         if (property.selected) classNames.push('selected');
         if (property.isIcon) classNames.push('material-symbols-outlined');
         return [
@@ -428,7 +429,7 @@ export default function PropertiesList(props: AProps) {
               </Dropdown>
             ];
       case 'divider':
-        return [<hr key={property.id} />];
+        return property.name ? [] : [<hr key={property.id} />];
     }
   }
 
@@ -449,14 +450,26 @@ export default function PropertiesList(props: AProps) {
     const input = getInputSet(property, id);
     if (input.length === 0) return [];
 
+    const label =
+      labeled &&
+      (property.type === 'divider' ? (
+        <p>{property.name}</p>
+      ) : (
+        <label
+          htmlFor={id}
+          className={property.disabled ? 'disabled' : undefined}
+          title={property.name}
+        >
+          {property.name}
+        </label>
+      ));
+
     switch (props.type) {
       case 'ribbon':
       case 'toolbar':
         return labeled ? (
           <span key={`${property.id}-span`}>
-            <label htmlFor={id} title={property.name}>
-              {property.name}
-            </label>
+            {label}
             {input}
           </span>
         ) : (
@@ -465,17 +478,7 @@ export default function PropertiesList(props: AProps) {
       default:
         return (
           <tr key={`${property.id}-row`}>
-            {labeled && (
-              <th scope="row">
-                <label
-                  htmlFor={id}
-                  className={property.disabled ? 'disabled' : ''}
-                  title={property.name}
-                >
-                  {property.name}
-                </label>
-              </th>
-            )}
+            {labeled && <th scope="row">{label}</th>}
             <td colSpan={labeled ? 1 : 2}>
               {input.length > 1 ? <span className="siblings-holder">{input}</span> : input}
             </td>

@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import * as Util from '@tools/util';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
-import PaintManager, { BRUSH_TYPES, FILL_BOUNDARIES, useBrush } from '@tools/paintman';
+import PaintManager, { BRUSH_TYPES, FILL_BOUNDARIES, useBrush } from '@tools/painting/paintman';
 import SkinManager, { useSelected, useSkin } from '@tools/skinman';
 import checkerboard from '@assets/checkerboard.png';
 import fullref from '@assets/fullref.png';
@@ -269,16 +269,39 @@ export default function LayerEditor() {
       }
     );
   else
-    toolProperties.push({
-      name: 'Size',
-      id: 'brushSize',
-      type: 'range',
-      step: 1,
-      min: 1,
-      max: 16,
-      value: brush.size,
-      onChange: value => PaintManager.updateBrush({ size: value })
-    });
+    toolProperties.push(
+      {
+        name: 'Size',
+        id: 'brushSize',
+        type: 'range',
+        step: 1,
+        min: 1,
+        max: 16,
+        value: brush.size,
+        onChange: value => PaintManager.updateBrush({ size: value })
+      },
+      {
+        name: 'Mirror',
+        type: 'divider',
+        id: 'mirrorDivider',
+        siblings: [
+          {
+            name: 'X',
+            id: 'mirrorX',
+            type: 'button',
+            selected: brush.mirrorX,
+            onClick: () => PaintManager.updateBrush({ mirrorX: !brush.mirrorX })
+          },
+          {
+            name: 'Z',
+            id: 'mirrorZ',
+            type: 'button',
+            selected: brush.mirrorZ,
+            onClick: () => PaintManager.updateBrush({ mirrorZ: !brush.mirrorZ })
+          }
+        ]
+      }
+    );
 
   return (
     <div className="container">
