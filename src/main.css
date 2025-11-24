@@ -440,7 +440,7 @@ label:has(+ input:disabled) > *:is(img, svg) {
   border-radius: var(--half-curvature);
 }
 
-.Preview img {
+.preview img {
   margin-bottom: -4px;
   border-radius: var(--half-curvature);
 }
@@ -1423,6 +1423,51 @@ h3 {
 .color-picker > div > input:disabled::-moz-range-thumb {
   border: 3px solid var(--input-outline);
   cursor: default;
+}
+
+.color-palette {
+  display: block;
+  width: fit-content;
+  height: fit-content;
+}
+
+.color-palette > div {
+  position: relative;
+  display: flex;
+  outline: none;
+  border: none;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+.color-palette > div::before,
+.color-palette > div::after {
+  content: none;
+}
+
+.color-palette > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 auto;
+  width: 224px;
+}
+
+.color-palette > div:first-child > button {
+  padding: 1px;
+  background-clip: content-box;
+}
+
+.color-palette > div:first-child > button.selected {
+  outline: 2px solid var(--hovered-accent);
+  box-shadow: inset 0 0 0 2px var(--input-outline);
+  outline-offset: 0;
+}
+
+.color-palette > hr {
+  margin: 6px auto;
 }
 
 .slider {

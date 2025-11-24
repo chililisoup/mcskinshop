@@ -5,14 +5,12 @@ import * as ImgMod from '@tools/imgmod';
 import * as Boundaries from '@tools/painting/boundaries';
 import * as Mirrors from '@tools/painting/mirrors';
 import EditManager from '../editman';
+import PaletteManager from './paletteman';
 
 export const BRUSH_TYPES = ['pencil', 'eraser', 'bucket'] as const;
 export const FILL_BOUNDARIES = ['face', 'part', 'none'] as const;
 
-type Brush = {
-  color: string;
-  opaqueColor: string;
-  opacity: number;
+export type Brush = {
   size: number;
   type: (typeof BRUSH_TYPES)[number];
   eyedropper: boolean;
@@ -32,9 +30,6 @@ export default abstract class PaintManager {
   private static lastPos: BrushPos = null;
   private static applying = false;
   private static brush: Brush = {
-    color: '#000000',
-    opaqueColor: '#000000',
-    opacity: 1,
     size: 1,
     type: 'pencil',
     eyedropper: false,
@@ -53,11 +48,6 @@ export default abstract class PaintManager {
 
   static updateBrush = (update: Partial<Brush>) => {
     this.brush = { ...this.brush, ...update };
-    if (update.color) {
-      const rgba = ImgMod.colorAsRgba(this.brush.color);
-      this.brush.opaqueColor = ImgMod.rgbaToHex(rgba, false);
-      this.brush.opacity = rgba[3] / 255;
-    }
     if (update.type && update.eyedropper === undefined) this.brush.eyedropper = false;
 
     this.updatePreview();
@@ -96,6 +86,8 @@ export default abstract class PaintManager {
     if (this.applying) return;
     if (!this.brushActive) this.ctx.clearRect(0, 0, 64, 64);
 
+    const swatch = PaletteManager.getSwatch();
+
     if (
       this.brushPos &&
       !this.brush.eyedropper &&
@@ -105,7 +97,7 @@ export default abstract class PaintManager {
       const size = this.brush.size;
       const offset = Math.floor(this.brush.size / 2);
 
-      this.ctx.fillStyle = this.brush.opaqueColor;
+      this.ctx.fillStyle = swatch.opaqueColor;
 
       if (!this.brushActive || !this.lastPos)
         this.ctx.fillRect(this.brushPos.x - offset, this.brushPos.y - offset, size, size);
@@ -151,7 +143,7 @@ export default abstract class PaintManager {
     if (this.brushActive) this.ctx.drawImage(preview.image, 0, 0);
 
     preview.type(this.brush.type === 'eraser' ? 'erase' : 'normal');
-    preview.opacity = this.brush.opacity;
+    preview.opacity = swatch.alpha;
     SkinManager.updateSkin();
   };
 
@@ -161,13 +153,15 @@ export default abstract class PaintManager {
     const selected = SkinManager.getSelected();
     if (!(selected instanceof ImgMod.Img)) return;
 
+    const slim = SkinManager.getSlim();
+
     const boundaries =
       this.brush.fillBoundary === 'none'
         ? [{ x1: 0, y1: 0, x2: 64, y2: 64 }]
         : Boundaries.getBoundaries(
             this.brushPos.x,
             this.brushPos.y,
-            !!selected.getSlimOverride(SkinManager.getSlim()),
+            !!selected.getSlimOverride(slim),
             this.brush.fillBoundary === 'face'
           );
     if (!boundaries) return;
@@ -176,7 +170,7 @@ export default abstract class PaintManager {
 
     const imageData = this.ctx.getImageData(0, 0, 64, 64);
     const data = imageData.data;
-    const rgba = ImgMod.colorAsRgba(this.brush.color);
+    const rgba = PaletteManager.getCurrentRgba();
 
     const selectedRgba = (index: number): ImgMod.Rgba =>
       selectedData
@@ -230,6 +224,15 @@ export default abstract class PaintManager {
           }
 
     this.ctx.putImageData(imageData, 0, 0);
+    if (this.brush.mirrorX || this.brush.mirrorZ) {
+      const image = Mirrors.mirrorImage(
+        this.ctx.canvas.transferToImageBitmap(),
+        slim,
+        this.brush.mirrorX,
+        this.brush.mirrorZ
+      );
+      this.ctx.drawImage(image, 0, 0);
+    }
 
     this.applyPreview();
   };
@@ -250,7 +253,7 @@ export default abstract class PaintManager {
 
     if (selected.rawImage) this.ctx.drawImage(selected.rawImage, 0, 0);
     if (this.brush.type === 'eraser') this.ctx.globalCompositeOperation = 'destination-out';
-    this.ctx.globalAlpha = this.brush.opacity;
+    this.ctx.globalAlpha = PaletteManager.getCurrentRgba()[3] / 255;
     this.ctx.drawImage(stroke, 0, 0);
     this.ctx.globalCompositeOperation = 'source-over';
     this.ctx.globalAlpha = 1;
@@ -285,10 +288,8 @@ export default abstract class PaintManager {
     const rgba = this.getRgba(this.brushPos.x, this.brushPos.y, focus);
     if (!rgba) return;
 
-    this.updateBrush({
-      color: ImgMod.rgbaToHex(rgba),
-      eyedropper: false
-    });
+    this.updateBrush({ eyedropper: false });
+    PaletteManager.set(rgba);
   };
 }
 

@@ -48,29 +48,8 @@ export default function ColorPicker(props: AProps) {
     props.update?.(color, false);
   }
 
-  function updateHue(hue: number) {
-    const newHsla: ImgMod.Hsla = [...hslaValue];
-    newHsla[0] = hue;
-    setHsla(newHsla);
-  }
-
-  function updateSaturation(saturation: number) {
-    const newHsla: ImgMod.Hsla = [...hslaValue];
-    newHsla[1] = saturation;
-    setHsla(newHsla);
-  }
-
-  function updateLightness(lightness: number) {
-    const newHsla: ImgMod.Hsla = [...hslaValue];
-    newHsla[2] = lightness;
-    setHsla(newHsla);
-  }
-
-  function updateAlpha(alpha: number) {
-    const newHsla: ImgMod.Hsla = [...hslaValue];
-    newHsla[3] = alpha;
-    setHsla(newHsla);
-  }
+  const updateHsla = (e: React.FormEvent<HTMLInputElement>, index: number) =>
+    setHsla(hslaValue.with(index, inputValue(e)) as ImgMod.Hsla);
 
   function setFromString(color: string) {
     const newHsla = ImgMod.colorAsHsla(color);
@@ -137,7 +116,7 @@ export default function ColorPicker(props: AProps) {
                 max={360}
                 step={1}
                 type="range"
-                onInput={e => updateHue(inputValue(e))}
+                onInput={e => updateHsla(e, 0)}
                 disabled={props.linked}
                 style={{
                   background:
@@ -158,7 +137,7 @@ export default function ColorPicker(props: AProps) {
                 max={100}
                 step={1}
                 type="range"
-                onInput={e => updateSaturation(inputValue(e))}
+                onInput={e => updateHsla(e, 1)}
                 disabled={props.linked}
                 style={{
                   background:
@@ -174,7 +153,7 @@ export default function ColorPicker(props: AProps) {
                 max={100}
                 step={1}
                 type="range"
-                onInput={e => updateLightness(inputValue(e))}
+                onInput={e => updateHsla(e, 2)}
                 disabled={props.linked}
                 style={{
                   background:
@@ -192,7 +171,7 @@ export default function ColorPicker(props: AProps) {
                   max={1}
                   step={0.01}
                   type="range"
-                  onInput={e => updateAlpha(inputValue(e))}
+                  onInput={e => updateHsla(e, 3)}
                   disabled={props.linked}
                   style={{
                     backgroundImage:
@@ -207,6 +186,7 @@ export default function ColorPicker(props: AProps) {
                 <input
                   placeholder="#ffffff"
                   value={hexValue}
+                  type="text"
                   onChange={e => setFromString(e.target.value)}
                   onKeyDown={e => e.stopPropagation()}
                   disabled={props.linked}

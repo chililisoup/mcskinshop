@@ -12,7 +12,7 @@ export default function Preview({ close }: AProps) {
 
   return (
     <DraggableWindow title="Preview" anchor={{ vw: 1, vh: 1 }} close={close}>
-      <div className="Preview">
+      <div className="preview">
         <span className="stretch">
           <button onClick={() => setSize(Math.max(size - 1, 1))}>-</button>
           <button onClick={() => setSize(Math.min(size + 1, 16))}>+</button>

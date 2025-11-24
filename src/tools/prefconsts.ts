@@ -64,6 +64,7 @@ export type Prefs = {
     showLayerManagerOnStart: boolean;
     showLayerEditorOnStart: boolean;
     showViewportOnStart: boolean;
+    showColorPaletteOnStart: boolean;
     showPreviewOnStart: boolean;
     showAssetCreatorOnStart: boolean;
     showAssetLibraryOnStart: boolean;
@@ -100,6 +101,7 @@ export const DEFAULT_PREFS: Prefs = {
   showLayerManagerOnStart: true,
   showLayerEditorOnStart: false,
   showViewportOnStart: true,
+  showColorPaletteOnStart: false,
   showPreviewOnStart: true,
   showAssetCreatorOnStart: false,
   showAssetLibraryOnStart: false,

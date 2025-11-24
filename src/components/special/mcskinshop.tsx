@@ -5,6 +5,7 @@ import LayerManager from '@components/special/layermanager';
 import AssetLibrary from '@components/special/assetlibrary';
 import AssetCreator from '@components/special/assetcreator';
 import MenuBar from '@components/special/menubar';
+import ColorPalette from '@components/special/colorpalette';
 import Preview from '@components/special/preview';
 import ModelFeatures from '@components/special/modelfeatures';
 import Preferences from '@components/special/preferences';
@@ -20,6 +21,7 @@ export type OpenWindows = {
   layerManager: boolean;
   layerEditor: boolean;
   viewport: boolean;
+  colorPalette: boolean;
   preview: boolean;
   assetCreator: boolean;
   assetLibrary: boolean;
@@ -48,6 +50,7 @@ function defaultState(): AState {
     layerEditor: openWindows.layerEditor ?? prefs.showLayerEditorOnStart,
     layerEditorWidth: Math.max(325, window.innerWidth / 3),
     viewport: openWindows.viewport ?? prefs.showViewportOnStart,
+    colorPalette: openWindows.colorPalette ?? prefs.showColorPaletteOnStart,
     preview: openWindows.preview ?? prefs.showPreviewOnStart,
     assetCreator: openWindows.assetCreator ?? prefs.showAssetCreatorOnStart,
     assetLibrary: openWindows.assetLibrary ?? prefs.showAssetLibraryOnStart,
@@ -80,6 +83,7 @@ export default function MCSkinShop() {
       layerManager: state.layerManager,
       layerEditor: state.layerEditor,
       viewport: state.viewport,
+      colorPalette: state.colorPalette,
       preview: state.preview,
       assetCreator: state.assetCreator,
       assetLibrary: state.assetLibrary,
@@ -108,7 +112,10 @@ export default function MCSkinShop() {
     layerEditor: [
       state.layerEditor && (
         <AppWindow key="layerEditor" style={{ flex: `0 0 ${state.layerEditorWidth}px` }}>
-          <LayerEditor />
+          <LayerEditor
+            colorPalette={state.colorPalette}
+            toggleColorPalette={() => updateState('colorPalette', !state.colorPalette)}
+          />
         </AppWindow>
       ),
       'layerEditorWidth'
@@ -170,6 +177,11 @@ export default function MCSkinShop() {
           ],
           ['2D Editor', state.layerEditor, () => updateState('layerEditor', !state.layerEditor)],
           ['3D Viewport', state.viewport, () => updateState('viewport', !state.viewport)],
+          [
+            'Color Palette',
+            state.colorPalette,
+            () => updateState('colorPalette', !state.colorPalette)
+          ],
           ['Preview', state.preview, () => updateState('preview', !state.preview)],
           [
             'Asset Creator',
@@ -190,6 +202,7 @@ export default function MCSkinShop() {
       />
       <div className="SkinManager">
         {windowElements}
+        {state.colorPalette && <ColorPalette close={() => updateState('colorPalette', false)} />}
         {state.preview && <Preview close={() => updateState('preview', false)} />}
         {state.assetCreator && <AssetCreator />}
         {state.preferences && (

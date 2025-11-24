@@ -8,10 +8,17 @@ import checkerboard from '@assets/checkerboard.png';
 import fullref from '@assets/fullref.png';
 import slimref from '@assets/slimref.png';
 import { ERASER, EYEDROPPER, PAINT_BUCKET, PENCIL } from '@components/svgs';
+import { usePalette } from '@tools/painting/paletteman';
 
-export default function LayerEditor() {
+type AProps = {
+  colorPalette: boolean;
+  toggleColorPalette: () => void;
+};
+
+export default function LayerEditor(props: AProps) {
   const selected = useSelected();
   const brush = useBrush();
+  const palette = usePalette();
   const skin = useSkin();
 
   const canvasRef = useRef(null as HTMLCanvasElement | null);
@@ -51,7 +58,7 @@ export default function LayerEditor() {
         if (selected?.image) ctx.drawImage(selected.image, 0, 0);
         if (selected instanceof ImgMod.Img && selected.preview?.image) {
           if (brush.type === 'eraser') ctx.globalCompositeOperation = 'destination-out';
-          ctx.globalAlpha = brush.opacity;
+          ctx.globalAlpha = palette.alpha;
           ctx.drawImage(selected.preview.image, 0, 0);
           ctx.globalCompositeOperation = 'source-over';
           ctx.globalAlpha = 1;
@@ -110,7 +117,7 @@ export default function LayerEditor() {
         }
       }
     }
-  }, [skin.image, selected, brush, focus, transform.zoom]);
+  }, [skin.image, selected, brush, focus, transform.zoom, palette.alpha]);
 
   useEffect(() => {
     const area = canvasRef.current?.parentElement?.parentElement;
@@ -223,14 +230,14 @@ export default function LayerEditor() {
 
   const toolProperties: Property[] = [
     {
-      name: 'Brush Color',
-      id: 'brushColor',
-      type: 'color',
-      value: brush.color,
+      name: 'Color Palette',
+      id: 'palette',
+      type: 'button',
+      label: 'palette',
       unlabeled: true,
-      controlled: true,
-      alpha: true,
-      onChange: value => PaintManager.updateBrush({ color: value })
+      isIcon: true,
+      selected: props.colorPalette,
+      onClick: props.toggleColorPalette
     }
   ];
 
@@ -269,39 +276,38 @@ export default function LayerEditor() {
       }
     );
   else
-    toolProperties.push(
+    toolProperties.push({
+      name: 'Size',
+      id: 'brushSize',
+      type: 'range',
+      step: 1,
+      min: 1,
+      max: 16,
+      value: brush.size,
+      onChange: value => PaintManager.updateBrush({ size: value })
+    });
+
+  toolProperties.push({
+    name: 'Mirror',
+    type: 'divider',
+    id: 'mirrorDivider',
+    siblings: [
       {
-        name: 'Size',
-        id: 'brushSize',
-        type: 'range',
-        step: 1,
-        min: 1,
-        max: 16,
-        value: brush.size,
-        onChange: value => PaintManager.updateBrush({ size: value })
+        name: 'X',
+        id: 'mirrorX',
+        type: 'button',
+        selected: brush.mirrorX,
+        onClick: () => PaintManager.updateBrush({ mirrorX: !brush.mirrorX })
       },
       {
-        name: 'Mirror',
-        type: 'divider',
-        id: 'mirrorDivider',
-        siblings: [
-          {
-            name: 'X',
-            id: 'mirrorX',
-            type: 'button',
-            selected: brush.mirrorX,
-            onClick: () => PaintManager.updateBrush({ mirrorX: !brush.mirrorX })
-          },
-          {
-            name: 'Z',
-            id: 'mirrorZ',
-            type: 'button',
-            selected: brush.mirrorZ,
-            onClick: () => PaintManager.updateBrush({ mirrorZ: !brush.mirrorZ })
-          }
-        ]
+        name: 'Z',
+        id: 'mirrorZ',
+        type: 'button',
+        selected: brush.mirrorZ,
+        onClick: () => PaintManager.updateBrush({ mirrorZ: !brush.mirrorZ })
       }
-    );
+    ]
+  });
 
   return (
     <div className="container">

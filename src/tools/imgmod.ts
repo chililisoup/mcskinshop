@@ -93,15 +93,11 @@ export type CopyColor = { copy: number };
 export type Color = string | RelativeColor | CopyColor | undefined;
 
 // https://gist.github.com/xenozauros/f6e185c8de2a04cdfecf
-export const hexToHsla: (hex: string) => Hsla = hex => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.slice(0, 7));
-
-  if (!result) return [0, 0, 0, 0];
-
-  const r = parseInt(result[1], 16) / 255;
-  const g = parseInt(result[2], 16) / 255;
-  const b = parseInt(result[3], 16) / 255;
-  const a = hex.length === 9 ? parseInt(hex.slice(7), 16) / 255 : 1;
+export const rgbaToHsla = (rgba: Rgba): Hsla => {
+  const r = rgba[0] / 255;
+  const g = rgba[1] / 255;
+  const b = rgba[2] / 255;
+  const a = rgba[3] / 255;
 
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
@@ -133,8 +129,22 @@ export const hexToHsla: (hex: string) => Hsla = hex => {
   return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100), a];
 };
 
+export const hexToRgba = (hex: string): Rgba => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.slice(0, 7));
+  return result
+    ? [
+        parseInt(result[1], 16),
+        parseInt(result[2], 16),
+        parseInt(result[3], 16),
+        hex.length === 9 ? parseInt(hex.slice(7), 16) : 255
+      ]
+    : [0, 0, 0, 255];
+};
+
+export const hexToHsla = (hex: string): Hsla => rgbaToHsla(hexToRgba(hex));
+
 // https://stackoverflow.com/a/44134328
-export const hslaToHex = (hsla: Hsla) => {
+export const hslaToRgba = (hsla: Hsla): Rgba => {
   const h = hsla[0];
   const s = hsla[1];
   const l = hsla[2] / 100;
@@ -143,12 +153,12 @@ export const hslaToHex = (hsla: Hsla) => {
   const f = (n: number) => {
     const k = (n + h / 30) % 12;
     const color = l - amt * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color)
-      .toString(16)
-      .padStart(2, '0'); // convert to Hex and prefix "0" if needed
+    return Math.round(255 * color);
   };
-  return `#${f(0)}${f(8)}${f(4)}${a < 1 ? Math.round(255 * a).toString(16) : ''}`;
+  return [f(0), f(8), f(4), Math.round(255 * a)];
 };
+
+export const hslaToHex = (hsla: Hsla) => rgbaToHex(hslaToRgba(hsla));
 
 export const rgbaToHex = (rgba: Rgba, includeAlpha?: boolean) => {
   return (

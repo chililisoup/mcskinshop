@@ -134,6 +134,12 @@ export default function Preferences() {
                 value: prefs.showViewportOnStart
               },
               {
+                name: 'Show Color Palette',
+                id: 'showColorPaletteOnStart',
+                type: 'checkbox',
+                value: prefs.showColorPaletteOnStart
+              },
+              {
                 name: 'Show Preview',
                 id: 'showPreviewOnStart',
                 type: 'checkbox',

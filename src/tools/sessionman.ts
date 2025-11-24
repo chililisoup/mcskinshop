@@ -6,11 +6,13 @@ import ModelFeatureManager, { FeatureKey, FeatureType } from '@tools/modelfeatur
 import SkinManager from '@tools/skinman';
 import EditManager from '@tools/editman';
 import { ViewportOptions } from '@components/special/viewport/paperdoll';
+import PaletteManager from './painting/paletteman';
 
 type SavedSession = {
   layers?: ImgMod.FullSerializedLayer;
-  usedModelFeatures: Partial<Record<FeatureType, FeatureKey>>;
   slim: boolean;
+  colorPalette: ImgMod.Rgba[];
+  usedModelFeatures: Partial<Record<FeatureType, FeatureKey>>;
   openWindows: Partial<OpenWindows>;
   viewportOptions: Partial<ViewportOptions>;
 };
@@ -55,6 +57,7 @@ export default abstract class SessionManager {
     localStorage.removeItem('savedSession');
 
     EditManager.clear();
+    PaletteManager.resetColors();
     ModelFeatureManager.resetUsedFeatures();
 
     this.sessionCache = this.emptySessionCache();
@@ -69,6 +72,7 @@ export default abstract class SessionManager {
     const sessionSave: SavedSession = {
       layers: SkinManager.getLayers().length ? await SkinManager.serializeLayers() : undefined,
       slim: SkinManager.getSlim(),
+      colorPalette: PaletteManager.get().colors.map(rgba => [...rgba]),
       usedModelFeatures: ModelFeatureManager.getTrimmedUsedFeatures(),
       openWindows: this.sessionCache.openWindows,
       viewportOptions: this.sessionCache.viewportOptions
@@ -92,6 +96,7 @@ export default abstract class SessionManager {
     if (session.layers) await SkinManager.deserializeLayers(session.layers, session.slim);
     else SkinManager.setSlim(session.slim);
 
+    if (session.colorPalette) PaletteManager.loadColors(session.colorPalette);
     if (session.usedModelFeatures) ModelFeatureManager.setUsedFeatures(session.usedModelFeatures);
 
     this.speaker.updateListeners();
