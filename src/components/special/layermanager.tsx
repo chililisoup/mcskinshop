@@ -40,7 +40,6 @@ type BProps = {
   parent: ImgMod.Layer;
   root: ImgMod.Layer;
   selectedLayer: ImgMod.AbstractLayer | null;
-  path?: string;
 };
 
 function LayerList(props: BProps) {
@@ -118,30 +117,28 @@ function LayerList(props: BProps) {
   };
 
   const onDropLayer = (from: string, insertingIndex: number) => {
-    const fromPath = from.split('-');
+    const fromPath = ImgMod.AbstractLayer.parsePathString(from);
+    if (!fromPath) return;
 
-    if (props.path === undefined || from.startsWith(props.path)) {
-      const thisPath = props.path ? props.path.split('-') : [];
-      if (thisPath.length === fromPath.length - 1) {
-        const fromIndex = parseInt(fromPath[fromPath.length - 1]);
+    const layer = props.root.getLayerFromPath(fromPath);
+    if (!layer || layer.layer === props.parent) return;
 
-        if (Number.isNaN(fromIndex) || fromIndex < 0 || fromIndex >= layers.length) return;
+    if (layer.parent === props.parent) {
+      const fromIndex = layer.index;
+      const to = insertingIndex > fromIndex ? insertingIndex - 1 : insertingIndex;
+      if (fromIndex !== to) moveLayer(fromIndex, to - fromIndex);
 
-        const to = insertingIndex > fromIndex ? insertingIndex - 1 : insertingIndex;
-        if (fromIndex !== to) moveLayer(fromIndex, to - fromIndex);
-
-        return;
-      }
+      return;
     }
 
-    if (props.path?.startsWith(from)) return;
+    if (layer.layer instanceof ImgMod.Layer && props.parent.hasAncestor(layer.layer)) return;
 
     const selected = SkinManager.getSelected();
-    const layer = props.root.popLayer(fromPath, false);
+    layer.parent.removeLayer(layer.index); // will deselect layer if selected
     if (!layer) return;
 
-    props.parent.insertLayer(insertingIndex, layer);
-    if (selected === layer) SkinManager.selectLayer(layer);
+    props.parent.insertLayer(insertingIndex, layer.layer);
+    if (selected === layer.layer) SkinManager.selectLayer(layer.layer); // reselect
   };
 
   const onDropFiles = async (files: FileList, insertingIndex: number) => {
@@ -211,7 +208,6 @@ function LayerList(props: BProps) {
         layer={layer}
         index={i}
         root={props.root}
-        path={props.path}
         duplicateLayer={index => void duplicateLayer(index)}
         removeLayer={removeLayer}
         flattenLayer={index => void flattenLayer(index)}
@@ -264,7 +260,6 @@ type CProps = {
   layer: ImgMod.AbstractLayer;
   root: ImgMod.Layer;
   index: number;
-  path?: string;
   duplicateLayer: (index: number) => void;
   removeLayer: (index: number) => void;
   flattenLayer: (index: number) => void;
@@ -290,11 +285,11 @@ function Layer(props: CProps) {
   const onDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.stopPropagation();
 
+    const pathString = props.layer.buildPathString();
+    if (!pathString) return;
+
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData(
-      'application/mcss-layer',
-      props.path ? `${props.path}-${props.index}` : `${props.index}`
-    );
+    e.dataTransfer.setData('application/mcss-layer', pathString);
 
     layerRef.current?.classList.add('dragging');
   };
@@ -435,35 +430,16 @@ function Layer(props: CProps) {
       </span>
       {layersOpen && props.layer instanceof ImgMod.Layer && (
         <div className="sublayers">
-          <LayerList
-            parent={props.layer}
-            root={props.root}
-            selectedLayer={props.selectedLayer}
-            path={props.path ? `${props.path}-${props.index}` : `${props.index}`}
-          />
+          <LayerList parent={props.layer} root={props.root} selectedLayer={props.selectedLayer} />
         </div>
       )}
-      {fxOpen && (
-        <LayerFX
-          layer={props.layer}
-          blend={props.layer instanceof ImgMod.Img ? props.layer.blend() : undefined}
-          type={props.layer instanceof ImgMod.Img ? props.layer.type() : undefined}
-          form={props.layer instanceof ImgMod.Img ? props.layer.form() : undefined}
-        />
-      )}
+      {fxOpen && <LayerFX layer={props.layer} />}
     </div>
   );
 }
 
-type DProps = {
-  layer: ImgMod.AbstractLayer;
-  blend?: GlobalCompositeOperation;
-  type?: ImgMod.LayerType;
-  form?: ImgMod.LayerForm;
-};
-
-function LayerFX(props: DProps) {
-  const layerInfo = ImgMod.useLayerInfo(props.layer);
+function LayerFX({ layer }: { layer: ImgMod.AbstractLayer }) {
+  const layerInfo = ImgMod.useLayerInfo(layer);
 
   const properties: Property[] = [
     {
@@ -538,12 +514,12 @@ function LayerFX(props: DProps) {
     }
   ];
 
-  if (props.layer instanceof ImgMod.Img) {
+  if (layer instanceof ImgMod.Img) {
     properties.unshift({
       name: 'Blend Mode',
       id: 'blend',
       type: 'select',
-      value: props.blend,
+      value: layerInfo.blend,
       options: [
         ['source-over', 'Source Over'],
         ['source-in', 'Source In'],
@@ -579,7 +555,7 @@ function LayerFX(props: DProps) {
         name: 'Type',
         id: 'type',
         type: 'select',
-        value: props.type,
+        value: layerInfo.type,
         options: [
           ['normal', 'Normal'],
           ['erase', 'Erase'],
@@ -591,7 +567,7 @@ function LayerFX(props: DProps) {
         name: 'Form',
         id: 'form',
         type: 'select',
-        value: props.form,
+        value: layerInfo.form,
         options: [
           ['universal', 'Universal'],
           ['full-squish-inner', 'Full Squish - Inner'],
@@ -609,13 +585,13 @@ function LayerFX(props: DProps) {
     <PropertiesList
       preventDrag={true}
       numberFallback={(id, value) =>
-        Util.isKeyOfObject(id, ImgMod.DEFAULT_FILTER) && props.layer.filter({ [id]: value })
+        Util.isKeyOfObject(id, ImgMod.DEFAULT_FILTER) && layer.filter({ [id]: value })
       }
       stringFallback={(id, value) => {
-        if (!(props.layer instanceof ImgMod.Img)) return;
-        if (id === 'blend') props.layer.blend(value as GlobalCompositeOperation);
-        if (id === 'type') props.layer.type(value as ImgMod.LayerType);
-        if (id === 'form') props.layer.form(value as ImgMod.LayerForm);
+        if (!(layer instanceof ImgMod.Img)) return;
+        if (id === 'blend') layer.blend(value as GlobalCompositeOperation);
+        if (id === 'type') layer.type(value as ImgMod.LayerType);
+        if (id === 'form') layer.form(value as ImgMod.LayerForm);
       }}
       properties={properties}
     />

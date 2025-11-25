@@ -1,4 +1,5 @@
 import * as ImgMod from '@tools/imgmod';
+import * as Util from '@tools/util';
 import Speaker from '@tools/speaker';
 import { useEffect, useState } from 'react';
 
@@ -31,9 +32,10 @@ const DEFAULT_COLORS: ImgMod.Rgba[] = [
 
 export default abstract class PaletteManager {
   private static colors: ImgMod.Rgba[] = DEFAULT_COLORS.map(color => [...color]);
-  private static selected = 0;
+  private static selected: number | null = 0;
   private static activeHsla: ImgMod.Hsla = [0, 0, 0, 1];
   private static activeHex = '#000000';
+  private static locked = true;
 
   static speaker = new Speaker(() => this.get());
 
@@ -43,15 +45,28 @@ export default abstract class PaletteManager {
     rgba: this.getCurrentRgba(),
     hsla: this.activeHsla,
     hex: this.activeHex,
-    alpha: this.getCurrentRgba()[3] / 255
+    alpha: this.getCurrentRgba()[3] / 255,
+    locked: this.locked
   });
 
   static set = (rgba: ImgMod.Rgba, hsla?: ImgMod.Hsla, hex?: string) => {
-    if (this.selected === null || rgba === this.colors[this.selected]) return;
+    if (
+      (!hsla || Util.arraysEqual(hsla, this.activeHsla)) &&
+      this.selected !== null &&
+      Util.arraysEqual(this.colors[this.selected], rgba)
+    )
+      return;
     this.activeHsla = hsla ?? ImgMod.rgbaToHsla(rgba);
     this.activeHex = hex ?? ImgMod.rgbaToHex(rgba);
-    this.colors[this.selected] = [...rgba];
+    if (this.locked) this.selected = null;
+    else if (this.selected !== null) this.colors[this.selected] = [...rgba];
     this.speaker.updateListeners();
+  };
+
+  static selectOrSet = (rgba: ImgMod.Rgba) => {
+    for (let i = 0; i < this.colors.length; i++)
+      if (Util.arraysEqual(this.colors[i], rgba)) return this.select(i);
+    this.set(rgba);
   };
 
   static select = (index: number) => {
@@ -60,7 +75,13 @@ export default abstract class PaletteManager {
     this.speaker.updateListeners();
   };
 
-  static getCurrentRgba = (): ImgMod.Rgba => [...this.colors[this.selected]];
+  static toggleLocked = () => {
+    this.locked = !this.locked;
+    this.speaker.updateListeners();
+  };
+
+  static getCurrentRgba = (): ImgMod.Rgba =>
+    this.selected === null ? ImgMod.hslaToRgba(this.activeHsla) : [...this.colors[this.selected]];
 
   static updateActive = () => {
     const rgba = this.getCurrentRgba();

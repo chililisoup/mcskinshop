@@ -292,7 +292,7 @@ export default abstract class PaintManager {
     if (!rgba) return;
 
     this.updateBrush({ eyedropper: false });
-    PaletteManager.set(rgba);
+    PaletteManager.selectOrSet(rgba);
   };
 }
 

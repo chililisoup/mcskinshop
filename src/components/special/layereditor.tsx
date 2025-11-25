@@ -21,6 +21,14 @@ type CanvasTransform = {
   zoom: number;
 };
 
+const absentName = 'No layer selected.';
+
+const currentlyEditable = (
+  layer: ImgMod.AbstractLayer | null,
+  focus: boolean
+): layer is ImgMod.Img =>
+  layer instanceof ImgMod.Img && !layer.dynamic && (focus || layer.active());
+
 export default function LayerEditor(props: AProps) {
   const selected = useSelected();
   const brush = useBrush();
@@ -29,6 +37,7 @@ export default function LayerEditor(props: AProps) {
 
   const canvasRef = useRef(null as HTMLCanvasElement | null);
   const overlayRef = useRef(null as HTMLCanvasElement | null);
+  const [name, setName] = useState(absentName);
   const [guide, setGuide] = useState(false);
   const [grid, setGrid] = useState(true);
   const [gridSize, setGridSize] = useState(3);
@@ -64,6 +73,17 @@ export default function LayerEditor(props: AProps) {
   });
 
   useEffect(() => {
+    setName(selected?.name() ?? absentName);
+    if (!selected) return;
+
+    const onUpdate = (update: ImgMod.SpeakerUpdate) =>
+      update.markers.includes(ImgMod.ChangeMarker.Info) && setName(update.info.name);
+
+    selected.speaker().registerListener(onUpdate);
+    return () => selected.speaker().unregisterListener(onUpdate);
+  }, [selected]);
+
+  useEffect(() => {
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d')!;
       ctx.clearRect(0, 0, 64, 64);
@@ -71,7 +91,7 @@ export default function LayerEditor(props: AProps) {
       if (skin.image && !focus) ctx.drawImage(skin.image, 0, 0);
       else {
         if (selected?.image) ctx.drawImage(selected.image, 0, 0);
-        if (selected instanceof ImgMod.Img && selected.preview?.image) {
+        if (currentlyEditable(selected, focus) && selected.preview?.image) {
           if (brush.type === 'eraser') ctx.globalCompositeOperation = 'destination-out';
           ctx.globalAlpha = palette.alpha;
           ctx.drawImage(selected.preview.image, 0, 0);
@@ -272,7 +292,7 @@ export default function LayerEditor(props: AProps) {
   return (
     <div className="container">
       <div className="layer-editor">
-        <p>{selected?.name() ?? 'No layer selected.'}</p>
+        <p>{name}</p>
         <LayerEditorRibbon
           {...props}
           guide={guide}
@@ -303,11 +323,12 @@ export default function LayerEditor(props: AProps) {
             onMouseDown={e =>
               e.button === 0 &&
               !e.shiftKey &&
-              (brush.eyedropper ? PaintManager.pickColor(focus) : PaintManager.setBrushActive(true))
+              (brush.eyedropper
+                ? PaintManager.pickColor(focus)
+                : currentlyEditable(selected, focus) && PaintManager.setBrushActive(true))
             }
             style={{
-              cursor:
-                selected instanceof ImgMod.Img && !selected.dynamic ? undefined : 'not-allowed',
+              cursor: currentlyEditable(selected, focus) ? undefined : 'not-allowed',
               backgroundImage:
                 (guide ? `url(${slim ? slimref : fullref})` : 'none') + `, url(${checkerboard})`,
               backgroundSize: `100%, ${grid ? 100 / Math.pow(2, 5 - gridSize) : 200}%`,
@@ -476,7 +497,7 @@ const LayerEditorRibbon = React.memo((props: BProps) => {
   );
 });
 
-const LayerEditorToolbar = React.memo(() => {
+export const LayerEditorToolbar = React.memo(() => {
   const brush = useBrush();
 
   return (

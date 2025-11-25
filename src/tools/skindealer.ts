@@ -3,23 +3,33 @@ import * as Util from '@tools/util';
 import { PreferenceManager } from '@tools/prefman';
 import SkinManager from '@tools/skinman';
 
+enum Model {
+  Unknown,
+  Full,
+  Slim
+}
+
+type SkinPair = [url: string, model: Model];
+
 export default abstract class SkinDealer {
   static downloadSkin: () => void = () => Util.download('My Skin.png', SkinManager.get().src);
 
-  static processSkinUpload = (image: ImgMod.Img) => {
-    const slim = image.detectSlimModel();
-    if (PreferenceManager.get().autosetImageForm) image.form(slim ? 'slim-stretch' : 'full-squish-inner');
+  static processSkinUpload = (image: ImgMod.Img, model = Model.Unknown) => {
+    const slim = model === Model.Unknown ? image.detectSlimModel() : model === Model.Slim;
+    if (PreferenceManager.get().autosetImageForm)
+      image.form(slim ? 'slim-stretch' : 'full-squish-inner');
     SkinManager.addLayer(image, slim);
+    SkinManager.selectLayer(image);
   };
 
   static uploadSkin: (name: string, url?: string) => void = async (name, url) => {
-    url ??= await this.getSkinFromUsername(name);
+    const skin: SkinPair = url ? [url, Model.Unknown] : await this.getSkinFromUsername(name);
 
     const image = new ImgMod.Img();
     image.name(name);
 
-    await image.loadUrl(url);
-    this.processSkinUpload(image);
+    await image.loadUrl(skin[0]);
+    this.processSkinUpload(image, skin[1]);
   };
 
   static uploadDynamicSkin: () => void = async () => {
@@ -44,10 +54,10 @@ export default abstract class SkinDealer {
     this.processSkinUpload(image);
   };
 
-  static getSkinFromUsername = async (username: string) => {
+  static getSkinFromUsername = async (username: string): Promise<SkinPair> => {
     const fallback = `https://minotar.net/skin/${username}`;
 
-    if (PreferenceManager.get().useFallbackSkinSource) return fallback;
+    if (PreferenceManager.get().useFallbackSkinSource) return [fallback, Model.Unknown];
 
     try {
       const uuidResponse = await fetch(
@@ -105,12 +115,19 @@ export default abstract class SkinDealer {
       )
         throw new Error('Unable to read skin textures JSON');
 
-      return texturesJson.textures.SKIN.url;
+      const slim =
+        'metadata' in texturesJson.textures.SKIN &&
+        texturesJson.textures.SKIN.metadata &&
+        typeof texturesJson.textures.SKIN.metadata === 'object' &&
+        'model' in texturesJson.textures.SKIN.metadata &&
+        texturesJson.textures.SKIN.metadata.model === 'slim';
+
+      return [texturesJson.textures.SKIN.url, slim ? Model.Slim : Model.Full];
     } catch (error) {
       console.error(error);
       console.log('Using fallback API.');
 
-      return fallback;
+      return [fallback, Model.Unknown];
     }
   };
 }

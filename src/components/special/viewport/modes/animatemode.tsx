@@ -247,15 +247,14 @@ export default class AnimateMode extends AbstractMode<AState> {
       <PropertiesList
         type="ribbon"
         booleanFallback={(id, value) => {
-          if (id === 'explode') this.updateSetting(id, value, true);
+          if (id === 'explode') this.updateSetting(id, value);
           if (id === 'animate') this.updateSetting('animate', value);
         }}
         numberFallback={(id, value) => {
           if (id === 'speed') this.updateSetting(id, value);
         }}
         stringFallback={(id, value) => {
-          if (id === 'animation')
-            this.updateSetting(id, value as (typeof ANIMATIONS)[number], true);
+          if (id === 'animation') this.updateSetting(id, value as (typeof ANIMATIONS)[number]);
         }}
         properties={[
           {

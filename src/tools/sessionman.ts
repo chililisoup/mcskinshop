@@ -10,6 +10,7 @@ import PaletteManager from './painting/paletteman';
 
 type SavedSession = {
   layers?: ImgMod.FullSerializedLayer;
+  selected?: string;
   slim: boolean;
   colorPalette: ImgMod.Rgba[];
   usedModelFeatures: Partial<Record<FeatureType, FeatureKey>>;
@@ -71,6 +72,7 @@ export default abstract class SessionManager {
   static saveSession: () => void = async () => {
     const sessionSave: SavedSession = {
       layers: SkinManager.getLayers().length ? await SkinManager.serializeLayers() : undefined,
+      selected: SkinManager.getSelected()?.buildPathString(),
       slim: SkinManager.getSlim(),
       colorPalette: PaletteManager.get().colors.map(rgba => [...rgba]),
       usedModelFeatures: ModelFeatureManager.getTrimmedUsedFeatures(),
@@ -93,8 +95,16 @@ export default abstract class SessionManager {
       viewportOptions: { ...session.viewportOptions }
     };
 
-    if (session.layers) await SkinManager.deserializeLayers(session.layers, session.slim);
-    else SkinManager.setSlim(session.slim);
+    if (session.layers) {
+      await SkinManager.deserializeLayers(session.layers, session.slim);
+      if (session.selected) {
+        const path = ImgMod.AbstractLayer.parsePathString(session.selected);
+        if (path) {
+          const layer = SkinManager.getRoot().getLayerFromPath(path);
+          if (layer) SkinManager.selectLayer(layer.layer);
+        }
+      }
+    } else SkinManager.setSlim(session.slim);
 
     if (session.colorPalette) PaletteManager.loadColors(session.colorPalette);
     if (session.usedModelFeatures) ModelFeatureManager.setUsedFeatures(session.usedModelFeatures);

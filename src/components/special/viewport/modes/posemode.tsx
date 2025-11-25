@@ -17,7 +17,7 @@ type AState = {
 };
 
 export default class PoseMode extends AbstractMode<AState> {
-  mousePos = new THREE.Vector2(1, 1);
+  mousePos = new THREE.Vector2(1, 1); // this should be brought up for use here and in paint mode
   oldMousePos?: THREE.Vector2;
   canDeselect = false;
 
@@ -458,14 +458,11 @@ export default class PoseMode extends AbstractMode<AState> {
     this.props.instance.hoveredOutlinePass.selectedObjects = [];
 
     if (!this.hoveredHandle && !this.handle) {
-      const intersects = this.props.instance.raycaster.intersectObject(
-        this.props.instance.doll.root,
-        true
-      );
-      const poseable =
-        intersects.length > 0
-          ? this.props.instance.findSelectableAncestor(intersects[0].object)
-          : false;
+      const part = this.props.instance.getFirstVisibleIntersection(
+        this.props.instance.raycaster.intersectObject(this.props.instance.doll.root, true)
+      )?.object;
+
+      const poseable = part ? this.props.instance.findSelectableAncestor(part) : false;
 
       if (poseable) {
         this.hoveredObject = poseable;

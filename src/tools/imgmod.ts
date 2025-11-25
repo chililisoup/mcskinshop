@@ -247,6 +247,9 @@ export type LayerInfo = {
   name: string;
   active: boolean;
   filter: Required<Filter>;
+  type?: LayerType;
+  form?: LayerForm;
+  blend?: GlobalCompositeOperation;
 };
 
 export enum ChangeMarker {
@@ -323,14 +326,19 @@ export abstract class AbstractLayer {
   speaker = () =>
     (this.speakerInternal ??= new Speaker<SpeakerUpdate, (update: SpeakerUpdate) => void>());
 
-  getInfo = (): LayerInfo => {
-    return {
-      src: this.src,
-      name: this.nameInternal ?? '',
-      active: this.activeInternal,
-      filter: { ...AbstractLayer.defaultFilter(this.copyFilter()) }
-    };
-  };
+  getInfo = (): LayerInfo => ({
+    src: this.src,
+    name: this.nameInternal ?? '',
+    active: this.activeInternal,
+    filter: { ...AbstractLayer.defaultFilter(this.copyFilter()) },
+    ...(this instanceof Img
+      ? {
+          type: this.type(),
+          form: this.form(),
+          blend: this.blend()
+        }
+      : {})
+  });
 
   name = (name?: string) => {
     if (name !== undefined && name !== this.nameInternal) {
@@ -427,6 +435,26 @@ export abstract class AbstractLayer {
       imageData.data[pixelIndex + 3]
     ];
   };
+
+  buildPathString = (): string | undefined => {
+    if (!this.parent) return;
+    const parentPath = this.parent.buildPathString();
+    return (parentPath ? parentPath + '-' : '') + this.parent.getLayers().indexOf(this);
+  };
+
+  static parsePathString = (pathString: string) => {
+    const splitPath = pathString.split('-');
+    const path: number[] = [];
+    for (const pathIndexString of splitPath) {
+      const pathIndex = parseInt(pathIndexString);
+      if (!isFinite(pathIndex) || pathIndex < 0) return;
+      path.push(pathIndex);
+    }
+    return path;
+  };
+
+  hasAncestor = (ancestor: Layer): boolean =>
+    this.parent ? (this.parent === ancestor ? true : this.parent.hasAncestor(ancestor)) : false;
 
   markChanged(markers: ChangeMarker[], propagate = true) {
     if (markers.some(marker => marker === ChangeMarker.Source)) this.changed = true;
@@ -664,7 +692,6 @@ export class Img extends AbstractLayer {
     copy.name(this.name());
     copy.size = [this.size[0], this.size[1]];
     copy.linearOpacity = this.linearOpacity;
-    copy.form = this.form;
 
     return copy;
   };
@@ -1247,16 +1274,15 @@ export class Layer extends AbstractLayer {
     return mergedLayer;
   };
 
-  popLayer = (path: string[], propagateChange = true): AbstractLayer | undefined => {
-    const index = parseInt(path[0]);
-
-    if (Number.isNaN(index) || index < 0 || index >= this.sublayers.length) return;
+  getLayerFromPath = (
+    path: number[]
+  ): { parent: Layer; layer: AbstractLayer; index: number } | undefined => {
+    const index = path[0];
+    if (index >= this.sublayers.length) return;
 
     const layer = this.sublayers[index];
-    if (path.length === 1) {
-      this.removeLayer(index, false, propagateChange);
-      return layer;
-    } else if (layer instanceof Layer) return layer.popLayer(path.slice(1), propagateChange);
+    if (path.length === 1) return { parent: this, layer: layer, index: index };
+    else if (layer instanceof Layer) return layer.getLayerFromPath(path.slice(1));
   };
 
   getColors = () => [...this.colors] as const;

@@ -98,6 +98,7 @@ export class Model {
       this.materials.flat.push(flatMat);
 
       if (child.uniqueMaterial) {
+        part.userData.uniqueMaterial = true;
         shadedMat.userData.uniqueMaterial = true;
         flatMat.userData.uniqueMaterial = true;
       }
@@ -133,6 +134,7 @@ export class Model {
     item.userData.poseable = true;
     item.userData.defaultRotation = new THREE.Euler();
     item.userData.defaultPosition = new THREE.Vector3();
+    item.userData.uniqueMaterial = true;
 
     const shadedMat = new THREE.MeshLambertMaterial({
       side: THREE.DoubleSide,

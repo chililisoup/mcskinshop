@@ -46,6 +46,12 @@ export const getRemoteJson = async (path: string) => {
 
 export const corsProxy = (url: string) => 'https://corsproxy.io/?url=' + url;
 
+// https://stackoverflow.com/a/63627688
+export const openInNewTab = (url: string) => {
+  const tab = window.open(url, '_blank', 'noopener,noreferrer');
+  if (tab) tab.opener = null;
+};
+
 // https://stackoverflow.com/a/30106551
 export const b64ToUtf8 = (b64: string) =>
   decodeURIComponent(

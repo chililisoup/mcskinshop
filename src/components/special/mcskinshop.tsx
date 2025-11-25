@@ -1,17 +1,14 @@
 // TODO
 // Safer handling of image bitmaps (theres bugs that are hard to reproduce caused by trying to open a closed image)
 // Layer management undo/redo
-// remove explode undo/redo
 // make undo/redo in closed windows maybe open them back up?
 // Fix the lag spikes
-// Auto select added layers from all sources, not just new layer button
-// Auto select (or save selection) for layer on session load
-// Get slim status for username skins from api response
+// Show popup if detected model differs from skin API response model
+// layer editor background customization
 // Save window sizes and positions
-// color palette size adjustment, lock, creating from layer colors
+// color palette size adjustment, creating from layer colors
 // saved color palettes, color palette groups?
 // different color picker styles
-// eyedropper should first look for a match in the palette
 // oklab support where it makes sense
 // random official skin instead of steve/alex?
 // indexed color layers (probably will have to be simulated)

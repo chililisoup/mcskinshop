@@ -22,6 +22,7 @@ import SkinManager from '@tools/skinman';
 import EditManager from '@tools/editman';
 import ModelFeatureManager, { FeatureKey, FeatureType } from '@tools/modelfeatureman';
 import SessionManager from '@tools/sessionman';
+import PaintMode from './modes/paintmode';
 
 export type PoseEntry = {
   rotation?: THREE.EulerTuple;
@@ -92,7 +93,8 @@ export default class PaperDoll extends Component<object, AState> {
 
   modes = {
     animate: <AnimateMode {...this.modeProps} />,
-    pose: <PoseMode {...this.modeProps} />
+    pose: <PoseMode {...this.modeProps} />,
+    paint: <PaintMode {...this.modeProps} />
   };
   cachedModeStates: Record<string, string> = {};
 
@@ -637,6 +639,12 @@ export default class PaperDoll extends Component<object, AState> {
     }
   };
 
+  getFirstVisibleIntersection = (intersects: THREE.Intersection[]) =>
+    intersects.find(({ object }) => {
+      const index = object.userData.materialIndex as number | undefined;
+      return index === undefined ? false : this.doll.materials.shaded[index].visible;
+    });
+
   findSelectableAncestor: (part: THREE.Object3D) => THREE.Object3D | false = part => {
     if (part.userData.poseable) return part;
     if (part.parent) return this.findSelectableAncestor(part.parent);
@@ -774,7 +782,7 @@ export default class PaperDoll extends Component<object, AState> {
   nextMode = () => {
     const modes: React.JSX.Element[] = Object.values(this.modes);
     const next = modes.indexOf(this.state.modeElement) + 1;
-    this.updateSetting('modeElement', modes[next >= modes.length ? 0 : next]);
+    this.updateSetting('modeElement', modes[next >= modes.length ? 0 : next], true);
   };
 
   updateSavedLighting = <KKey extends keyof ViewportOptions>(
@@ -801,8 +809,18 @@ export default class PaperDoll extends Component<object, AState> {
         : this.state[setting];
 
     this.setState({ [setting]: value } as Pick<AState, KKey>);
-    if (saveEdit)
-      EditManager.addEdit('change ' + setting, () => this.settingEdit(setting, from, value));
+    if (saveEdit) {
+      let name = 'change ' + setting;
+
+      if (setting === 'modeElement')
+        for (const [modeName, modeElement] of Object.entries(this.modes))
+          if (modeElement === value) {
+            name = 'open ' + modeName;
+            break;
+          }
+
+      EditManager.addEdit(name, () => this.settingEdit(setting, from, value));
+    }
   };
 
   settingEdit = <KKey extends keyof AState>(

@@ -133,6 +133,15 @@ export default function MenuBar(props: AProps) {
       </MenuBarTab>
       <MenuBarTab tab="help" name="Help" {...tabProps}>
         <button>Stop it. Get some help.</button>
+        <hr />
+        <button
+          onClick={() => Util.openInNewTab('https://github.com/chililisoup/mcskinshop/issues')}
+        >
+          Report issues
+        </button>
+        <button onClick={() => Util.openInNewTab('https://github.com/chililisoup/mcskinshop')}>
+          View source
+        </button>
       </MenuBarTab>
       <i>{mcssVersion}</i>
     </div>

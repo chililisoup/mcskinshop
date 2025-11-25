@@ -29,6 +29,14 @@ export default function ColorPalette({ close }: AProps) {
       startPos={{ x: 64, y: 0 }}
       close={close}
     >
+      <span>
+        <button
+          className={`material-symbols-outlined ${palette.locked ? 'selectable' : 'selected'}`}
+          onClick={PaletteManager.toggleLocked}
+        >
+          {palette.locked ? 'lock' : 'lock_open_right'}
+        </button>
+      </span>
       <div className="color-palette color-picker">
         <div>
           {palette.colors.map((rgba, index) => (
