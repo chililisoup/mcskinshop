@@ -33,7 +33,7 @@ export default class AssetCreator extends Component<object, AState> {
   updateName = (name: string) => {
     name = name.replaceAll(' ', '_').toLowerCase();
     const layers = this.state.layers;
-    layers.name = name;
+    layers.name(name);
     this.setState({ name: name, layers: layers });
   };
 
@@ -162,7 +162,7 @@ class AssetLayer extends Component<BProps, BState> {
   setImage: (e: ChangeEvent<HTMLInputElement>) => void = async e => {
     if (!e.target.files) return;
     const asset = this.state.asset;
-    asset.name = e.target.files[0].name.slice(0, -4).replaceAll(' ', '_').toLowerCase();
+    asset.name(e.target.files[0].name.slice(0, -4).replaceAll(' ', '_').toLowerCase());
 
     await asset.loadUrl(URL.createObjectURL(e.target.files[0]));
 
@@ -186,7 +186,7 @@ class AssetLayer extends Component<BProps, BState> {
   render() {
     return (
       <div className="container">
-        <p>{this.state.asset.name}</p>
+        <p>{this.state.asset.name()}</p>
         <span>
           <label>Image:</label>
           <input type="file" accept="image/png" onChange={this.setImage} />

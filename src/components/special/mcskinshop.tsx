@@ -1,3 +1,40 @@
+// TODO
+// Safer handling of image bitmaps (theres bugs that are hard to reproduce caused by trying to open a closed image)
+// Layer management undo/redo
+// remove explode undo/redo
+// make undo/redo in closed windows maybe open them back up?
+// Fix the lag spikes
+// Auto select added layers from all sources, not just new layer button
+// Auto select (or save selection) for layer on session load
+// Get slim status for username skins from api response
+// Save window sizes and positions
+// color palette size adjustment, lock, creating from layer colors
+// saved color palettes, color palette groups?
+// different color picker styles
+// eyedropper should first look for a match in the palette
+// oklab support where it makes sense
+// random official skin instead of steve/alex?
+// indexed color layers (probably will have to be simulated)
+// line tool or hold ctrl to draw straight lines
+// select tool, move tool, magic wand
+// HD bedrock skin support
+// Enchantment glint
+// Armor trims
+// load arbitrary sized images as them skins that have a picture as the front of the skin
+// minecraft json model parser for hats, items
+// full session export (.zip or insane .json or somethin)
+// Migrate from localstorage to the database one
+// 3D skin editor
+// grid on hovered face for 3d skin editor
+// .ase support (import/export)
+// correct math for orthographic-perspective switching
+// break up imgmod
+// make a nice window manager
+// add missing features to layer manager to be able to remove asset creator
+// fix up model features ui a bit
+// redo asset library ui
+// figure out a standard for how assets are constructed, then make a bunch of assets
+
 import React, { useEffect, useState } from 'react';
 import * as Util from '@tools/util';
 import PaperDoll from '@components/special/viewport/paperdoll';

@@ -1,5 +1,6 @@
-import React, { Component, useEffect, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import * as ImgMod from '@tools/imgmod';
+import * as Util from '@tools/util';
 import ColorPicker from '@components/basic/colorpicker';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
 import { PreferenceManager } from '@tools/prefman';
@@ -11,7 +12,7 @@ export default function LayerManager() {
 
   function addLayer() {
     const layer = new ImgMod.Img();
-    layer.name = 'New Layer';
+    layer.name('New Layer');
 
     SkinManager.addLayer(layer);
     SkinManager.selectLayer(layer);
@@ -19,14 +20,14 @@ export default function LayerManager() {
 
   function addGroup() {
     const layer = new ImgMod.Layer();
-    layer.name = 'New Group';
+    layer.name('New Group');
 
     SkinManager.addLayer(layer);
   }
 
   return (
     <div className="LayerManager">
-      <LayerList layers={root} root={root} isRoot={true} selectedLayer={selected} />
+      <LayerList parent={root} root={root} selectedLayer={selected} />
       <span className="stretch">
         <button onClick={addLayer}>New Layer</button>
         <button onClick={addGroup}>New Group</button>
@@ -36,58 +37,36 @@ export default function LayerManager() {
 }
 
 type BProps = {
-  layers: ImgMod.Layer;
+  parent: ImgMod.Layer;
   root: ImgMod.Layer;
-  isRoot?: boolean;
   selectedLayer: ImgMod.AbstractLayer | null;
   path?: string;
 };
 
-type BState = {
-  insertingIndex?: number;
-};
+function LayerList(props: BProps) {
+  const [insertingIndex, setInsertingIndex] = useState(null as number | null);
+  const layers = ImgMod.useLayerList(props.parent);
+  const listRef = useRef(null as HTMLDivElement | null);
+  const isRoot = props.parent === props.root;
 
-class LayerList extends Component<BProps, BState> {
-  listRef: React.RefObject<HTMLDivElement | null> = React.createRef();
+  const moveLayer = (index: number, change: number, propagateChange?: boolean) =>
+    props.parent.moveLayer(index, change, propagateChange);
 
-  constructor(props: BProps) {
-    super(props);
+  const duplicateLayer = async (index: number) => await props.parent.duplicateLayer(index);
 
-    this.state = {
-      insertingIndex: undefined
-    };
-  }
+  const removeLayer = (index: number) => props.parent.removeLayer(index);
 
-  moveLayer = (index: number, change: number) => {
-    this.props.layers.moveLayer(index, change);
-    SkinManager.updateSkin();
-  };
+  const flattenLayer = async (index: number) =>
+    await props.parent.flattenLayer(index, SkinManager.getSlim());
 
-  duplicateLayer: (index: number) => void = async index => {
-    await this.props.layers.duplicateLayer(index);
-    SkinManager.updateSkin();
-  };
-
-  removeLayer = (index: number) => {
-    this.props.layers.removeLayer(index);
-    SkinManager.updateSkin();
-  };
-
-  flattenLayer: (index: number) => void = async index => {
-    await this.props.layers.flattenLayer(index, SkinManager.getSlim());
-    SkinManager.updateSkin();
-  };
-
-  mergeLayerDown = (index: number) => {
+  const mergeLayerDown = (index: number) => {
     if (index === 0) return;
 
-    const mergedLayer = this.props.layers.mergeLayers(index, index - 1);
+    const mergedLayer = props.parent.mergeLayers(index, index - 1);
     if (!mergedLayer) return;
-
-    SkinManager.updateSkin();
   };
 
-  onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     if (e.dataTransfer.types.includes('application/mcss-layer')) e.dataTransfer.dropEffect = 'move';
     else if (e.dataTransfer.types.includes('Files')) e.dataTransfer.dropEffect = 'copy';
     else return;
@@ -95,17 +74,14 @@ class LayerList extends Component<BProps, BState> {
     e.stopPropagation();
     e.preventDefault();
 
-    if (!this.listRef.current) return;
+    if (!listRef.current) return;
 
-    this.listRef.current.classList.add('dragover');
+    listRef.current.classList.add('dragover');
 
-    const children = this.props.isRoot
-      ? this.listRef.current.children.namedItem('root-layer-list')?.children
-      : this.listRef.current.children;
-    if (!children || children.length < 1) {
-      this.setState({ insertingIndex: 0 });
-      return;
-    }
+    const children = isRoot
+      ? listRef.current.children.namedItem('root-layer-list')?.children
+      : listRef.current.children;
+    if (!children || children.length < 1) return setInsertingIndex(0);
 
     let closestDist: undefined | number = undefined;
     let index = 0;
@@ -131,55 +107,44 @@ class LayerList extends Component<BProps, BState> {
       checkDist(rect.bottom, i - indexOffset);
     }
 
-    if (index !== this.state.insertingIndex) this.setState({ insertingIndex: index });
+    if (index !== insertingIndex) setInsertingIndex(index);
   };
 
-  onDragLeave = () => {
-    this.listRef.current?.classList.remove('dragover');
+  const onDragLeave = () => listRef.current?.classList.remove('dragover');
+
+  const onDragEnd = () => {
+    onDragLeave();
+    if (insertingIndex !== undefined) setInsertingIndex(null);
   };
 
-  onDragEnd = () => {
-    this.onDragLeave();
-    if (this.state.insertingIndex !== undefined) this.setState({ insertingIndex: undefined });
-  };
-
-  onDropLayer = (from: string, insertingIndex: number) => {
+  const onDropLayer = (from: string, insertingIndex: number) => {
     const fromPath = from.split('-');
 
-    if (this.props.path === undefined || from.startsWith(this.props.path)) {
-      const thisPath = this.props.path ? this.props.path.split('-') : [];
+    if (props.path === undefined || from.startsWith(props.path)) {
+      const thisPath = props.path ? props.path.split('-') : [];
       if (thisPath.length === fromPath.length - 1) {
         const fromIndex = parseInt(fromPath[fromPath.length - 1]);
 
-        if (
-          Number.isNaN(fromIndex) ||
-          fromIndex < 0 ||
-          fromIndex >= this.props.layers.getLayers().length
-        )
-          return;
+        if (Number.isNaN(fromIndex) || fromIndex < 0 || fromIndex >= layers.length) return;
 
         const to = insertingIndex > fromIndex ? insertingIndex - 1 : insertingIndex;
-        if (fromIndex !== to) this.moveLayer(fromIndex, to - fromIndex);
+        if (fromIndex !== to) moveLayer(fromIndex, to - fromIndex);
 
         return;
       }
     }
 
-    if (this.props.path?.startsWith(from)) return;
+    if (props.path?.startsWith(from)) return;
 
     const selected = SkinManager.getSelected();
-    const layer = this.props.root.popLayer(fromPath);
+    const layer = props.root.popLayer(fromPath, false);
     if (!layer) return;
 
-    this.props.layers.insertLayer(insertingIndex, layer);
+    props.parent.insertLayer(insertingIndex, layer);
     if (selected === layer) SkinManager.selectLayer(layer);
-    SkinManager.updateSkin();
   };
 
-  onDropFiles: (files: FileList, insertingIndex: number) => void = async (
-    files,
-    insertingIndex
-  ) => {
+  const onDropFiles = async (files: FileList, insertingIndex: number) => {
     const layers: ImgMod.AbstractLayer[] = [];
 
     // should probably send this up to skin manager cause
@@ -188,7 +153,7 @@ class LayerList extends Component<BProps, BState> {
       if (file.type.split('/')[0] !== 'image') continue;
 
       const image = new ImgMod.Img();
-      image.name = file.name.replace(/\.[^/.]+$/, '');
+      image.name(file.name.replace(/\.[^/.]+$/, ''));
 
       await image.loadUrl(URL.createObjectURL(file));
 
@@ -201,8 +166,7 @@ class LayerList extends Component<BProps, BState> {
       if (PreferenceManager.get().autosetImageForm)
         image.form(slim ? 'slim-stretch' : 'full-squish-inner');
 
-      this.props.layers.insertLayer(insertingIndex, image);
-      SkinManager.updateSkin();
+      props.parent.insertLayer(insertingIndex, image);
 
       return;
     }
@@ -210,7 +174,7 @@ class LayerList extends Component<BProps, BState> {
     if (layers.length === 0) return;
 
     const layer = new ImgMod.Layer(layers);
-    layer.name = 'Group import';
+    layer.name('Group import');
 
     await layer.render();
 
@@ -222,83 +186,78 @@ class LayerList extends Component<BProps, BState> {
     // if (Manager.get().autosetImageForm)
     //   image.form = slim ? 'slim-stretch' : 'full-squish-inner';
 
-    this.props.layers.insertLayer(insertingIndex, layer);
-    SkinManager.updateSkin();
+    props.parent.insertLayer(insertingIndex, layer);
   };
 
-  onDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    if (this.state.insertingIndex === undefined) return this.onDragLeave();
-    this.onDragEnd();
+  const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    if (insertingIndex === null) return onDragLeave();
+    onDragEnd();
 
     if (e.dataTransfer.types.includes('application/mcss-layer'))
-      this.onDropLayer(e.dataTransfer.getData('application/mcss-layer'), this.state.insertingIndex);
+      onDropLayer(e.dataTransfer.getData('application/mcss-layer'), insertingIndex);
     else if (e.dataTransfer.types.includes('Files'))
-      this.onDropFiles(e.dataTransfer.files, this.state.insertingIndex);
+      void onDropFiles(e.dataTransfer.files, insertingIndex);
     else return;
 
     e.stopPropagation();
     e.preventDefault();
   };
 
-  render() {
-    const layers = this.props.layers
-      .getLayers()
-      .filter(layer => !(layer instanceof ImgMod.ImgPreview))
-      .map((layer, i) => (
-        <Layer
-          key={'layer-' + layer.id}
-          layer={layer}
-          index={i}
-          root={this.props.root}
-          path={this.props.path}
-          duplicateLayer={this.duplicateLayer}
-          removeLayer={this.removeLayer}
-          flattenLayer={this.flattenLayer}
-          mergeLayerDown={this.mergeLayerDown}
-          selectedLayer={this.props.selectedLayer}
-        />
-      ));
+  const layerElements = layers
+    .filter(layer => !(layer instanceof ImgMod.ImgPreview))
+    .map((layer, i) => (
+      <Layer
+        key={'layer-' + layer.id}
+        layer={layer}
+        index={i}
+        root={props.root}
+        path={props.path}
+        duplicateLayer={index => void duplicateLayer(index)}
+        removeLayer={removeLayer}
+        flattenLayer={index => void flattenLayer(index)}
+        mergeLayerDown={mergeLayerDown}
+        selectedLayer={props.selectedLayer}
+      />
+    ));
 
-    let canRootAddRule = this.props.isRoot;
-    if (
-      this.state.insertingIndex !== undefined &&
-      (!this.props.isRoot ||
-        (this.state.insertingIndex > 0 && this.state.insertingIndex !== layers.length))
-    ) {
-      layers.splice(this.state.insertingIndex, 0, <hr key="insert-indicator" />);
-      canRootAddRule = false;
-    }
-
-    return this.props.isRoot ? (
-      <div
-        className="container layer-list root-layer-list"
-        onDragEnter={this.onDragOver}
-        onDragOver={this.onDragOver}
-        onDragLeave={this.onDragLeave}
-        onDragEnd={this.onDragEnd}
-        onDrop={this.onDrop}
-        ref={this.listRef}
-      >
-        {canRootAddRule && this.state.insertingIndex === layers.length && <hr />}
-        <div className="container layer-list" id="root-layer-list">
-          {layers}
-        </div>
-        {canRootAddRule && this.state.insertingIndex === 0 && <hr />}
-      </div>
-    ) : (
-      <div
-        className="container layer-list"
-        onDragEnter={this.onDragOver}
-        onDragOver={this.onDragOver}
-        onDragLeave={this.onDragLeave}
-        onDragEnd={this.onDragEnd}
-        onDrop={this.onDrop}
-        ref={this.listRef}
-      >
-        {layers}
-      </div>
-    );
+  let canRootAddRule = isRoot;
+  if (
+    insertingIndex !== null &&
+    (!isRoot || (insertingIndex > 0 && insertingIndex !== layerElements.length))
+  ) {
+    layerElements.splice(insertingIndex, 0, <hr key="insert-indicator" />);
+    canRootAddRule = false;
   }
+
+  return isRoot ? (
+    <div
+      className="container layer-list root-layer-list"
+      onDragEnter={onDragOver}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDragEnd={onDragEnd}
+      onDrop={onDrop}
+      ref={listRef}
+    >
+      {canRootAddRule && insertingIndex === layerElements.length && <hr />}
+      <div className="container layer-list" id="root-layer-list">
+        {layerElements}
+      </div>
+      {canRootAddRule && insertingIndex === 0 && <hr />}
+    </div>
+  ) : (
+    <div
+      className="container layer-list"
+      onDragEnter={onDragOver}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDragEnd={onDragEnd}
+      onDrop={onDrop}
+      ref={listRef}
+    >
+      {layerElements}
+    </div>
+  );
 }
 
 type CProps = {
@@ -313,415 +272,352 @@ type CProps = {
   selectedLayer: ImgMod.AbstractLayer | null;
 };
 
-type CState = Required<ImgMod.Filter> & {
-  editingName: boolean;
-  fxOpen: boolean;
-  layersOpen: boolean;
-};
+function Layer(props: CProps) {
+  const [editingName, setEditingName] = useState(false);
+  const [fxOpen, setFxOpen] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const layerRef = useRef(null as HTMLDivElement | null);
 
-class Layer extends Component<CProps, CState> {
-  layerRef: React.RefObject<HTMLDivElement | null> = React.createRef();
+  const layerInfo = ImgMod.useLayerInfo(props.layer);
 
-  constructor(props: CProps) {
-    super(props);
+  async function changeColor(colorIndex: number, color: string) {
+    if (!(props.layer instanceof ImgMod.Layer)) return;
 
-    const filter = ImgMod.AbstractLayer.defaultFilter(props.layer.copyFilter());
-
-    this.state = {
-      editingName: false,
-      fxOpen: false,
-      layersOpen: false,
-      ...filter
-    };
+    props.layer.setColor(colorIndex, color);
+    await props.layer.color();
   }
 
-  changeColor: (colorIndex: number, color: string) => void = async (colorIndex, color) => {
-    if (!(this.props.layer instanceof ImgMod.Layer)) return;
-
-    this.props.layer.setColor(colorIndex, color);
-    await this.props.layer.color();
-    SkinManager.updateSkin();
-  };
-
-  toggleActive = () => {
-    this.props.layer.active = !this.props.layer.active;
-    this.props.layer.markChanged();
-    SkinManager.updateSkin();
-  };
-
-  changeBlendMode = (blend: GlobalCompositeOperation) => {
-    if (!(this.props.layer instanceof ImgMod.Img)) return;
-
-    this.props.layer.blend(blend);
-    SkinManager.updateSkin();
-  };
-
-  updateFilter = <KKey extends keyof CState>(filter: KKey, value: number) => {
-    this.setState({ [filter]: value } as Pick<CState, KKey>, () => {
-      this.props.layer.filter({
-        opacity: this.state.opacity,
-        hue: this.state.hue,
-        saturation: this.state.saturation,
-        brightness: this.state.brightness,
-        contrast: this.state.contrast,
-        invert: this.state.invert,
-        sepia: this.state.sepia
-      });
-
-      SkinManager.updateSkin();
-    });
-  };
-
-  renameLayer = (name: string) => {
-    this.props.layer.name = name;
-    SkinManager.updateSkin();
-  };
-
-  onDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+  const onDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.stopPropagation();
 
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData(
       'application/mcss-layer',
-      this.props.path ? `${this.props.path}-${this.props.index}` : `${this.props.index}`
+      props.path ? `${props.path}-${props.index}` : `${props.index}`
     );
 
-    this.layerRef.current?.classList.add('dragging');
+    layerRef.current?.classList.add('dragging');
   };
 
-  onDragEnd = () => {
-    this.layerRef.current?.classList.remove('dragging');
-  };
+  const onDragEnd = () => layerRef.current?.classList.remove('dragging');
 
-  render() {
-    const colors: React.ReactNode[] = [];
-    if (this.props.layer instanceof ImgMod.Layer) {
-      const layer = this.props.layer;
+  const colors: React.ReactNode[] = [];
+  if (props.layer instanceof ImgMod.Layer) {
+    const layer = props.layer;
 
-      layer.getColors().forEach((color, i) => {
-        if (!layer.advanced || !layer.advanced[i] || this.state.fxOpen) {
-          if (typeof color === 'string')
-            colors.push(
-              <ColorPicker
-                key={i + (layer.id ?? '')}
-                default={color}
-                update={color => this.changeColor(i, color)}
-                alpha={true}
-              />
-            );
-          else if (typeof color === 'object' && !('copy' in color))
-            colors.push(
-              <ColorPicker
-                key={i + (layer.id ?? '')}
-                default={layer.getTrueColor(i)}
-                linked={true}
-                unlink={() => {
-                  layer.setColor(i, layer.getTrueColor(i));
-                  SkinManager.updateSkin();
-                }}
-              />
-            );
-        }
-      });
-    }
-
-    const properties: Property[] = [
-      {
-        name: 'Opacity',
-        id: 'opacity',
-        type: 'range',
-        value: this.state.opacity,
-        resetValue: ImgMod.DEFAULT_FILTER.opacity,
-        min: 0,
-        max: 100,
-        subtype: 'percent'
-      },
-      {
-        name: 'Hue',
-        id: 'hue',
-        type: 'range',
-        value: this.state.hue,
-        resetValue: ImgMod.DEFAULT_FILTER.hue,
-        min: -180,
-        max: 180,
-        subtype: 'degrees'
-      },
-      {
-        name: 'Saturation',
-        id: 'saturation',
-        type: 'range',
-        value: this.state.saturation,
-        resetValue: ImgMod.DEFAULT_FILTER.saturation,
-        min: 0,
-        max: 200,
-        subtype: 'percent'
-      },
-      {
-        name: 'Brightness',
-        id: 'brightness',
-        type: 'range',
-        value: this.state.brightness,
-        resetValue: ImgMod.DEFAULT_FILTER.brightness,
-        min: 0,
-        max: 200,
-        subtype: 'percent'
-      },
-      {
-        name: 'Contrast',
-        id: 'contrast',
-        type: 'range',
-        value: this.state.contrast,
-        resetValue: ImgMod.DEFAULT_FILTER.contrast,
-        min: 0,
-        max: 200,
-        subtype: 'percent'
-      },
-      {
-        name: 'Invert',
-        id: 'invert',
-        type: 'range',
-        value: this.state.invert,
-        resetValue: ImgMod.DEFAULT_FILTER.invert,
-        min: 0,
-        max: 100,
-        subtype: 'percent'
-      },
-      {
-        name: 'Sepia',
-        id: 'sepia',
-        type: 'range',
-        value: this.state.sepia,
-        resetValue: ImgMod.DEFAULT_FILTER.sepia,
-        min: 0,
-        max: 100,
-        subtype: 'percent'
-      }
-    ];
-
-    if (this.props.layer instanceof ImgMod.Img) {
-      properties.unshift({
-        name: 'Blend Mode',
-        id: 'blend',
-        type: 'select',
-        value: this.props.layer.blend(),
-        options: [
-          ['source-over', 'Source Over'],
-          ['source-in', 'Source In'],
-          ['source-out', 'Source Out'],
-          ['source-atop', 'Source Atop'],
-          ['destination-over', 'Destination Over'],
-          ['destination-in', 'Destination In'],
-          ['destination-out', 'Destination Out'],
-          ['destination-atop', 'Destination Atop'],
-          ['lighter', 'Lighter'],
-          ['copy', 'Copy'],
-          ['xor', 'XOR'],
-          ['multiply', 'Multiply'],
-          ['screen', 'Screen'],
-          ['overlay', 'Overlay'],
-          ['darken', 'Darken'],
-          ['lighten', 'Lighten'],
-          ['color-dodge', 'Color Dodge'],
-          ['color-burn', 'Color Burn'],
-          ['hard-light', 'Hard Light'],
-          ['soft-light', 'Soft Light'],
-          ['difference', 'Difference'],
-          ['exclusion', 'Exclusion'],
-          ['hue', 'Hue'],
-          ['saturation', 'Saturation'],
-          ['color', 'Color'],
-          ['luminosity', 'Luminosity']
-        ]
-      });
-
-      properties.push(
-        {
-          name: 'Type',
-          id: 'type',
-          type: 'select',
-          value: this.props.layer.type(),
-          options: [
-            ['normal', 'Normal'],
-            ['erase', 'Erase'],
-            ['flatten', 'Flatten'],
-            ['blowup', 'Blowup']
-          ]
-        },
-        {
-          name: 'Form',
-          id: 'form',
-          type: 'select',
-          value: this.props.layer.form(),
-          options: [
-            ['universal', 'Universal'],
-            ['full-squish-inner', 'Full Squish - Inner'],
-            ['full-squish-outer', 'Full Squish - Outer'],
-            ['full-squish-average', 'Full Squish - Average'],
-            ['slim-stretch', 'Slim Stretch'],
-            ['full-only', 'Full Only'],
-            ['slim-only', 'Slim Only']
-          ]
-        }
-      );
-    }
-
-    return (
-      <div
-        className={`manager-layer container${this.props.selectedLayer === this.props.layer ? ' selected' : ''}`}
-        draggable={true}
-        onDragStart={this.onDragStart}
-        onDragEnd={this.onDragEnd}
-        onClick={e => {
-          SkinManager.selectLayer(this.props.layer);
-          e.stopPropagation();
-        }}
-        ref={this.layerRef}
-      >
-        <span className="layer-title">
-          <input
-            type="checkbox"
-            title="Toggle Layer Visibility"
-            checked={this.props.layer.active}
-            onChange={() => this.toggleActive()}
-            onClick={e => e.stopPropagation()}
-          />
-          {!this.state.editingName && (
-            <p onDoubleClick={() => this.setState({ editingName: true })}>
-              {this.props.layer.name ?? ''}
-            </p>
-          )}
-          {this.state.editingName && (
-            <input
-              type="text"
-              autoFocus={true}
-              value={this.props.layer.name ?? ''}
-              onChange={e => this.renameLayer(e.target.value)}
-              onFocus={e => e.target.select()}
-              onBlur={() => this.setState({ editingName: false })}
-              onClick={e => e.stopPropagation()}
-              onKeyDown={e => {
-                if (e.key === 'Enter') this.setState({ editingName: false });
-              }}
+    layer.getColors().forEach((color, i) => {
+      if (!layer.advanced || !layer.advanced[i] || fxOpen) {
+        if (typeof color === 'string')
+          colors.push(
+            <ColorPicker
+              key={i + (layer.id ?? '')}
+              default={color}
+              update={color => void changeColor(i, color)}
+              alpha={true}
             />
-          )}
-          {this.props.layer instanceof ImgMod.Img && this.props.layer.dynamic && (
-            <button disabled>Edit in external editor</button>
-          )}
-          {this.props.layer instanceof ImgMod.Layer && (
-            <button
-              onClick={e => {
-                this.setState({ layersOpen: !this.state.layersOpen });
-                e.stopPropagation();
-              }}
-              className="material-symbols-outlined"
-            >
-              {this.state.layersOpen ? 'folder_open' : 'folder'}
-            </button>
-          )}
+          );
+        else if (typeof color === 'object' && !('copy' in color))
+          colors.push(
+            <ColorPicker
+              key={i + (layer.id ?? '')}
+              default={layer.getTrueColor(i)}
+              linked={true}
+              unlink={() => layer.setColor(i, layer.getTrueColor(i))}
+            />
+          );
+      }
+    });
+  }
+
+  return (
+    <div
+      className={`manager-layer container${props.selectedLayer === props.layer ? ' selected' : ''}`}
+      draggable={true}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={e => {
+        SkinManager.selectLayer(props.layer);
+        e.stopPropagation();
+      }}
+      ref={layerRef}
+    >
+      <span className="layer-title">
+        <input
+          type="checkbox"
+          title="Toggle Layer Visibility"
+          checked={layerInfo.active}
+          onChange={props.layer.toggleActive}
+          onClick={e => e.stopPropagation()}
+        />
+        {!editingName && <p onDoubleClick={() => setEditingName(true)}>{layerInfo.name}</p>}
+        {editingName && (
+          <input
+            type="text"
+            autoFocus={true}
+            value={layerInfo.name}
+            onChange={e => props.layer.name(e.target.value)}
+            onFocus={e => e.target.select()}
+            onBlur={() => setEditingName(false)}
+            onClick={e => e.stopPropagation()}
+            onKeyDown={e => e.key === 'Enter' && setEditingName(false)}
+          />
+        )}
+        {props.layer instanceof ImgMod.Img && props.layer.dynamic && (
+          <button disabled>Edit in external editor</button>
+        )}
+        {props.layer instanceof ImgMod.Layer && (
           <button
             onClick={e => {
-              this.setState({ fxOpen: !this.state.fxOpen });
+              setLayersOpen(!layersOpen);
               e.stopPropagation();
             }}
             className="material-symbols-outlined"
           >
-            {this.state.fxOpen ? 'unfold_less' : 'unfold_more'}
+            {layersOpen ? 'folder_open' : 'folder'}
           </button>
-        </span>
-        <hr />
-        <span>
-          <LayerPreview asset={this.props.layer} />
-          <div className="manager-layer-buttons">
-            <button
-              onClick={e => {
-                this.props.duplicateLayer(this.props.index);
-                e.stopPropagation();
-              }}
-              title="Duplicate Layer"
-              className="material-symbols-outlined"
-            >
-              content_copy
-            </button>
-            <button
-              onClick={e => {
-                this.props.removeLayer(this.props.index);
-                e.stopPropagation();
-              }}
-              title="Delete Layer"
-              className="delete-button material-symbols-outlined"
-            >
-              delete
-            </button>
-            <button
-              onClick={e => {
-                this.props.flattenLayer(this.props.index);
-                e.stopPropagation();
-              }}
-              title="Flatten Layer"
-              className="material-symbols-outlined"
-            >
-              vertical_align_center
-            </button>
-            <button
-              onClick={e => {
-                this.props.mergeLayerDown(this.props.index);
-                e.stopPropagation();
-              }}
-              title="Merge Layer Down"
-              className="material-symbols-outlined"
-            >
-              vertical_align_bottom
-            </button>
-            {colors}
-          </div>
-        </span>
-        {this.state.layersOpen && this.props.layer instanceof ImgMod.Layer && (
-          <div className="sublayers">
-            <LayerList
-              layers={this.props.layer}
-              root={this.props.root}
-              selectedLayer={this.props.selectedLayer}
-              path={
-                this.props.path ? `${this.props.path}-${this.props.index}` : `${this.props.index}`
-              }
-            />
-          </div>
         )}
-        {this.state.fxOpen && (
-          <PropertiesList
-            preventDrag={true}
-            numberFallback={(id, value) => {
-              if (id in this.state) this.updateFilter(id as keyof CState, value);
+        <button
+          onClick={e => {
+            setFxOpen(!fxOpen);
+            e.stopPropagation();
+          }}
+          className="material-symbols-outlined"
+        >
+          {fxOpen ? 'unfold_less' : 'unfold_more'}
+        </button>
+      </span>
+      <hr />
+      <span>
+        <img src={layerInfo.src} alt={layerInfo.name} title={layerInfo.name} />
+        <div className="manager-layer-buttons">
+          <button
+            onClick={e => {
+              props.duplicateLayer(props.index);
+              e.stopPropagation();
             }}
-            stringFallback={(id, value) => {
-              if (id === 'blend') this.changeBlendMode(value as GlobalCompositeOperation);
-              if (id === 'type' && this.props.layer instanceof ImgMod.Img) {
-                this.props.layer.type(value as ImgMod.LayerType);
-                SkinManager.updateSkin();
-              }
-              if (id === 'form' && this.props.layer instanceof ImgMod.Img) {
-                this.props.layer.form(value as ImgMod.LayerForm);
-                SkinManager.updateSkin();
-              }
+            title="Duplicate Layer"
+            className="material-symbols-outlined"
+          >
+            content_copy
+          </button>
+          <button
+            onClick={e => {
+              props.removeLayer(props.index);
+              e.stopPropagation();
             }}
-            properties={properties}
+            title="Delete Layer"
+            className="delete-button material-symbols-outlined"
+          >
+            delete
+          </button>
+          <button
+            onClick={e => {
+              props.flattenLayer(props.index);
+              e.stopPropagation();
+            }}
+            title="Flatten Layer"
+            className="material-symbols-outlined"
+          >
+            vertical_align_center
+          </button>
+          <button
+            onClick={e => {
+              props.mergeLayerDown(props.index);
+              e.stopPropagation();
+            }}
+            title="Merge Layer Down"
+            className="material-symbols-outlined"
+          >
+            vertical_align_bottom
+          </button>
+          {colors}
+        </div>
+      </span>
+      {layersOpen && props.layer instanceof ImgMod.Layer && (
+        <div className="sublayers">
+          <LayerList
+            parent={props.layer}
+            root={props.root}
+            selectedLayer={props.selectedLayer}
+            path={props.path ? `${props.path}-${props.index}` : `${props.index}`}
           />
-        )}
-      </div>
-    );
-  }
+        </div>
+      )}
+      {fxOpen && (
+        <LayerFX
+          layer={props.layer}
+          blend={props.layer instanceof ImgMod.Img ? props.layer.blend() : undefined}
+          type={props.layer instanceof ImgMod.Img ? props.layer.type() : undefined}
+          form={props.layer instanceof ImgMod.Img ? props.layer.form() : undefined}
+        />
+      )}
+    </div>
+  );
 }
 
-function LayerPreview({ asset }: { asset: ImgMod.AbstractLayer }) {
-  const [src, setSrc] = useState(ImgMod.EMPTY_IMAGE_SOURCE);
-  const [alt, setAlt] = useState('');
+type DProps = {
+  layer: ImgMod.AbstractLayer;
+  blend?: GlobalCompositeOperation;
+  type?: ImgMod.LayerType;
+  form?: ImgMod.LayerForm;
+};
 
-  useEffect(updatePreview);
+function LayerFX(props: DProps) {
+  const layerInfo = ImgMod.useLayerInfo(props.layer);
 
-  function updatePreview() {
-    setSrc(asset.src);
-    setAlt(asset.name ?? '');
+  const properties: Property[] = [
+    {
+      name: 'Opacity',
+      id: 'opacity',
+      type: 'range',
+      value: layerInfo.filter.opacity,
+      resetValue: ImgMod.DEFAULT_FILTER.opacity,
+      min: 0,
+      max: 100,
+      subtype: 'percent'
+    },
+    {
+      name: 'Hue',
+      id: 'hue',
+      type: 'range',
+      value: layerInfo.filter.hue,
+      resetValue: ImgMod.DEFAULT_FILTER.hue,
+      min: -180,
+      max: 180,
+      subtype: 'degrees'
+    },
+    {
+      name: 'Saturation',
+      id: 'saturation',
+      type: 'range',
+      value: layerInfo.filter.saturation,
+      resetValue: ImgMod.DEFAULT_FILTER.saturation,
+      min: 0,
+      max: 200,
+      subtype: 'percent'
+    },
+    {
+      name: 'Brightness',
+      id: 'brightness',
+      type: 'range',
+      value: layerInfo.filter.brightness,
+      resetValue: ImgMod.DEFAULT_FILTER.brightness,
+      min: 0,
+      max: 200,
+      subtype: 'percent'
+    },
+    {
+      name: 'Contrast',
+      id: 'contrast',
+      type: 'range',
+      value: layerInfo.filter.contrast,
+      resetValue: ImgMod.DEFAULT_FILTER.contrast,
+      min: 0,
+      max: 200,
+      subtype: 'percent'
+    },
+    {
+      name: 'Invert',
+      id: 'invert',
+      type: 'range',
+      value: layerInfo.filter.invert,
+      resetValue: ImgMod.DEFAULT_FILTER.invert,
+      min: 0,
+      max: 100,
+      subtype: 'percent'
+    },
+    {
+      name: 'Sepia',
+      id: 'sepia',
+      type: 'range',
+      value: layerInfo.filter.sepia,
+      resetValue: ImgMod.DEFAULT_FILTER.sepia,
+      min: 0,
+      max: 100,
+      subtype: 'percent'
+    }
+  ];
+
+  if (props.layer instanceof ImgMod.Img) {
+    properties.unshift({
+      name: 'Blend Mode',
+      id: 'blend',
+      type: 'select',
+      value: props.blend,
+      options: [
+        ['source-over', 'Source Over'],
+        ['source-in', 'Source In'],
+        ['source-out', 'Source Out'],
+        ['source-atop', 'Source Atop'],
+        ['destination-over', 'Destination Over'],
+        ['destination-in', 'Destination In'],
+        ['destination-out', 'Destination Out'],
+        ['destination-atop', 'Destination Atop'],
+        ['lighter', 'Lighter'],
+        ['copy', 'Copy'],
+        ['xor', 'XOR'],
+        ['multiply', 'Multiply'],
+        ['screen', 'Screen'],
+        ['overlay', 'Overlay'],
+        ['darken', 'Darken'],
+        ['lighten', 'Lighten'],
+        ['color-dodge', 'Color Dodge'],
+        ['color-burn', 'Color Burn'],
+        ['hard-light', 'Hard Light'],
+        ['soft-light', 'Soft Light'],
+        ['difference', 'Difference'],
+        ['exclusion', 'Exclusion'],
+        ['hue', 'Hue'],
+        ['saturation', 'Saturation'],
+        ['color', 'Color'],
+        ['luminosity', 'Luminosity']
+      ]
+    });
+
+    properties.push(
+      {
+        name: 'Type',
+        id: 'type',
+        type: 'select',
+        value: props.type,
+        options: [
+          ['normal', 'Normal'],
+          ['erase', 'Erase'],
+          ['flatten', 'Flatten'],
+          ['blowup', 'Blowup']
+        ]
+      },
+      {
+        name: 'Form',
+        id: 'form',
+        type: 'select',
+        value: props.form,
+        options: [
+          ['universal', 'Universal'],
+          ['full-squish-inner', 'Full Squish - Inner'],
+          ['full-squish-outer', 'Full Squish - Outer'],
+          ['full-squish-average', 'Full Squish - Average'],
+          ['slim-stretch', 'Slim Stretch'],
+          ['full-only', 'Full Only'],
+          ['slim-only', 'Slim Only']
+        ]
+      }
+    );
   }
 
-  return <img src={src} alt={alt} title={alt} />;
+  return (
+    <PropertiesList
+      preventDrag={true}
+      numberFallback={(id, value) =>
+        Util.isKeyOfObject(id, ImgMod.DEFAULT_FILTER) && props.layer.filter({ [id]: value })
+      }
+      stringFallback={(id, value) => {
+        if (!(props.layer instanceof ImgMod.Img)) return;
+        if (id === 'blend') props.layer.blend(value as GlobalCompositeOperation);
+        if (id === 'type') props.layer.type(value as ImgMod.LayerType);
+        if (id === 'form') props.layer.form(value as ImgMod.LayerForm);
+      }}
+      properties={properties}
+    />
+  );
 }

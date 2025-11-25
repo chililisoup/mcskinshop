@@ -1,6 +1,7 @@
 import * as Util from '@tools/util';
 import Codec, { PairCodec } from '@tools/codec';
 import Speaker from '@tools/speaker';
+import { useEffect, useState } from 'react';
 
 export type Offset = {
   width: number;
@@ -241,6 +242,22 @@ export const DEFAULT_FILTER = {
   sepia: 0
 } as const;
 
+export type LayerInfo = {
+  src: string;
+  name: string;
+  active: boolean;
+  filter: Required<Filter>;
+};
+
+export enum ChangeMarker {
+  Source,
+  Preview,
+  Tree,
+  Info
+}
+
+export type SpeakerUpdate = { markers: ChangeMarker[]; info: LayerInfo };
+
 type SerializedAbstractLayer = {
   filterInternal: Filter;
   active: boolean;
@@ -257,8 +274,8 @@ export abstract class AbstractLayer {
     ) => Promise<SSerialized & SerializedAbstractLayer> = async instance => {
       const base: SerializedAbstractLayer = {
         filterInternal: instance.filterInternal,
-        active: instance.active,
-        name: instance.name
+        active: instance.activeInternal,
+        name: instance.nameInternal
       };
 
       return {
@@ -274,8 +291,8 @@ export abstract class AbstractLayer {
 
       instance.filterInternal = data.filterInternal;
       instance.filterStringInternal = instance.makeFilterString();
-      instance.active = data.active;
-      instance.name = data.name;
+      instance.activeInternal = data.active;
+      instance.nameInternal = data.name;
 
       return instance;
     };
@@ -285,13 +302,15 @@ export abstract class AbstractLayer {
 
   abstract getCodec: () => PairCodec<keyof typeof CODECS, AbstractLayer, SerializedAbstractLayer>;
 
+  protected speakerInternal?: Speaker<SpeakerUpdate, (update: SpeakerUpdate) => void>;
   private filterInternal: Filter;
   private filterStringInternal: string;
+  private activeInternal = true;
+  private nameInternal?: string;
   id: string;
-  active = true;
   src = EMPTY_IMAGE_SOURCE;
   image?: ImageBitmap;
-  name?: string;
+  cachedImageDataArray?: Readonly<ImageDataArray>;
   changed = true;
   parent?: Layer;
 
@@ -301,11 +320,41 @@ export abstract class AbstractLayer {
     this.id = Util.randomKey();
   }
 
+  speaker = () =>
+    (this.speakerInternal ??= new Speaker<SpeakerUpdate, (update: SpeakerUpdate) => void>());
+
+  getInfo = (): LayerInfo => {
+    return {
+      src: this.src,
+      name: this.nameInternal ?? '',
+      active: this.activeInternal,
+      filter: { ...AbstractLayer.defaultFilter(this.copyFilter()) }
+    };
+  };
+
+  name = (name?: string) => {
+    if (name !== undefined && name !== this.nameInternal) {
+      this.nameInternal = name;
+      this.markChanged([ChangeMarker.Info]);
+    }
+    return this.nameInternal;
+  };
+
+  active = (active?: boolean) => {
+    if (active !== undefined && active !== this.activeInternal) {
+      this.activeInternal = active;
+      this.markChanged([ChangeMarker.Info, ChangeMarker.Source]);
+    }
+    return this.activeInternal;
+  };
+
+  toggleActive = () => this.active(!this.activeInternal);
+
   filter = (filter?: Filter) => {
     if (filter) {
-      this.filterInternal = filter;
+      this.filterInternal = { ...this.filterInternal, ...filter };
       this.filterStringInternal = this.makeFilterString();
-      this.markChanged();
+      this.markChanged([ChangeMarker.Info, ChangeMarker.Source]);
     }
     return this.filterStringInternal;
   };
@@ -357,6 +406,13 @@ export abstract class AbstractLayer {
     return ctx.getImageData(0, 0, image.width, image.height);
   };
 
+  getImageDataArray = () => {
+    if (this.cachedImageDataArray) return this.cachedImageDataArray;
+    const imageDataArray = this.getImageData()?.data;
+    this.cachedImageDataArray = imageDataArray;
+    return this.cachedImageDataArray;
+  };
+
   getPixelColor = (x: number, y: number): Rgba | undefined => {
     if (x < 0 || y < 0) return;
     const imageData = this.getImageData();
@@ -372,9 +428,10 @@ export abstract class AbstractLayer {
     ];
   };
 
-  markChanged() {
-    this.changed = true;
-    if (this.parent) this.parent.markChanged();
+  markChanged(markers: ChangeMarker[], propagate = true) {
+    if (markers.some(marker => marker === ChangeMarker.Source)) this.changed = true;
+    this.speakerInternal?.updateListeners({ markers: markers, info: this.getInfo() });
+    if (propagate && this.parent) this.parent.markChanged(markers);
   }
 
   abstract render(): Promise<CanvasImageSource> | void;
@@ -426,7 +483,6 @@ export class Img extends AbstractLayer {
   fileHandle?: FileSystemFileHandle;
   observer?: FileSystemObserver;
   preview?: ImgPreview;
-  internalUpdateCallback?: () => void;
 
   constructor(
     type?: LayerType,
@@ -442,25 +498,25 @@ export class Img extends AbstractLayer {
   }
 
   blend = (blend?: GlobalCompositeOperation) => {
-    if (blend) {
+    if (blend && this.blendInternal !== blend) {
       this.blendInternal = blend;
-      this.markChanged();
+      this.markChanged([ChangeMarker.Info, ChangeMarker.Source]);
     }
     return this.blendInternal;
   };
 
   type = (type?: LayerType) => {
-    if (type) {
+    if (type && this.typeInternal !== type) {
       this.typeInternal = type;
-      this.markChanged();
+      this.markChanged([ChangeMarker.Info, ChangeMarker.Source]);
     }
     return this.typeInternal;
   };
 
   form = (form?: LayerForm) => {
-    if (form) {
+    if (form && this.formInternal !== form) {
       this.formInternal = form;
-      this.markChanged();
+      this.markChanged([ChangeMarker.Info, ChangeMarker.Source]);
     }
     return this.formInternal;
   };
@@ -505,7 +561,8 @@ export class Img extends AbstractLayer {
     this.src = URL.createObjectURL(await canvas.convertToBlob());
     this.rawImage = canvas.transferToImageBitmap();
     this.image = await createImageBitmap(this.rawImage);
-    this.markChanged();
+    this.cachedImageDataArray = undefined;
+    this.markChanged([ChangeMarker.Source, ChangeMarker.Info]);
   };
 
   loadUrl = (url: string, detectResolution = false) =>
@@ -604,7 +661,7 @@ export class Img extends AbstractLayer {
     copy.src = this.src;
     copy.rawImage = this.rawImage ? await createImageBitmap(this.rawImage) : undefined;
     copy.image = this.image ? await createImageBitmap(this.image) : undefined;
-    copy.name = this.name;
+    copy.name(this.name());
     copy.size = [this.size[0], this.size[1]];
     copy.linearOpacity = this.linearOpacity;
     copy.form = this.form;
@@ -625,8 +682,9 @@ export class Img extends AbstractLayer {
 
     this.src = URL.createObjectURL(await canvas.convertToBlob());
     this.image = canvas.transferToImageBitmap();
+    this.cachedImageDataArray = undefined;
 
-    this.markChanged();
+    this.markChanged([ChangeMarker.Info, ChangeMarker.Source]);
   };
 
   convertGrayscaleMask = async () => {
@@ -651,7 +709,8 @@ export class Img extends AbstractLayer {
     this.src = URL.createObjectURL(await canvas.convertToBlob());
     this.rawImage = canvas.transferToImageBitmap();
     this.image = await createImageBitmap(this.rawImage);
-    this.markChanged();
+    this.cachedImageDataArray = undefined;
+    this.markChanged([ChangeMarker.Source, ChangeMarker.Info]);
   };
 
   gradientMask = async (peak: number, length: number) => {
@@ -675,7 +734,8 @@ export class Img extends AbstractLayer {
     this.src = URL.createObjectURL(await canvas.convertToBlob());
     this.rawImage = canvas.transferToImageBitmap();
     this.image = await createImageBitmap(this.rawImage);
-    this.markChanged();
+    this.cachedImageDataArray = undefined;
+    this.markChanged([ChangeMarker.Source, ChangeMarker.Info]);
   };
 
   flatten = (
@@ -842,17 +902,17 @@ export class Img extends AbstractLayer {
     });
   };
 
-  setImage = async (image: ImageBitmap) => {
+  setImage = async (image: ImageBitmap, markChange = true) => {
     this.rawImage = await createImageBitmap(image);
     this.image = await createImageBitmap(image);
+    this.cachedImageDataArray = undefined;
 
     const canvas = new OffscreenCanvas(this.size[0], this.size[1]);
     const ctx = canvas.getContext('bitmaprenderer')!;
     ctx.transferFromImageBitmap(image);
 
     this.src = URL.createObjectURL(await canvas.convertToBlob());
-
-    this.markChanged();
+    if (markChange) this.markChanged([ChangeMarker.Source, ChangeMarker.Info]);
   };
 
   detectSlimModel = () => {
@@ -876,7 +936,6 @@ export class Img extends AbstractLayer {
         const file = await fileHandle.getFile();
 
         await this.loadUrl(URL.createObjectURL(file));
-        if (this.internalUpdateCallback) this.internalUpdateCallback();
 
         return;
       }
@@ -951,9 +1010,9 @@ export class ImgPreview extends Img {
     ctx.drawImage(canvas.transferToImageBitmap(), 0, 0);
   };
 
-  markChanged(propagate = false) {
-    super.markChanged();
-    if (propagate) this.base.markChanged();
+  markChanged(markers = [ChangeMarker.Preview], propagate = true) {
+    super.markChanged(markers);
+    if (propagate) this.base.markChanged(markers);
   }
 }
 
@@ -1021,7 +1080,7 @@ export class Layer extends AbstractLayer {
         : (new Array(this.sublayers.length).fill(undefined) as undefined[]);
   }
 
-  getLayers = () => this.sublayers as readonly AbstractLayer[];
+  getLayers = () => [...this.sublayers] as const;
 
   getLayer = (index: number) => this.sublayers[index];
 
@@ -1031,7 +1090,7 @@ export class Layer extends AbstractLayer {
 
     layer.parent = this;
 
-    this.markChanged();
+    this.markChanged([ChangeMarker.Tree, ChangeMarker.Source]);
   };
 
   addLayers = (layers: AbstractLayer[], colors?: Color[]) => {
@@ -1045,7 +1104,7 @@ export class Layer extends AbstractLayer {
       layer.parent = this;
     });
 
-    this.markChanged();
+    this.markChanged([ChangeMarker.Tree, ChangeMarker.Source]);
   };
 
   // TODO:
@@ -1056,7 +1115,7 @@ export class Layer extends AbstractLayer {
 
     layer.parent = this;
 
-    this.markChanged();
+    this.markChanged([ChangeMarker.Tree, ChangeMarker.Source]);
   };
 
   // TODO:
@@ -1072,7 +1131,7 @@ export class Layer extends AbstractLayer {
       layer.parent = this;
     });
 
-    this.markChanged();
+    this.markChanged([ChangeMarker.Tree, ChangeMarker.Source]);
   };
 
   replaceLayer = (index: number, layers: AbstractLayer | AbstractLayer[]) => {
@@ -1093,10 +1152,10 @@ export class Layer extends AbstractLayer {
       layers.parent = this;
     }
 
-    this.markChanged();
+    this.markChanged([ChangeMarker.Tree, ChangeMarker.Source]);
   };
 
-  moveLayer = (index: number, change: number) => {
+  moveLayer = (index: number, change: number, propagateChange = true) => {
     if (index + change < 0) change = this.sublayers.length - 1;
     if (index + change >= this.sublayers.length) change = 0 - (this.sublayers.length - 1);
 
@@ -1108,7 +1167,7 @@ export class Layer extends AbstractLayer {
     this.colors.splice(index, 1);
     this.colors.splice(index + change, 0, color);
 
-    this.markChanged();
+    this.markChanged([ChangeMarker.Tree, ChangeMarker.Source], propagateChange);
   };
 
   duplicateLayer = async (index: number) => {
@@ -1118,26 +1177,26 @@ export class Layer extends AbstractLayer {
     this.colors.splice(index, 0, color);
 
     layer.parent = this;
-    this.markChanged();
+    this.markChanged([ChangeMarker.Tree, ChangeMarker.Source]);
 
     return layer;
   };
 
-  removeLayer = (index: number, cleanup?: boolean) => {
+  removeLayer = (index: number, cleanup?: boolean, propagateChange = true) => {
     this.sublayers[index].parent = undefined;
-    if (cleanup ?? true) this.sublayers[index].cleanup();
+    if (cleanup) this.sublayers[index].cleanup();
 
     this.sublayers.splice(index, 1);
     this.colors.splice(index, 1);
 
-    this.markChanged();
+    this.markChanged([ChangeMarker.Tree, ChangeMarker.Source], propagateChange);
   };
 
   flattenLayer = async (index: number, slim = false) => {
     const baseLayer = this.sublayers[index];
 
     const flatLayer = new Img();
-    flatLayer.name = baseLayer.name;
+    flatLayer.name(baseLayer.name());
 
     const canvas = new OffscreenCanvas(64, 64);
     const ctx = canvas.getContext('2d')!;
@@ -1158,7 +1217,7 @@ export class Layer extends AbstractLayer {
     const bottomLayer = this.sublayers[bottomIndex];
 
     const mergedLayer = new Layer();
-    mergedLayer.name = bottomLayer.name + ' + ' + topLayer.name;
+    mergedLayer.name(bottomLayer.name() + ' + ' + topLayer.name());
 
     if (bottomLayer instanceof Layer)
       mergedLayer.addLayers(bottomLayer.sublayers, bottomLayer.colors);
@@ -1188,16 +1247,16 @@ export class Layer extends AbstractLayer {
     return mergedLayer;
   };
 
-  popLayer: (path: string[]) => AbstractLayer | undefined = path => {
+  popLayer = (path: string[], propagateChange = true): AbstractLayer | undefined => {
     const index = parseInt(path[0]);
 
     if (Number.isNaN(index) || index < 0 || index >= this.sublayers.length) return;
 
     const layer = this.sublayers[index];
     if (path.length === 1) {
-      this.removeLayer(index, false);
+      this.removeLayer(index, false, propagateChange);
       return layer;
-    } else if (layer instanceof Layer) return layer.popLayer(path.slice(1));
+    } else if (layer instanceof Layer) return layer.popLayer(path.slice(1), propagateChange);
   };
 
   getColors = () => [...this.colors] as const;
@@ -1293,7 +1352,7 @@ export class Layer extends AbstractLayer {
       }
 
       if (!sublayer) continue;
-      if (!sublayer.active) continue;
+      if (!sublayer.active()) continue;
 
       if (sublayer instanceof Layer) {
         await sublayer.renderInternal(slim, ctx, filter, renderPreviews);
@@ -1324,7 +1383,9 @@ export class Layer extends AbstractLayer {
     await this.renderInternal(slim, ctx, undefined, renderPreviews);
 
     this.src = URL.createObjectURL(await canvas.convertToBlob());
+    this.speakerInternal?.updateListeners({ markers: [ChangeMarker.Info], info: this.getInfo() });
     this.image = canvas.transferToImageBitmap();
+    this.cachedImageDataArray = undefined;
 
     return this.image;
   };
@@ -1337,7 +1398,7 @@ export class Layer extends AbstractLayer {
     );
     copy.src = this.src;
     copy.advanced = this.advanced ? [...this.advanced] : undefined;
-    copy.name = this.name;
+    copy.name(this.name());
 
     return copy;
   };
@@ -1350,24 +1411,20 @@ export class Layer extends AbstractLayer {
 }
 
 export class RootLayer extends Layer {
-  speaker = new Speaker();
-
   constructor(
-    listener?: () => void,
+    listener?: (update: SpeakerUpdate) => void,
     sublayers?: AbstractLayer[],
     colors?: (Color | UnloadedRelativeColor)[],
     filter?: Filter
   ) {
     super(sublayers, colors, filter);
-    if (listener) this.speaker.registerListener(listener);
+    if (listener) this.speaker().registerListener(listener);
   }
 
-  markChanged = () => {
-    this.changed = true;
-    this.speaker.updateListeners();
-  };
-
-  static async copyOf(layer: Partial<RootLayer> & Layer, listener?: () => void) {
+  static async copyOf(
+    layer: Partial<RootLayer> & Layer,
+    listener?: (update: SpeakerUpdate) => void
+  ) {
     const root = new RootLayer(
       listener,
       await Promise.all(layer.getLayers().map(sublayer => sublayer.copy())),
@@ -1376,7 +1433,7 @@ export class RootLayer extends Layer {
     );
     root.src = layer.src;
     root.advanced = layer.advanced ? [...layer.advanced] : undefined;
-    root.name = layer.name;
+    root.name(layer.name());
 
     return root;
   }
@@ -1387,3 +1444,31 @@ const CODECS = {
   Layer: Layer.CODEC as AbstractLayerCodec,
   Img: Img.CODEC as AbstractLayerCodec
 };
+
+export function useLayerInfo(layer: AbstractLayer) {
+  const [layerInfo, setLayerInfo] = useState(layer.getInfo());
+
+  useEffect(() => {
+    const maybeSetLayerInfo = (update: SpeakerUpdate) =>
+      update.markers.includes(ChangeMarker.Info) && setLayerInfo(update.info);
+
+    layer.speaker().registerListener(maybeSetLayerInfo);
+    return () => layer.speaker().unregisterListener(maybeSetLayerInfo);
+  }, [layer]);
+
+  return layerInfo;
+}
+
+export function useLayerList(layer: Layer) {
+  const [layerList, setLayerList] = useState(layer.getLayers());
+
+  useEffect(() => {
+    const maybeSetLayerList = (update: SpeakerUpdate) =>
+      update.markers.includes(ChangeMarker.Tree) && setLayerList(layer.getLayers());
+
+    layer.speaker().registerListener(maybeSetLayerList);
+    return () => layer.speaker().unregisterListener(maybeSetLayerList);
+  }, [layer]);
+
+  return layerList;
+}

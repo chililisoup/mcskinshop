@@ -820,20 +820,18 @@ export default class PaperDoll extends Component<object, AState> {
       <div className="paperdoll stack container">
         <span className="viewport-ui">
           <ViewportPanel
-            settings={{
-              shade: this.state.shade,
-              lightAngle: this.state.lightAngle,
-              lightFocus: this.state.lightFocus,
-              ambientLightColor: this.state.ambientLightColor,
-              ambientLightIntensity: this.state.ambientLightIntensity,
-              directionalLightColor: this.state.directionalLightColor,
-              directionalLightIntensity: this.state.directionalLightIntensity,
-              partToggles: this.state.partToggles,
-              fov: this.state.fov,
-              usePerspectiveCam: this.state.usePerspectiveCam,
-              grid: this.state.grid,
-              background: this.state.background
-            }}
+            shade={this.state.shade}
+            lightAngle={this.state.lightAngle}
+            lightFocus={this.state.lightFocus}
+            ambientLightColor={this.state.ambientLightColor}
+            ambientLightIntensity={this.state.ambientLightIntensity}
+            directionalLightColor={this.state.directionalLightColor}
+            directionalLightIntensity={this.state.directionalLightIntensity}
+            partToggles={this.state.partToggles}
+            fov={this.state.fov}
+            usePerspectiveCam={this.state.usePerspectiveCam}
+            grid={this.state.grid}
+            background={this.state.background}
             updateSetting={this.updateSetting}
             resetCameraPosition={this.resetCameraPosition}
             ref={this.panelRef}

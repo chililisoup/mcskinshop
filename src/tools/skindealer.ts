@@ -16,7 +16,7 @@ export default abstract class SkinDealer {
     url ??= await this.getSkinFromUsername(name);
 
     const image = new ImgMod.Img();
-    image.name = name;
+    image.name(name);
 
     await image.loadUrl(url);
     this.processSkinUpload(image);
@@ -37,9 +37,7 @@ export default abstract class SkinDealer {
 
     const file = await fileHandle.getFile();
     const image = new ImgMod.Img();
-    image.name = file.name;
-
-    image.internalUpdateCallback = () => SkinManager.updateSkin();
+    image.name(file.name);
     image.observeDynamic(fileHandle);
 
     await image.loadUrl(URL.createObjectURL(file));

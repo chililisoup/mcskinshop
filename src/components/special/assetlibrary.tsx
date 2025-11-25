@@ -166,7 +166,7 @@ class AssetPack extends Component<BProps, BState> {
         if (!imageBlob) continue;
 
         const image = new ImgMod.Img();
-        image.name = `${params.name}.${layer.split('.')[0]}`;
+        image.name(`${params.name}.${layer.split('.')[0]}`);
         await image.loadImage(imageBlob);
 
         assetLayers.push(image);
@@ -204,7 +204,7 @@ class AssetPack extends Component<BProps, BState> {
           const color = this.parseColor(layerColor[i]);
 
           const image = new ImgMod.Img(layerType, layerForm);
-          image.name = `${name}.${i + 1}`;
+          image.name(`${name}.${i + 1}`);
           image.linearOpacity = true;
           await image.loadImage(imageBlob);
 
@@ -218,7 +218,7 @@ class AssetPack extends Component<BProps, BState> {
       }
 
       const image = new ImgMod.Img(layerType, layerForm);
-      image.name = name;
+      image.name(name);
       await image.loadImage(imageBlob);
 
       if (
@@ -233,7 +233,7 @@ class AssetPack extends Component<BProps, BState> {
     }
 
     const asset = new ImgMod.Layer(assetLayers, assetColors);
-    asset.name = params.name;
+    asset.name(params.name);
     await asset.color();
     await asset.render();
     return asset;
@@ -270,11 +270,11 @@ class AssetPack extends Component<BProps, BState> {
     return (
       <div>
         {this.state.assets.map((asset, index) => (
-          <div className="container" key={asset.name}>
+          <div className="container" key={asset.name()}>
             <span>
-              <img src={asset.src} alt={asset.name} title={asset.name} />
+              <img src={asset.src} alt={asset.name()} title={asset.name()} />
               <div>
-                <p>{asset.name}</p>
+                <p>{asset.name()}</p>
                 <button onClick={this.addLayer.bind(this, index)}>+</button>
               </div>
             </span>

@@ -184,7 +184,7 @@ input[type='number']:enabled {
   cursor: text;
 }
 
-button:hover:enabled:not(.selectable),
+button:hover:enabled:not(.selectable, .reset-button),
 .dropdown-bar:hover > span > button:enabled {
   background-color: var(--hovered-accent);
   text-shadow: var(--input-text-outline);

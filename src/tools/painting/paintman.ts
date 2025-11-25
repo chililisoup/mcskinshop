@@ -19,6 +19,7 @@ export type Brush = {
   fillBoundary: (typeof FILL_BOUNDARIES)[number];
   mirrorX: boolean;
   mirrorZ: boolean;
+  pos: BrushPos;
 };
 
 type BrushPos = { x: number; y: number } | null;
@@ -26,9 +27,9 @@ type BrushPos = { x: number; y: number } | null;
 export default abstract class PaintManager {
   private static ctx = new OffscreenCanvas(64, 64).getContext('2d')!;
   private static brushActive = false;
-  private static brushPos: BrushPos = null;
   private static lastPos: BrushPos = null;
   private static applying = false;
+  private static updating = false;
   private static brush: Brush = {
     size: 1,
     type: 'pencil',
@@ -37,33 +38,33 @@ export default abstract class PaintManager {
     continuous: true,
     fillBoundary: 'part',
     mirrorX: false,
-    mirrorZ: false
+    mirrorZ: false,
+    pos: null
   };
 
   static brushSpeaker = new Speaker(() => this.getBrush());
 
   static getBrush = (): Brush => ({ ...this.brush });
 
-  static getBrushPos = (): BrushPos => (this.brushPos ? { ...this.brushPos } : null);
-
-  static updateBrush = (update: Partial<Brush>) => {
+  static updateBrush = (update: Omit<Partial<Brush>, 'pos'>) => {
     this.brush = { ...this.brush, ...update };
     if (update.type && update.eyedropper === undefined) this.brush.eyedropper = false;
 
-    this.updatePreview();
+    this.updatePreview(true);
     this.brushSpeaker.updateListeners();
   };
 
   static setBrushPos = (pos: BrushPos) => {
     if (
-      pos === this.brushPos ||
-      (pos && this.brushPos && pos.x === this.brushPos.x && pos.y === this.brushPos.y)
+      pos === this.brush.pos ||
+      (pos && this.brush.pos && pos.x === this.brush.pos.x && pos.y === this.brush.pos.y)
     )
       return;
 
-    this.brushPos = pos ? { ...pos } : pos;
-    if (!this.brushPos) this.lastPos = null;
-    this.updatePreview();
+    this.brush.pos = pos ? { ...pos } : pos;
+    if (!this.brush.pos) this.lastPos = null;
+    this.updatePreview(this.brush.pos === null);
+    this.brushSpeaker.updateListeners();
   };
 
   static setBrushActive = (active: boolean) => {
@@ -82,14 +83,15 @@ export default abstract class PaintManager {
 
   static isBrushActive = () => this.brushActive;
 
-  static updatePreview = () => {
-    if (this.applying) return;
-    if (!this.brushActive) this.ctx.clearRect(0, 0, 64, 64);
+  static updatePreview = (force = false) => {
+    if (this.applying || this.updating) return;
+    this.updating = true;
 
+    if (!this.brushActive) this.ctx.clearRect(0, 0, 64, 64);
     const swatch = PaletteManager.getSwatch();
 
     if (
-      this.brushPos &&
+      this.brush.pos &&
       !this.brush.eyedropper &&
       this.brush.type !== 'bucket' &&
       (this.brushActive || this.brush.type !== 'eraser')
@@ -100,21 +102,21 @@ export default abstract class PaintManager {
       this.ctx.fillStyle = swatch.opaqueColor;
 
       if (!this.brushActive || !this.lastPos)
-        this.ctx.fillRect(this.brushPos.x - offset, this.brushPos.y - offset, size, size);
+        this.ctx.fillRect(this.brush.pos.x - offset, this.brush.pos.y - offset, size, size);
 
       if (this.brushActive) {
         if (
           this.lastPos &&
-          !(this.brushPos.x === this.lastPos.x && this.brushPos.y === this.lastPos.y)
+          !(this.brush.pos.x === this.lastPos.x && this.brush.pos.y === this.lastPos.y)
         ) {
-          const dx = this.brushPos.x - this.lastPos.x;
-          const dy = this.brushPos.y - this.lastPos.y;
+          const dx = this.brush.pos.x - this.lastPos.x;
+          const dy = this.brush.pos.y - this.lastPos.y;
           const length = Math.sqrt(dx * dx + dy * dy);
           const nx = dx / length;
           const ny = dy / length;
 
           let previous = this.lastPos;
-          for (let i = 1; this.brushPos.x !== previous.x || this.brushPos.y !== previous.y; i++) {
+          for (let i = 1; this.brush.pos.x !== previous.x || this.brush.pos.y !== previous.y; i++) {
             const next = {
               x: Math.round(this.lastPos.x + nx * i),
               y: Math.round(this.lastPos.y + ny * i)
@@ -126,13 +128,13 @@ export default abstract class PaintManager {
           }
         }
 
-        this.lastPos = { ...this.brushPos };
+        this.lastPos = { ...this.brush.pos };
       }
-    }
+    } else if (!force) return (this.updating = false);
 
     const selected = SkinManager.getSelected();
     const preview = selected instanceof ImgMod.Img && selected.preview;
-    if (!preview) return;
+    if (!preview) return (this.updating = false);
 
     preview.image = Mirrors.mirrorImage(
       this.ctx.canvas.transferToImageBitmap(),
@@ -142,13 +144,15 @@ export default abstract class PaintManager {
     );
     if (this.brushActive) this.ctx.drawImage(preview.image, 0, 0);
 
-    preview.type(this.brush.type === 'eraser' ? 'erase' : 'normal');
     preview.opacity = swatch.alpha;
-    SkinManager.updateSkin();
+    preview.type(this.brush.type === 'eraser' ? 'erase' : 'normal');
+    preview.markChanged([ImgMod.ChangeMarker.Preview]);
+
+    this.updating = false;
   };
 
   static fill = () => {
-    if (this.applying || !this.brushPos) return;
+    if (this.applying || !this.brush.pos) return;
 
     const selected = SkinManager.getSelected();
     if (!(selected instanceof ImgMod.Img)) return;
@@ -159,8 +163,8 @@ export default abstract class PaintManager {
       this.brush.fillBoundary === 'none'
         ? [{ x1: 0, y1: 0, x2: 64, y2: 64 }]
         : Boundaries.getBoundaries(
-            this.brushPos.x,
-            this.brushPos.y,
+            this.brush.pos.x,
+            this.brush.pos.y,
             !!selected.getSlimOverride(slim),
             this.brush.fillBoundary === 'face'
           );
@@ -181,7 +185,7 @@ export default abstract class PaintManager {
             selectedData[index + 3]
           ]
         : [0, 0, 0, 0];
-    const startRgba = selectedRgba((this.brushPos.x + this.brushPos.y * 64) * 4);
+    const startRgba = selectedRgba((this.brush.pos.x + this.brush.pos.y * 64) * 4);
 
     if (this.brush.continuous && this.brush.tolerance < 1) {
       const indices = new Set([] as number[]);
@@ -207,7 +211,7 @@ export default abstract class PaintManager {
         if (y < 63) floodFill(x, y + 1);
       };
 
-      floodFill(this.brushPos.x, this.brushPos.y);
+      floodFill(this.brush.pos.x, this.brush.pos.y);
     } else
       for (const { x1, y1, x2, y2 } of boundaries)
         for (let x = x1; x < x2; x++)
@@ -259,13 +263,13 @@ export default abstract class PaintManager {
     this.ctx.globalAlpha = 1;
 
     const before = await selected.getImageBlobSrc(selected.rawImage);
-    await selected.setImage(this.ctx.canvas.transferToImageBitmap());
+    await selected.setImage(this.ctx.canvas.transferToImageBitmap(), false);
     const after = await selected.getImageBlobSrc(selected.rawImage);
 
     preview.image = this.ctx.canvas.transferToImageBitmap();
-    preview.markChanged(true);
+    preview.markChanged(undefined, false);
+    selected.markChanged([ImgMod.ChangeMarker.Source, ImgMod.ChangeMarker.Info]);
 
-    SkinManager.updateSkin();
     EditManager.addEdit('brush stroke', async () => await this.strokeUndo(selected, before, after));
 
     this.applying = false;
@@ -273,7 +277,6 @@ export default abstract class PaintManager {
 
   static strokeUndo = async (img: ImgMod.Img, before?: string, after?: string) => {
     await img.loadUrl(before ?? ImgMod.EMPTY_IMAGE_SOURCE);
-    SkinManager.updateSkin();
     return () => this.strokeUndo(img, after, before);
   };
 
@@ -283,9 +286,9 @@ export default abstract class PaintManager {
     ];
 
   static pickColor = (focus: boolean) => {
-    if (!this.brushPos) return;
+    if (!this.brush.pos) return;
 
-    const rgba = this.getRgba(this.brushPos.x, this.brushPos.y, focus);
+    const rgba = this.getRgba(this.brush.pos.x, this.brush.pos.y, focus);
     if (!rgba) return;
 
     this.updateBrush({ eyedropper: false });

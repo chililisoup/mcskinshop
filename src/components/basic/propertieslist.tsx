@@ -156,6 +156,17 @@ export default function PropertiesList(props: AProps) {
         ((property.type !== 'button' && property.type !== 'file') ||
           typeof property.label === 'string');
 
+  function getInputSet(property: Property, id: string) {
+    const input = getInput(property, id);
+    return property.siblings
+      ? input.concat(
+          ...property.siblings.map(sibling =>
+            getInput(sibling, `${id}-${sibling.id}-${sibling.type}`)
+          )
+        )
+      : input;
+  }
+
   const propertyElements = props.properties.map(addProperty);
 
   function getInput(property: Property, id: string) {
@@ -431,17 +442,6 @@ export default function PropertiesList(props: AProps) {
       case 'divider':
         return property.name ? [] : [<hr key={property.id} />];
     }
-  }
-
-  function getInputSet(property: Property, id: string) {
-    const input = getInput(property, id);
-    return property.siblings
-      ? input.concat(
-          ...property.siblings.map(sibling =>
-            getInput(sibling, `${id}-${sibling.id}-${sibling.type}`)
-          )
-        )
-      : input;
   }
 
   function addProperty(property: Property): React.JSX.Element | React.JSX.Element[] {

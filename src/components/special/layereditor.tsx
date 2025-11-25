@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import * as Util from '@tools/util';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
@@ -15,6 +15,12 @@ type AProps = {
   toggleColorPalette: () => void;
 };
 
+type CanvasTransform = {
+  x: number;
+  y: number;
+  zoom: number;
+};
+
 export default function LayerEditor(props: AProps) {
   const selected = useSelected();
   const brush = useBrush();
@@ -27,8 +33,17 @@ export default function LayerEditor(props: AProps) {
   const [grid, setGrid] = useState(true);
   const [gridSize, setGridSize] = useState(3);
   const [focus, setFocus] = useState(false);
-  const [transform, setTransform] = useState({ x: 0, y: 0, zoom: Math.log(100) });
+  const [transform, setTransform] = useState({
+    x: 0,
+    y: 0,
+    zoom: Math.log(100)
+  } as CanvasTransform);
   const panPos = useRef(null as { x: number; y: number; tx: number; ty: number } | null);
+
+  const updateTransform = useCallback(
+    (update: Partial<CanvasTransform>) => setTransform(transform => ({ ...transform, ...update })),
+    []
+  );
 
   // (512 / 100) / 64 = 0.08
   const getCanvasSize = (zoom: number) => Math.round(Math.exp(zoom) * 0.08) * 64;
@@ -65,12 +80,19 @@ export default function LayerEditor(props: AProps) {
         }
       }
     }
+  }, [brush.type, focus, palette.alpha, selected, skin.image]);
 
+  useEffect(() => {
     if (overlayRef.current) {
-      const ctx = overlayRef.current.getContext('2d')!;
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      const ctx = new OffscreenCanvas(
+        overlayRef.current.width,
+        overlayRef.current.height
+      ).getContext('2d')!;
 
-      const pos = PaintManager.getBrushPos();
+      const overlayCtx = overlayRef.current.getContext('2d')!;
+      overlayCtx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+      const pos = brush.pos;
       if (pos && (brush.type === 'eraser' || brush.eyedropper)) {
         const scale = ctx.canvas.width / 64;
         const size = brush.eyedropper ? 1 : brush.size;
@@ -79,6 +101,23 @@ export default function LayerEditor(props: AProps) {
         const top = Math.round(pos.y - size / 2);
 
         const outlineNum = Math.max(4 * size - 4, 1);
+
+        const imageDataArray = (
+          focus ? SkinManager.getSelected() : SkinManager.getRoot()
+        )?.getImageDataArray();
+
+        const getRgba: (x: number, y: number) => ImgMod.Rgba = imageDataArray
+          ? (x, y) => {
+              const pixelIndex = (x + y * 64) * 4;
+              return [
+                imageDataArray[pixelIndex],
+                imageDataArray[pixelIndex + 1],
+                imageDataArray[pixelIndex + 2],
+                imageDataArray[pixelIndex + 3]
+              ];
+            }
+          : () => [0, 0, 0, 255];
+
         for (let i = 0; i < outlineNum; i++) {
           let [x, y] = [0, 0];
 
@@ -98,7 +137,7 @@ export default function LayerEditor(props: AProps) {
                 break;
             }
 
-          const rgba = PaintManager.getRgba(left + x, top + y, focus);
+          const rgba = getRgba(left + x, top + y);
           const white = 255 - rgba[3];
           const combined: ImgMod.Rgba = [rgba[0] + white, rgba[1] + white, rgba[2] + white, 255];
           const grayPos = [combined[0] - 127, combined[1] - 127, combined[2] - 127];
@@ -115,9 +154,11 @@ export default function LayerEditor(props: AProps) {
           if (y === 0) ctx.fillRect(sx, sy, scale, 1);
           if (y === size - 1) ctx.fillRect(sx, sy + scale - 1, scale, 1);
         }
+
+        overlayCtx.drawImage(ctx.canvas, 0, 0);
       }
     }
-  }, [skin.image, selected, brush, focus, transform.zoom, palette.alpha]);
+  }, [brush, focus]);
 
   useEffect(() => {
     const area = canvasRef.current?.parentElement?.parentElement;
@@ -228,6 +269,78 @@ export default function LayerEditor(props: AProps) {
       ? selected.getSlimOverride(SkinManager.getSlim())
       : SkinManager.getSlim();
 
+  return (
+    <div className="container">
+      <div className="layer-editor">
+        <p>{selected?.name() ?? 'No layer selected.'}</p>
+        <LayerEditorRibbon
+          {...props}
+          guide={guide}
+          setGuide={setGuide}
+          grid={grid}
+          setGrid={setGrid}
+          gridSize={gridSize}
+          setGridSize={setGridSize}
+          focus={focus}
+          setFocus={setFocus}
+          updateTransform={updateTransform}
+        />
+        <div className="top left">
+          <LayerEditorToolbar />
+        </div>
+        <div
+          className="layer-editor-canvas-area"
+          onContextMenu={e => e.preventDefault()}
+          onMouseMove={onMouseMove}
+          onMouseDown={e =>
+            (e.button === 2 || (e.button === 0 && e.shiftKey)) &&
+            (panPos.current = { x: e.screenX, y: e.screenY, tx: transform.x, ty: transform.y })
+          }
+          onMouseLeave={() => !panPos.current && PaintManager.setBrushPos(null)}
+        >
+          <div
+            className="layer-editor-canvases"
+            onMouseDown={e =>
+              e.button === 0 &&
+              !e.shiftKey &&
+              (brush.eyedropper ? PaintManager.pickColor(focus) : PaintManager.setBrushActive(true))
+            }
+            style={{
+              cursor:
+                selected instanceof ImgMod.Img && !selected.dynamic ? undefined : 'not-allowed',
+              backgroundImage:
+                (guide ? `url(${slim ? slimref : fullref})` : 'none') + `, url(${checkerboard})`,
+              backgroundSize: `100%, ${grid ? 100 / Math.pow(2, 5 - gridSize) : 200}%`,
+              marginLeft: `${transform.x}px`,
+              marginTop: `${transform.y}px`,
+              width: canvasSize,
+              height: canvasSize
+            }}
+          >
+            <canvas width={64} height={64} ref={canvasRef} />
+            <canvas width={overlaySize} height={overlaySize} ref={overlayRef} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type BProps = AProps & {
+  guide: boolean;
+  setGuide: (value: boolean) => void;
+  grid: boolean;
+  setGrid: (value: boolean) => void;
+  gridSize: number;
+  setGridSize: (value: number) => void;
+  focus: boolean;
+  setFocus: (value: boolean) => void;
+  updateTransform: (value: Partial<CanvasTransform>) => void;
+};
+
+const LayerEditorRibbon = React.memo((props: BProps) => {
+  const brush = useBrush();
+
   const toolProperties: Property[] = [
     {
       name: 'Color Palette',
@@ -310,132 +423,99 @@ export default function LayerEditor(props: AProps) {
   });
 
   return (
-    <div className="container">
-      <div className="layer-editor">
-        <p>{selected?.name ?? 'No layer selected.'}</p>
-        <div>
-          <PropertiesList
-            type="ribbon"
-            properties={[
+    <div>
+      <PropertiesList
+        type="ribbon"
+        properties={[
+          {
+            name: 'Guide',
+            id: 'guide',
+            type: 'checkbox',
+            value: props.guide,
+            onChange: props.setGuide
+          },
+          {
+            name: 'Grid',
+            id: 'grid',
+            type: 'checkbox',
+            value: props.grid,
+            onChange: props.setGrid,
+            siblings: [
               {
-                name: 'Guide',
-                id: 'guide',
-                type: 'checkbox',
-                value: guide,
-                onChange: setGuide
-              },
-              {
-                name: 'Grid',
-                id: 'grid',
-                type: 'checkbox',
-                value: grid,
-                onChange: setGrid,
-                siblings: [
-                  {
-                    name: 'Grid Size',
-                    id: 'gridSize',
-                    type: 'range',
-                    step: 1,
-                    min: 0,
-                    max: 5,
-                    value: gridSize,
-                    onChange: setGridSize
-                  }
-                ]
-              },
-              {
-                name: 'Focus Layer',
-                id: 'focus',
-                type: 'checkbox',
-                value: focus,
-                onChange: setFocus
-              },
-              {
-                name: 'Recenter',
-                id: 'recenter',
-                type: 'button',
-                label: 'recenter',
-                unlabeled: true,
-                isIcon: true,
-                onClick: () => setTransform({ ...transform, x: 0, y: 0 })
+                name: 'Grid Size',
+                id: 'gridSize',
+                type: 'range',
+                step: 1,
+                min: 0,
+                max: 5,
+                value: props.gridSize,
+                onChange: props.setGridSize
               }
-            ]}
-          />
-          <PropertiesList type="ribbon" properties={toolProperties} />
-        </div>
-        <div className="top left">
-          <PropertiesList
-            type="toolbar"
-            buttonFallback={id =>
-              Util.includes(BRUSH_TYPES, id) && PaintManager.updateBrush({ type: id })
-            }
-            properties={[
-              {
-                name: 'Pencil (B)',
-                label: PENCIL,
-                id: 'pencil',
-                type: 'button',
-                selected: !brush.eyedropper && brush.type === 'pencil'
-              },
-              {
-                name: 'Eraser (E)',
-                label: ERASER,
-                id: 'eraser',
-                type: 'button',
-                selected: !brush.eyedropper && brush.type === 'eraser'
-              },
-              {
-                name: 'Eyedropper (I)',
-                label: EYEDROPPER,
-                id: 'eyedropper',
-                type: 'button',
-                selected: brush.eyedropper,
-                onClick: () => PaintManager.updateBrush({ eyedropper: !brush.eyedropper })
-              },
-              {
-                name: 'Paint Bucket (G)',
-                label: PAINT_BUCKET,
-                id: 'bucket',
-                type: 'button',
-                selected: !brush.eyedropper && brush.type === 'bucket'
-              }
-            ]}
-          />
-        </div>
-        <div
-          className="layer-editor-canvas-area"
-          onContextMenu={e => e.preventDefault()}
-          onMouseMove={onMouseMove}
-          onMouseDown={e =>
-            (e.button === 2 || (e.button === 0 && e.shiftKey)) &&
-            (panPos.current = { x: e.screenX, y: e.screenY, tx: transform.x, ty: transform.y })
+            ]
+          },
+          {
+            name: 'Focus Layer',
+            id: 'focus',
+            type: 'checkbox',
+            value: props.focus,
+            onChange: props.setFocus
+          },
+          {
+            name: 'Recenter',
+            id: 'recenter',
+            type: 'button',
+            label: 'recenter',
+            unlabeled: true,
+            isIcon: true,
+            onClick: () => props.updateTransform({ x: 0, y: 0 })
           }
-          onMouseLeave={() => !panPos.current && PaintManager.setBrushPos(null)}
-        >
-          <div
-            className="layer-editor-canvases"
-            onMouseDown={e =>
-              e.button === 0 &&
-              !e.shiftKey &&
-              (brush.eyedropper ? PaintManager.pickColor(focus) : PaintManager.setBrushActive(true))
-            }
-            style={{
-              cursor:
-                selected instanceof ImgMod.Img && !selected.dynamic ? undefined : 'not-allowed',
-              backgroundImage:
-                (guide ? `url(${slim ? slimref : fullref})` : 'none') + `, url(${checkerboard})`,
-              backgroundSize: `100%, ${grid ? 100 / Math.pow(2, 5 - gridSize) : 200}%`,
-              marginLeft: `${transform.x}px`,
-              marginTop: `${transform.y}px`,
-              width: canvasSize,
-              height: canvasSize
-            }}
-          >
-            <canvas width={64} height={64} ref={canvasRef} />
-            <canvas width={overlaySize} height={overlaySize} ref={overlayRef} />
-          </div>
-        </div>
-      </div>
+        ]}
+      />
+      <PropertiesList type="ribbon" properties={toolProperties} />
     </div>
   );
-}
+});
+
+const LayerEditorToolbar = React.memo(() => {
+  const brush = useBrush();
+
+  return (
+    <PropertiesList
+      type="toolbar"
+      buttonFallback={id =>
+        Util.includes(BRUSH_TYPES, id) && PaintManager.updateBrush({ type: id })
+      }
+      properties={[
+        {
+          name: 'Pencil (B)',
+          label: PENCIL,
+          id: 'pencil',
+          type: 'button',
+          selected: !brush.eyedropper && brush.type === 'pencil'
+        },
+        {
+          name: 'Eraser (E)',
+          label: ERASER,
+          id: 'eraser',
+          type: 'button',
+          selected: !brush.eyedropper && brush.type === 'eraser'
+        },
+        {
+          name: 'Eyedropper (I)',
+          label: EYEDROPPER,
+          id: 'eyedropper',
+          type: 'button',
+          selected: brush.eyedropper,
+          onClick: () => PaintManager.updateBrush({ eyedropper: !brush.eyedropper })
+        },
+        {
+          name: 'Paint Bucket (G)',
+          label: PAINT_BUCKET,
+          id: 'bucket',
+          type: 'button',
+          selected: !brush.eyedropper && brush.type === 'bucket'
+        }
+      ]}
+    />
+  );
+});

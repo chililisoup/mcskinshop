@@ -6,20 +6,18 @@ import FileInput from '@components/basic/fileinput';
 import SkinManager, { useSkin } from '@tools/skinman';
 
 type AProps = {
-  settings: {
-    shade: boolean;
-    lightAngle: number;
-    lightFocus: number;
-    ambientLightColor: string;
-    ambientLightIntensity: number;
-    directionalLightColor: string;
-    directionalLightIntensity: number;
-    partToggles: PaperDoll.AState['partToggles'];
-    fov: number;
-    usePerspectiveCam: boolean;
-    grid: boolean;
-    background?: boolean;
-  };
+  shade: boolean;
+  lightAngle: number;
+  lightFocus: number;
+  ambientLightColor: string;
+  ambientLightIntensity: number;
+  directionalLightColor: string;
+  directionalLightIntensity: number;
+  partToggles: PaperDoll.AState['partToggles'];
+  fov: number;
+  usePerspectiveCam: boolean;
+  grid: boolean;
+  background?: boolean;
   updateSetting: <KKey extends keyof PaperDoll.AState>(
     setting: KKey,
     value: PaperDoll.AState[KKey],
@@ -35,7 +33,7 @@ export type ViewportPanelHandle = {
 
 export default function ViewportPanel(props: AProps) {
   const [panel, setPanel] = useState(true);
-  const skin = useSkin();
+  const slim = useSkin('slim').slim;
 
   useImperativeHandle(props.ref, () => ({
     onKeyDown: (e: KeyboardEvent) => {
@@ -63,7 +61,7 @@ export default function ViewportPanel(props: AProps) {
 
   function togglePart(part: keyof PaperDoll.AState['partToggles'], hat: boolean, value: boolean) {
     const toggles = JSON.parse(
-      JSON.stringify(props.settings.partToggles)
+      JSON.stringify(props.partToggles)
     ) as PaperDoll.AState['partToggles'];
     toggles[part][hat ? 'hat' : 'base'] = value;
     props.updateSetting('partToggles', toggles);
@@ -73,25 +71,24 @@ export default function ViewportPanel(props: AProps) {
     let on = 0;
 
     if (partSet === 'all')
-      for (const part in props.settings.partToggles) {
-        if (props.settings.partToggles[part as keyof PaperDoll.AState['partToggles']].base) on++;
-        if (props.settings.partToggles[part as keyof PaperDoll.AState['partToggles']].hat) on++;
+      for (const part in props.partToggles) {
+        if (props.partToggles[part as keyof PaperDoll.AState['partToggles']].base) on++;
+        if (props.partToggles[part as keyof PaperDoll.AState['partToggles']].hat) on++;
       }
     else
-      for (const part in props.settings.partToggles)
-        if (props.settings.partToggles[part as keyof PaperDoll.AState['partToggles']][partSet])
-          on++;
+      for (const part in props.partToggles)
+        if (props.partToggles[part as keyof PaperDoll.AState['partToggles']][partSet]) on++;
 
     const toggle = on <= (partSet === 'all' ? 6 : 3);
     const toggles = JSON.parse(
-      JSON.stringify(props.settings.partToggles)
+      JSON.stringify(props.partToggles)
     ) as PaperDoll.AState['partToggles'];
 
     if (partSet === 'all')
-      for (const part in props.settings.partToggles)
+      for (const part in props.partToggles)
         toggles[part as keyof PaperDoll.AState['partToggles']] = { base: toggle, hat: toggle };
     else
-      for (const part in props.settings.partToggles)
+      for (const part in props.partToggles)
         toggles[part as keyof PaperDoll.AState['partToggles']][partSet] = toggle;
 
     props.updateSetting('partToggles', toggles);
@@ -105,7 +102,7 @@ export default function ViewportPanel(props: AProps) {
           <input
             type="checkbox"
             id="slimToggle"
-            checked={skin.slim}
+            checked={slim}
             onChange={e => SkinManager.setSlim(e.target.checked)}
           />
         </span>
@@ -114,7 +111,7 @@ export default function ViewportPanel(props: AProps) {
           <input
             type="checkbox"
             id="gridToggle"
-            checked={props.settings.grid}
+            checked={props.grid}
             onChange={e => props.updateSetting('grid', e.target.checked)}
           />
         </span>
@@ -125,9 +122,9 @@ export default function ViewportPanel(props: AProps) {
           <input
             type="checkbox"
             id="backgroundToggle"
-            checked={props.settings.background}
+            checked={props.background}
             onChange={e => props.updateSetting('background', e.target.checked)}
-            disabled={props.settings.background === undefined}
+            disabled={props.background === undefined}
           />
           <FileInput accept="image/png" callback={setBackgroundImage}>
             Upload...
@@ -139,7 +136,7 @@ export default function ViewportPanel(props: AProps) {
       <PropertiesList
         buttonFallback={id => {
           if (id === 'type')
-            props.updateSetting('usePerspectiveCam', !props.settings.usePerspectiveCam, true);
+            props.updateSetting('usePerspectiveCam', !props.usePerspectiveCam, true);
           else if (id === 'resetCameraPosition') props.resetCameraPosition();
         }}
         numberFallback={(id, value, finished) => {
@@ -150,18 +147,18 @@ export default function ViewportPanel(props: AProps) {
             name: 'Type',
             id: 'type',
             type: 'button',
-            label: props.settings.usePerspectiveCam ? 'Perspective' : 'Orthographic'
+            label: props.usePerspectiveCam ? 'Perspective' : 'Orthographic'
           },
           {
             name: 'FOV',
             id: 'fov',
             type: 'range',
-            value: props.settings.fov,
+            value: props.fov,
             resetValue: PaperDoll.defaultViewportOptions.fov,
             min: 30,
             max: 120,
             subtype: 'degrees',
-            disabled: !props.settings.usePerspectiveCam
+            disabled: !props.usePerspectiveCam
           },
           {
             name: 'Reset Camera Position',
@@ -194,7 +191,7 @@ export default function ViewportPanel(props: AProps) {
             name: 'Shade',
             id: 'shade',
             type: 'checkbox',
-            value: props.settings.shade
+            value: props.shade
           },
           {
             id: 'shadeDivider',
@@ -209,45 +206,45 @@ export default function ViewportPanel(props: AProps) {
                 name: 'Focus',
                 id: 'lightFocus',
                 type: 'range',
-                value: Math.sqrt(props.settings.lightFocus) * 10,
+                value: Math.sqrt(props.lightFocus) * 10,
                 resetValue: Math.sqrt(PaperDoll.defaultViewportOptions.lightFocus) * 10,
                 min: 0,
                 max: 100,
                 subtype: 'percent',
-                disabled: !props.settings.shade
+                disabled: !props.shade
               },
               {
                 name: 'Angle',
                 id: 'lightAngle',
                 type: 'range',
-                value: props.settings.lightAngle,
+                value: props.lightAngle,
                 resetValue: PaperDoll.defaultViewportOptions.lightAngle,
                 min: 0,
                 max: 2 * Math.PI,
                 step: Math.PI / 180,
                 snap: Math.PI / 18,
                 subtype: 'radiansAsDegrees',
-                disabled: !props.settings.shade
+                disabled: !props.shade
               },
               {
                 name: 'Color',
                 id: 'directionalLightColor',
                 type: 'color',
-                value: props.settings.directionalLightColor,
+                value: props.directionalLightColor,
                 resetValue: PaperDoll.defaultViewportOptions.directionalLightColor,
                 controlled: true,
-                disabled: !props.settings.shade
+                disabled: !props.shade
               },
               {
                 name: 'Intensity',
                 id: 'directionalLightIntensity',
                 type: 'range',
-                value: props.settings.directionalLightIntensity,
+                value: props.directionalLightIntensity,
                 resetValue: PaperDoll.defaultViewportOptions.directionalLightIntensity,
                 min: 0,
                 max: 5,
                 step: 0.1,
-                disabled: !props.settings.shade
+                disabled: !props.shade
               }
             ]
           },
@@ -260,21 +257,21 @@ export default function ViewportPanel(props: AProps) {
                 name: 'Color',
                 id: 'ambientLightColor',
                 type: 'color',
-                value: props.settings.ambientLightColor,
+                value: props.ambientLightColor,
                 resetValue: PaperDoll.defaultViewportOptions.ambientLightColor,
                 controlled: true,
-                disabled: !props.settings.shade
+                disabled: !props.shade
               },
               {
                 name: 'Intensity',
                 id: 'ambientLightIntensity',
                 type: 'range',
-                value: props.settings.ambientLightIntensity,
+                value: props.ambientLightIntensity,
                 resetValue: PaperDoll.defaultViewportOptions.ambientLightIntensity,
                 min: 0,
                 max: 5,
                 step: 0.1,
-                disabled: !props.settings.shade
+                disabled: !props.shade
               }
             ]
           }
@@ -290,13 +287,13 @@ export default function ViewportPanel(props: AProps) {
               <div className="stack" style={{ width: '63px', height: '63px' }}>
                 <input
                   type="checkbox"
-                  checked={props.settings.partToggles.head.hat}
+                  checked={props.partToggles.head.hat}
                   onChange={e => togglePart('head', true, e.target.checked)}
                 />
                 <input
                   className="inner"
                   type="checkbox"
-                  checked={props.settings.partToggles.head.base}
+                  checked={props.partToggles.head.base}
                   onChange={e => togglePart('head', false, e.target.checked)}
                 />
               </div>
@@ -307,13 +304,13 @@ export default function ViewportPanel(props: AProps) {
               <div className="stack" style={{ width: '36px', height: '81px', marginRight: '-9px' }}>
                 <input
                   type="checkbox"
-                  checked={props.settings.partToggles.rightArm.hat}
+                  checked={props.partToggles.rightArm.hat}
                   onChange={e => togglePart('rightArm', true, e.target.checked)}
                 />
                 <input
                   className="inner"
                   type="checkbox"
-                  checked={props.settings.partToggles.rightArm.base}
+                  checked={props.partToggles.rightArm.base}
                   onChange={e => togglePart('rightArm', false, e.target.checked)}
                 />
               </div>
@@ -322,13 +319,13 @@ export default function ViewportPanel(props: AProps) {
               <div className="stack" style={{ width: '63px', height: '81px' }}>
                 <input
                   type="checkbox"
-                  checked={props.settings.partToggles.torso.hat}
+                  checked={props.partToggles.torso.hat}
                   onChange={e => togglePart('torso', true, e.target.checked)}
                 />
                 <input
                   className="inner"
                   type="checkbox"
-                  checked={props.settings.partToggles.torso.base}
+                  checked={props.partToggles.torso.base}
                   onChange={e => togglePart('torso', false, e.target.checked)}
                 />
               </div>
@@ -337,13 +334,13 @@ export default function ViewportPanel(props: AProps) {
               <div className="stack" style={{ width: '36px', height: '81px', marginLeft: '-9px' }}>
                 <input
                   type="checkbox"
-                  checked={props.settings.partToggles.leftArm.hat}
+                  checked={props.partToggles.leftArm.hat}
                   onChange={e => togglePart('leftArm', true, e.target.checked)}
                 />
                 <input
                   className="inner"
                   type="checkbox"
-                  checked={props.settings.partToggles.leftArm.base}
+                  checked={props.partToggles.leftArm.base}
                   onChange={e => togglePart('leftArm', false, e.target.checked)}
                 />
               </div>
@@ -355,13 +352,13 @@ export default function ViewportPanel(props: AProps) {
               <div className="stack" style={{ width: '36px', height: '81px' }}>
                 <input
                   type="checkbox"
-                  checked={props.settings.partToggles.rightLeg.hat}
+                  checked={props.partToggles.rightLeg.hat}
                   onChange={e => togglePart('rightLeg', true, e.target.checked)}
                 />
                 <input
                   className="inner"
                   type="checkbox"
-                  checked={props.settings.partToggles.rightLeg.base}
+                  checked={props.partToggles.rightLeg.base}
                   onChange={e => togglePart('rightLeg', false, e.target.checked)}
                 />
               </div>
@@ -370,13 +367,13 @@ export default function ViewportPanel(props: AProps) {
               <div className="stack" style={{ width: '36px', height: '81px' }}>
                 <input
                   type="checkbox"
-                  checked={props.settings.partToggles.leftLeg.hat}
+                  checked={props.partToggles.leftLeg.hat}
                   onChange={e => togglePart('leftLeg', true, e.target.checked)}
                 />
                 <input
                   className="inner"
                   type="checkbox"
-                  checked={props.settings.partToggles.leftLeg.base}
+                  checked={props.partToggles.leftLeg.base}
                   onChange={e => togglePart('leftLeg', false, e.target.checked)}
                 />
               </div>
