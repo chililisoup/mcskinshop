@@ -84,7 +84,7 @@ export default class PaperDoll extends Component<object, AState> {
   panelRef: React.RefObject<ViewportPanelHandle | null> = React.createRef();
   clock = new THREE.Clock();
   doll = new ModelTool.Model('doll', skinmodel as ModelTool.ModelDefinition);
-  activeKeys: Record<string, true> = {};
+  activeKeys = new Set<string>();
 
   modeProps = {
     instance: this,
@@ -106,6 +106,8 @@ export default class PaperDoll extends Component<object, AState> {
   grid = new THREE.GridHelper(16, 16);
   gridArrow = new THREE.Mesh();
   handles = new THREE.Object3D();
+  pointer: THREE.Vector2 | null = null;
+  resizeObserver = new ResizeObserver(() => this.onCanvasResize());
 
   selectedObject?: THREE.Object3D;
 
@@ -158,7 +160,7 @@ export default class PaperDoll extends Component<object, AState> {
   };
 
   componentDidMount() {
-    if (!this.canvasRef.current) return;
+    if (!this.canvasRef.current?.parentElement) return;
 
     this.sceneSetup();
     this.modelSetup();
@@ -179,27 +181,37 @@ export default class PaperDoll extends Component<object, AState> {
 
     if (!this.state.usePerspectiveCam && this.orthoCam) this.changeCamera(this.orthoCam);
 
-    window.addEventListener('resize', this.handleWindowResize);
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
+    this.resizeObserver.observe(this.canvasRef.current.parentElement);
+    this.canvasRef.current.addEventListener('pointerdown', this.onPointerDown);
+    this.canvasRef.current.addEventListener('pointerup', this.onPointerUp);
+    this.canvasRef.current.addEventListener('pointermove', this.onPointerMove);
+    this.canvasRef.current.addEventListener('pointerleave', this.onPointerLeave);
     SkinManager.speaker.registerListener(this.updateSkin);
     PreferenceManager.speaker.registerListener(this.updateThemedMaterials);
     ModelFeatureManager.speaker.registerListener(this.updateModelFeatures);
   }
 
   componentWillUnmount() {
-    if (!this.canvasRef.current) return;
-
-    window.removeEventListener('resize', this.handleWindowResize);
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('keyup', this.onKeyUp);
+
+    this.resizeObserver.disconnect();
+
     SkinManager.speaker.unregisterListener(this.updateSkin);
     PreferenceManager.speaker.unregisterListener(this.updateThemedMaterials);
     ModelFeatureManager.speaker.unregisterListener(this.updateModelFeatures);
 
     window.cancelAnimationFrame(this.requestID);
+
     if (this.controls) this.controls.dispose();
     if (this.renderer) this.renderer.dispose();
+
+    if (this.canvasRef.current) {
+      this.canvasRef.current.removeEventListener('pointermove', this.onPointerMove);
+      this.canvasRef.current.removeEventListener('pointerleave', this.onPointerLeave);
+    }
   }
 
   componentDidUpdate(_prevProps: Readonly<object>, prevState: Readonly<AState>) {
@@ -233,20 +245,15 @@ export default class PaperDoll extends Component<object, AState> {
 
     if (this.perspCam) this.perspCam.fov = this.state.fov;
 
-    this.handleWindowResize();
+    this.onCanvasResize();
   }
 
   sceneSetup = () => {
-    if (
-      !this.canvasRef.current?.parentNode ||
-      !(this.canvasRef.current.parentNode instanceof Element)
-    )
-      return;
-
     this.scene.clear();
 
-    const width = this.canvasRef.current.parentNode.clientWidth;
-    const height = this.canvasRef.current.parentNode.clientHeight;
+    const resolution = this.getResolution();
+    if (!resolution || !this.canvasRef.current) return;
+    const { width, height } = resolution;
 
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvasRef.current,
@@ -642,7 +649,10 @@ export default class PaperDoll extends Component<object, AState> {
   getFirstVisibleIntersection = (intersects: THREE.Intersection[]) =>
     intersects.find(({ object }) => {
       const index = object.userData.materialIndex as number | undefined;
-      return index === undefined ? false : this.doll.materials.shaded[index].visible;
+      if (index === undefined || !this.doll.materials.shaded[index].visible) return false;
+      let parentsVisible = true;
+      object.traverseAncestors(parent => parent.visible === false && (parentsVisible = false));
+      return parentsVisible;
     });
 
   findSelectableAncestor: (part: THREE.Object3D) => THREE.Object3D | false = part => {
@@ -684,6 +694,8 @@ export default class PaperDoll extends Component<object, AState> {
   renderFrame = () => {
     if (!this.composer) return;
 
+    this.canvasRef.current?.style.setProperty('cursor', null);
+
     const delta = this.clock.getDelta();
     this.state.mode?.renderFrame?.(this.state.exportingRender ? 0 : delta);
     this.composer.render();
@@ -715,22 +727,20 @@ export default class PaperDoll extends Component<object, AState> {
     this.composer?.setPixelRatio(ratio);
   };
 
-  handleWindowResize = () => {
-    if (
-      !this.canvasRef.current?.parentNode ||
-      !(this.canvasRef.current.parentNode instanceof Element)
-    )
-      return;
+  getResolution = () =>
+    this.canvasRef.current?.parentElement && {
+      width: this.canvasRef.current.parentElement.clientWidth,
+      height: this.canvasRef.current.parentElement.clientHeight - 32
+    };
 
-    const width = this.canvasRef.current.parentNode.clientWidth;
-    const height = this.canvasRef.current.parentNode.clientHeight - 32;
-
-    this.changeSize(width, height, window.devicePixelRatio);
+  onCanvasResize = () => {
+    const resolution = this.getResolution();
+    if (resolution) this.changeSize(resolution.width, resolution.height, window.devicePixelRatio);
+    this.composer?.render();
   };
 
   onKeyDown = (e: KeyboardEvent) => {
-    if (this.activeKeys[e.key]) return;
-    this.activeKeys[e.key] = true;
+    this.activeKeys.add(e.key);
 
     if (this.canvasRef.current?.closest('.window')?.classList.contains('active')) {
       if (e.key === 'Tab') {
@@ -745,8 +755,28 @@ export default class PaperDoll extends Component<object, AState> {
   };
 
   onKeyUp = (e: KeyboardEvent) => {
-    delete this.activeKeys[e.key];
+    this.activeKeys.delete(e.key);
+    this.state.mode?.onKeyUp?.(e);
   };
+
+  onPointerDown = (e: PointerEvent) => this.state.mode?.onPointerDown?.(e);
+
+  onPointerUp = (e: PointerEvent) => this.state.mode?.onPointerUp?.(e);
+
+  onPointerMove = (e: PointerEvent) => {
+    const resolution = this.getResolution();
+    if (!resolution) return;
+
+    const x = (e.offsetX / resolution.width) * 2 - 1;
+    const y = (e.offsetY / resolution.height) * -2 + 1;
+
+    if (this.pointer) this.pointer.set(x, y);
+    else this.pointer = new THREE.Vector2(x, y);
+
+    if (this.activeCam) this.raycaster.setFromCamera(this.pointer, this.activeCam);
+  };
+
+  onPointerLeave = () => (this.pointer = null);
 
   createRender = (width: number, height: number, smaa: boolean) => {
     if (
@@ -774,7 +804,7 @@ export default class PaperDoll extends Component<object, AState> {
     this.selectedOutlinePass.enabled = true;
     this.handles.visible = true;
     this.grid.visible = this.state.grid;
-    this.handleWindowResize();
+    this.onCanvasResize();
 
     return data;
   };

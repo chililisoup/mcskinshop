@@ -54,18 +54,15 @@ export default class DraggableWindow extends Component<AProps, AState> {
 
   componentDidMount() {
     if (this.handleRef.current) {
-      this.handleRef.current.addEventListener('mousedown', this.onMouseDown);
-      this.handleRef.current.addEventListener('touchstart', this.onTouchStart);
+      this.handleRef.current.addEventListener('pointerdown', this.onPointerDown);
     }
     if (this.windowRef.current) {
-      document.addEventListener('mousedown', this.checkFocus);
-      this.windowRef.current.addEventListener('mousedown', this.startFocus);
-      this.windowRef.current.addEventListener('touchstart', this.startFocus);
+      document.addEventListener('pointerdown', this.checkFocus);
+      this.windowRef.current.addEventListener('pointerdown', this.startFocus);
       this.resizeObserver.observe(this.windowRef.current);
     }
 
-    document.addEventListener('mouseup', this.onMouseUp);
-    document.addEventListener('touchend', this.onTouchEnd);
+    document.addEventListener('pointerup', this.onPointerUp);
     window.addEventListener('resize', this.handleWindowResize);
 
     this.handleWindowResize();
@@ -73,23 +70,18 @@ export default class DraggableWindow extends Component<AProps, AState> {
 
   componentWillUnmount() {
     if (this.handleRef.current) {
-      this.handleRef.current.removeEventListener('mousedown', this.onMouseDown);
-      this.handleRef.current.removeEventListener('touchend', this.onTouchEnd);
+      this.handleRef.current.removeEventListener('pointerdown', this.onPointerDown);
     }
     if (this.windowRef.current) {
-      this.windowRef.current.removeEventListener('mousedown', this.startFocus);
-      this.windowRef.current.removeEventListener('touchstart', this.startFocus);
+      this.windowRef.current.removeEventListener('pointerdown', this.startFocus);
     }
 
     this.resizeObserver.disconnect();
 
     window.removeEventListener('resize', this.handleWindowResize);
-    document.removeEventListener('mouseup', this.onMouseUp);
-    document.removeEventListener('touchend', this.onTouchEnd);
-    document.removeEventListener('mousedown', this.checkFocus);
-    document.removeEventListener('touchstart', this.checkFocus);
-    document.removeEventListener('mousemove', this.mouseDrag);
-    document.removeEventListener('touchmove', this.touchDrag);
+    document.removeEventListener('pointerup', this.onPointerUp);
+    document.removeEventListener('pointerdown', this.checkFocus);
+    document.removeEventListener('pointermove', this.pointerDrag);
   }
 
   blinkImportant = () =>
@@ -116,15 +108,13 @@ export default class DraggableWindow extends Component<AProps, AState> {
 
     if (!ref?.contains(e.target) && e.target.closest('.draggable')) {
       this.setState({ focused: false, fresh: false, active: false });
-      document.removeEventListener('mousedown', this.checkFocus);
-      document.removeEventListener('touchstart', this.checkFocus);
+      document.removeEventListener('pointerdown', this.checkFocus);
     } else if (!ref?.contains(e.target)) this.setState({ active: false });
   };
 
   startFocus = () => {
     this.setState({ focused: true, fresh: false, active: true });
-    document.addEventListener('mousedown', this.checkFocus);
-    document.addEventListener('touchstart', this.checkFocus);
+    document.addEventListener('pointerdown', this.checkFocus);
   };
 
   setHandleOffset = (x: number, y: number) => {
@@ -134,26 +124,15 @@ export default class DraggableWindow extends Component<AProps, AState> {
     };
   };
 
-  onMouseDown = (e: MouseEvent) => {
+  onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
     this.setHandleOffset(e.screenX, e.screenY);
-    document.addEventListener('mousemove', this.mouseDrag);
+    document.addEventListener('pointermove', this.pointerDrag);
   };
 
-  onTouchStart = (e: TouchEvent) => {
-    const touch = e.targetTouches[0];
-    if (!touch) return;
-    this.setHandleOffset(touch.screenX, touch.screenY);
-    document.addEventListener('touchmove', this.touchDrag);
-  };
-
-  onMouseUp = (e: MouseEvent) => {
+  onPointerUp = (e: PointerEvent) => {
     if (e.button !== 0) return;
-    document.removeEventListener('mousemove', this.mouseDrag);
-  };
-
-  onTouchEnd = () => {
-    document.removeEventListener('touchmove', this.touchDrag);
+    document.removeEventListener('pointermove', this.pointerDrag);
   };
 
   recalculateRelatives = () => {
@@ -210,18 +189,7 @@ export default class DraggableWindow extends Component<AProps, AState> {
     });
   };
 
-  mouseDrag = (e: MouseEvent) => {
-    this.drag(e.screenX, e.screenY);
-  };
-
-  touchDrag = (e: TouchEvent) => {
-    const touch = e.targetTouches[0];
-    if (!touch) {
-      document.removeEventListener('touchmove', this.touchDrag);
-      return;
-    }
-    this.drag(touch.screenX, touch.screenY);
-  };
+  pointerDrag = (e: PointerEvent) => this.drag(e.screenX, e.screenY);
 
   render() {
     const container = (
@@ -235,7 +203,7 @@ export default class DraggableWindow extends Component<AProps, AState> {
         }
         style={{
           left: this.state.pos.x + this.anchorOffset.x,
-          top: this.state.pos.y + this.anchorOffset.y,
+          top: this.state.pos.y + this.anchorOffset.y
         }}
       >
         <div>{this.props.children}</div>

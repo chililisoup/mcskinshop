@@ -10,14 +10,14 @@ export default class PopUp extends Component<AProps> {
   first = false;
 
   componentDidMount() {
-    document.addEventListener('mousedown', this.handleClickOutside);
+    document.addEventListener('pointerdown', this.handleClickOutside);
   }
 
   componentWillUnmount() {
-    document.removeEventListener('mousedown', this.handleClickOutside);
+    document.removeEventListener('pointerdown', this.handleClickOutside);
   }
 
-  handleClickOutside = (e: MouseEvent) => {
+  handleClickOutside = (e: PointerEvent) => {
     if (!this.first) {
       this.first = true;
       return;

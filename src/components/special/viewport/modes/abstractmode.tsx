@@ -30,6 +30,7 @@ export default abstract class AbstractMode<State = {}> extends Component<Props, 
   componentWillUnmount() {
     const state = JSON.stringify(this.state);
     this.props.instance.cachedModeStates[this.name] = state;
+    if (this.props.instance.controls) this.props.instance.controls.enabled = true;
   }
 
   updateSetting = <KKey extends keyof State>(
@@ -54,6 +55,12 @@ export default abstract class AbstractMode<State = {}> extends Component<Props, 
   };
 
   onKeyDown?: (e: KeyboardEvent) => void;
+
+  onKeyUp?: (e: KeyboardEvent) => void;
+
+  onPointerDown?: (e: PointerEvent) => void;
+
+  onPointerUp?: (e: PointerEvent) => void;
 
   renderFrame?: (delta: number) => void;
 

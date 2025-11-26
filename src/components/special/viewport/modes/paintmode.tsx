@@ -1,13 +1,12 @@
 import React from 'react';
 import * as THREE from 'three';
+import * as Util from '@tools/util';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
 import AbstractMode, { Props } from '@components/special/viewport/modes/abstractmode';
-import PaintManager, { FILL_BOUNDARIES, useBrush } from '@tools/painting/paintman';
+import PaintManager, { FILL_BOUNDARIES, Space, useBrush } from '@tools/painting/paintman';
 import { LayerEditorToolbar } from '@components/special/layereditor';
 
 export default class PaintMode extends AbstractMode {
-  mousePos = new THREE.Vector2(1, 1); // this should be brought up for use here and in pose mode
-  mouseOver = false;
   hoveredIntersection?: THREE.Intersection;
 
   constructor(props: Props) {
@@ -16,56 +15,33 @@ export default class PaintMode extends AbstractMode {
 
   componentDidMount() {
     super.componentDidMount();
-
     this.props.instance.loadPose();
-    this.props.instance.clearSavedPose();
-
-    if (this.props.canvasRef.current) this.addEvents(this.props.canvasRef.current);
+    this.props.canvasRef.current?.addEventListener('wheel', this.onWheel, { passive: false });
   }
 
   componentWillUnmount() {
     super.componentWillUnmount();
-
-    this.props.instance.savePose();
-    this.props.instance.resetPose();
-
-    if (this.props.canvasRef.current) this.removeEvents(this.props.canvasRef.current);
+    this.props.canvasRef.current?.removeEventListener('wheel', this.onWheel);
   }
 
-  addEvents = (canvas: HTMLCanvasElement) => {
-    canvas.addEventListener('mousemove', this.onMouseMove);
-    canvas.addEventListener('mousedown', this.onMouseDown);
-    canvas.addEventListener('mouseup', this.onMouseUp);
-    canvas.addEventListener('mouseleave', this.onMouseLeave);
-  };
-
-  removeEvents = (canvas: HTMLCanvasElement) => {
-    canvas.removeEventListener('mousemove', this.onMouseMove);
-    canvas.removeEventListener('mousedown', this.onMouseDown);
-    canvas.removeEventListener('mouseup', this.onMouseUp);
-    canvas.removeEventListener('mouseleave', this.onMouseLeave);
-  };
-
-  onMouseMove = (e: MouseEvent) => {
-    if (
-      this.props.instance.state.mode !== this ||
-      !this.props.canvasRef.current?.parentNode ||
-      !(this.props.canvasRef.current.parentNode instanceof Element)
-    )
+  onWheel = (e: WheelEvent) => {
+    if (!e.ctrlKey) return;
+    if (!this.props.instance.canvasRef.current?.closest('.window')?.classList.contains('active'))
       return;
 
-    const width = this.props.canvasRef.current.parentNode.clientWidth;
-    const height = this.props.canvasRef.current.parentNode.clientHeight;
+    const oldSize = PaintManager.getBrush().size;
+    const change = e.deltaY < 0 ? 1 : -1;
+    const size = Util.clamp(oldSize + change, 1, 16);
 
-    this.mousePos.x = (e.offsetX / width) * 2 - 1;
-    this.mousePos.y = (e.offsetY / height) * -2 + 1;
+    if (size !== oldSize) PaintManager.updateBrush({ size: size });
 
-    this.mouseOver = true;
+    e.preventDefault();
+    e.stopPropagation();
   };
 
-  onMouseDown = (e: MouseEvent) => {
-    if (this.props.instance.state.mode !== this) return;
+  onPointerDown = (e: PointerEvent) => {
     if (!this.hoveredIntersection || e.button === 2) return;
+    if (this.props.instance.activeKeys.has('Shift')) return;
 
     if (this.props.instance.controls) this.props.instance.controls.enabled = false;
 
@@ -73,13 +49,9 @@ export default class PaintMode extends AbstractMode {
     else PaintManager.setBrushActive(true);
   };
 
-  onMouseUp = () => {
+  onPointerUp = () => {
     if (this.props.instance.controls) this.props.instance.controls.enabled = true;
     PaintManager.setBrushActive(false);
-  };
-
-  onMouseLeave = () => {
-    this.mouseOver = false;
   };
 
   onKeyDown = (e: KeyboardEvent) => {
@@ -89,13 +61,17 @@ export default class PaintMode extends AbstractMode {
     else if (key === 'I')
       PaintManager.updateBrush({ eyedropper: !PaintManager.getBrush().eyedropper });
     else if (key === 'G') PaintManager.updateBrush({ type: 'bucket' });
+    else if (key === 'CONTROL' && this.props.instance.controls)
+      this.props.instance.controls.enabled = false;
+  };
+
+  onKeyUp = (e: KeyboardEvent) => {
+    if (e.key === 'Control' && this.props.instance.controls && !PaintManager.isBrushActive())
+      this.props.instance.controls.enabled = true;
   };
 
   renderFrame = () => {
-    if (!this.props.instance.activeCam) return;
-    if (!this.mouseOver) return;
-
-    this.props.instance.raycaster.setFromCamera(this.mousePos, this.props.instance.activeCam);
+    if (!this.props.instance.pointer) return;
 
     this.hoveredIntersection = undefined;
 
@@ -104,14 +80,19 @@ export default class PaintMode extends AbstractMode {
     );
 
     if (!intersection?.uv || intersection.object.userData.uniqueMaterial)
-      return PaintManager.setBrushPos(null);
+      return PaintManager.setBrushPos(null, Space.ThreeD);
 
     this.hoveredIntersection = intersection;
 
-    PaintManager.setBrushPos({
-      x: Math.floor(intersection.uv.x * 64),
-      y: Math.floor((1 - intersection.uv.y) * 64)
-    });
+    PaintManager.setBrushPos(
+      {
+        x: Math.floor(intersection.uv.x * 64),
+        y: Math.floor((1 - intersection.uv.y) * 64)
+      },
+      Space.ThreeD
+    );
+
+    this.props.instance.canvasRef.current?.style.setProperty('cursor', 'crosshair');
   };
 
   renderRibbon = () => <PaintModeRibbon />;

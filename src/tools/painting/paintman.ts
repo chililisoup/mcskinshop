@@ -24,9 +24,15 @@ export type Brush = {
 
 type BrushPos = { x: number; y: number } | null;
 
+export enum Space {
+  TwoD,
+  ThreeD
+}
+
 export default abstract class PaintManager {
   private static ctx = new OffscreenCanvas(64, 64).getContext('2d')!;
   private static brushActive = false;
+  private static space = Space.TwoD;
   private static lastPos: BrushPos = null;
   private static applying = false;
   private static updating = false;
@@ -54,7 +60,7 @@ export default abstract class PaintManager {
     this.brushSpeaker.updateListeners();
   };
 
-  static setBrushPos = (pos: BrushPos) => {
+  static setBrushPos = (pos: BrushPos, space: Space) => {
     if (
       pos === this.brush.pos ||
       (pos && this.brush.pos && pos.x === this.brush.pos.x && pos.y === this.brush.pos.y)
@@ -62,6 +68,8 @@ export default abstract class PaintManager {
       return;
 
     this.brush.pos = pos ? { ...pos } : pos;
+    this.space = space;
+
     if (!this.brush.pos) this.lastPos = null;
     this.updatePreview(this.brush.pos === null);
     this.brushSpeaker.updateListeners();
@@ -101,35 +109,8 @@ export default abstract class PaintManager {
 
       this.ctx.fillStyle = swatch.opaqueColor;
 
-      if (!this.brushActive || !this.lastPos)
-        this.ctx.fillRect(this.brush.pos.x - offset, this.brush.pos.y - offset, size, size);
-
-      if (this.brushActive) {
-        if (
-          this.lastPos &&
-          !(this.brush.pos.x === this.lastPos.x && this.brush.pos.y === this.lastPos.y)
-        ) {
-          const dx = this.brush.pos.x - this.lastPos.x;
-          const dy = this.brush.pos.y - this.lastPos.y;
-          const length = Math.sqrt(dx * dx + dy * dy);
-          const nx = dx / length;
-          const ny = dy / length;
-
-          let previous = this.lastPos;
-          for (let i = 1; this.brush.pos.x !== previous.x || this.brush.pos.y !== previous.y; i++) {
-            const next = {
-              x: Math.round(this.lastPos.x + nx * i),
-              y: Math.round(this.lastPos.y + ny * i)
-            };
-
-            if (next.x === previous.x && next.y === previous.y) continue;
-            this.ctx.fillRect(next.x - offset, next.y - offset, size, size);
-            previous = next;
-          }
-        }
-
-        this.lastPos = { ...this.brush.pos };
-      }
+      if (this.space === Space.TwoD) this.drawPreview2D(size, offset);
+      else this.drawPreview3D(size, offset);
     } else if (!force) return (this.updating = false);
 
     const selected = SkinManager.getSelected();
@@ -149,6 +130,63 @@ export default abstract class PaintManager {
     preview.markChanged([ImgMod.ChangeMarker.Preview]);
 
     this.updating = false;
+  };
+
+  static drawPreview2D = (size: number, offset: number) => {
+    if (!this.brush.pos) return;
+
+    if (!this.brushActive || !this.lastPos)
+      this.ctx.fillRect(this.brush.pos.x - offset, this.brush.pos.y - offset, size, size);
+
+    if (this.brushActive) {
+      if (
+        this.lastPos &&
+        !(this.brush.pos.x === this.lastPos.x && this.brush.pos.y === this.lastPos.y)
+      ) {
+        const dx = this.brush.pos.x - this.lastPos.x;
+        const dy = this.brush.pos.y - this.lastPos.y;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const nx = dx / length;
+        const ny = dy / length;
+
+        let previous = this.lastPos;
+        for (let i = 1; this.brush.pos.x !== previous.x || this.brush.pos.y !== previous.y; i++) {
+          const next = {
+            x: Math.round(this.lastPos.x + nx * i),
+            y: Math.round(this.lastPos.y + ny * i)
+          };
+
+          if (next.x === previous.x && next.y === previous.y) continue;
+          this.ctx.fillRect(next.x - offset, next.y - offset, size, size);
+          previous = next;
+        }
+      }
+
+      this.lastPos = { ...this.brush.pos };
+    }
+  };
+
+  static drawPreview3D = (size: number, offset: number) => {
+    if (!this.brush.pos) return;
+    this.lastPos = null;
+
+    const boundary = Boundaries.getBoundaries(this.brush.pos.x, this.brush.pos.y, SkinManager.getSlim(), true)?.[0];
+    if (!boundary) return;
+
+    const x1 = this.brush.pos.x - offset;
+    const y1 = this.brush.pos.y - offset;
+    const x2 = x1 + size;
+    const y2 = y1 + size;
+
+    const cx1 = Math.max(x1, boundary.x1);
+    const cy1 = Math.max(y1, boundary.y1);
+    const cx2 = Math.min(x2, boundary.x2);
+    const cy2 = Math.min(y2, boundary.y2);
+
+    const width = cx2 - cx1;
+    const height = cy2 - cy1;
+
+    this.ctx.fillRect(cx1, cy1, width, height);
   };
 
   static fill = () => {

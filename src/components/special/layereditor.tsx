@@ -1,8 +1,13 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as ImgMod from '@tools/imgmod';
 import * as Util from '@tools/util';
 import PropertiesList, { Property } from '@components/basic/propertieslist';
-import PaintManager, { BRUSH_TYPES, FILL_BOUNDARIES, useBrush } from '@tools/painting/paintman';
+import PaintManager, {
+  BRUSH_TYPES,
+  FILL_BOUNDARIES,
+  Space,
+  useBrush
+} from '@tools/painting/paintman';
 import SkinManager, { useSelected, useSkin } from '@tools/skinman';
 import checkerboard from '@assets/checkerboard.png';
 import fullref from '@assets/fullref.png';
@@ -56,21 +61,6 @@ export default function LayerEditor(props: AProps) {
 
   // (512 / 100) / 64 = 0.08
   const getCanvasSize = (zoom: number) => Math.round(Math.exp(zoom) * 0.08) * 64;
-
-  useLayoutEffect(() => {
-    const pan = (e: MouseEvent) => {
-      if (!panPos.current) return;
-
-      setTransform({
-        ...transform,
-        x: transform.x + e.movementX * 2,
-        y: transform.y + e.movementY * 2
-      });
-    };
-
-    document.addEventListener('mousemove', pan);
-    return () => document.removeEventListener('mousemove', pan);
-  });
 
   useEffect(() => {
     setName(selected?.name() ?? absentName);
@@ -183,7 +173,7 @@ export default function LayerEditor(props: AProps) {
   useEffect(() => {
     const area = canvasRef.current?.parentElement?.parentElement;
 
-    const onMouseUp = (e: MouseEvent) => {
+    const onPointerUp = (e: PointerEvent) => {
       if (e.button === 2 || (e.button === 0 && e.shiftKey)) {
         panPos.current = null;
         const rect = area?.getBoundingClientRect();
@@ -194,11 +184,11 @@ export default function LayerEditor(props: AProps) {
             e.clientY < rect.top ||
             e.clientY > rect.bottom)
         )
-          PaintManager.setBrushPos(null);
+          PaintManager.setBrushPos(null, Space.TwoD);
       } else if (e.button === 0) PaintManager.setBrushActive(false);
     };
 
-    const pan = (e: MouseEvent) => {
+    const pan = (e: PointerEvent) => {
       if (!panPos.current) return;
 
       setTransform({
@@ -252,19 +242,19 @@ export default function LayerEditor(props: AProps) {
       });
     };
 
-    document.addEventListener('mouseup', onMouseUp);
-    document.addEventListener('mousemove', pan);
+    document.addEventListener('pointerup', onPointerUp);
+    document.addEventListener('pointermove', pan);
     document.addEventListener('keydown', shortcuts);
     area?.addEventListener('wheel', onWheel, { passive: false });
     return () => {
-      document.removeEventListener('mouseup', onMouseUp);
-      document.removeEventListener('mousemove', pan);
+      document.removeEventListener('pointerup', onPointerUp);
+      document.removeEventListener('pointermove', pan);
       document.removeEventListener('keydown', shortcuts);
       area?.removeEventListener('wheel', onWheel);
     };
   });
 
-  function onMouseMove(e: React.MouseEvent) {
+  function onPointerMove(e: React.PointerEvent) {
     if (!canvasRef.current) return;
     if (panPos.current) return;
 
@@ -275,11 +265,14 @@ export default function LayerEditor(props: AProps) {
     };
 
     if (!focus && selected instanceof ImgMod.Img) {
-      PaintManager.setBrushPos(selected.getFormPos(brushPos.x, brushPos.y, SkinManager.getSlim()));
+      PaintManager.setBrushPos(
+        selected.getFormPos(brushPos.x, brushPos.y, SkinManager.getSlim()),
+        Space.TwoD
+      );
       return;
     }
 
-    PaintManager.setBrushPos(brushPos);
+    PaintManager.setBrushPos(brushPos, Space.TwoD);
   }
 
   const canvasSize = `${getCanvasSize(transform.zoom)}px`;
@@ -311,16 +304,16 @@ export default function LayerEditor(props: AProps) {
         <div
           className="layer-editor-canvas-area"
           onContextMenu={e => e.preventDefault()}
-          onMouseMove={onMouseMove}
-          onMouseDown={e =>
+          onPointerMove={onPointerMove}
+          onPointerDown={e =>
             (e.button === 2 || (e.button === 0 && e.shiftKey)) &&
             (panPos.current = { x: e.screenX, y: e.screenY, tx: transform.x, ty: transform.y })
           }
-          onMouseLeave={() => !panPos.current && PaintManager.setBrushPos(null)}
+          onPointerLeave={() => !panPos.current && PaintManager.setBrushPos(null, Space.TwoD)}
         >
           <div
             className="layer-editor-canvases"
-            onMouseDown={e =>
+            onPointerDown={e =>
               e.button === 0 &&
               !e.shiftKey &&
               (brush.eyedropper

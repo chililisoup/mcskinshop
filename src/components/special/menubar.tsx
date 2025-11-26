@@ -159,7 +159,7 @@ type BProps = {
 
 const MenuBarTab = ({ tab, name, open, toggleTab, closeTab, children }: BProps) => (
   <div>
-    <button className={open === tab ? 'active' : ''} onMouseDown={() => toggleTab(tab)}>
+    <button className={open === tab ? 'active' : ''} onPointerDown={() => toggleTab(tab)}>
       {name}
     </button>
     {open === tab && (

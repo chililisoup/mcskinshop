@@ -88,7 +88,7 @@ export default function ColorPicker(props: AProps) {
         id={props.id}
         title={props.title}
         disabled={props.disabled}
-        onMouseDown={togglePicker}
+        onPointerDown={togglePicker}
       />
       {open && (
         <PopUp

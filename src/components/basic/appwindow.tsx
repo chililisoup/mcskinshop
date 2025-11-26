@@ -16,19 +16,19 @@ export default function AppWindow(props: AProps) {
 
   function startFocus() {
     setActive(true);
-    document.addEventListener('mousedown', checkFocus);
+    document.addEventListener('pointerdown', checkFocus);
   }
 
   useEffect(() => {
     const currentWindow = windowRef.current;
-    if (currentWindow) currentWindow.addEventListener('mousedown', startFocus);
+    if (currentWindow) currentWindow.addEventListener('pointerdown', startFocus);
 
-    document.addEventListener('mousedown', checkFocus);
+    document.addEventListener('pointerdown', checkFocus);
 
     return () => {
-      if (currentWindow) currentWindow.removeEventListener('mousedown', startFocus);
+      if (currentWindow) currentWindow.removeEventListener('pointerdown', startFocus);
 
-      document.removeEventListener('mousedown', checkFocus);
+      document.removeEventListener('pointerdown', checkFocus);
     };
   });
 

@@ -21,7 +21,6 @@
 // minecraft json model parser for hats, items
 // full session export (.zip or insane .json or somethin)
 // Migrate from localstorage to the database one
-// 3D skin editor
 // grid on hovered face for 3d skin editor
 // .ase support (import/export)
 // correct math for orthographic-perspective switching

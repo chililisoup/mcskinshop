@@ -122,7 +122,7 @@ export default class Slider extends Component<AProps, AState> {
     this.setState({ typing: true });
   };
 
-  onMouseDown = () => {
+  onPointerDown = () => {
     this.closeTimer();
     if (this.state.typing) return;
     this.timer = setTimeout(this.startTyping, 1000);
@@ -145,10 +145,8 @@ export default class Slider extends Component<AProps, AState> {
           this.prevValues.push(this.props.value);
         }}
         onDoubleClick={this.startTyping}
-        onMouseDown={this.onMouseDown}
-        onTouchStart={this.onMouseDown}
-        onMouseUp={this.closeTimer}
-        onTouchEnd={this.closeTimer}
+        onPointerDown={this.onPointerDown}
+        onPointerUp={this.closeTimer}
       >
         <input
           type="range"

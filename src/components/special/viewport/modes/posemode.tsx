@@ -131,7 +131,7 @@ export default class PoseMode extends AbstractMode<AState> {
 
       let angle = Math.atan2(matrix.determinant(), vec1.dot(vec2));
 
-      if (this.props.instance.activeKeys.Control) {
+      if (this.props.instance.activeKeys.has('Control')) {
         const step = Math.PI / 16;
         angle = Math.round(angle / step) * step;
       }
@@ -218,7 +218,7 @@ export default class PoseMode extends AbstractMode<AState> {
 
         movement = intersect.sub(this.oldHandlePos);
 
-        if (this.props.instance.activeKeys.Control) {
+        if (this.props.instance.activeKeys.has('Control')) {
           const length = movement.length();
           movement.normalize().multiplyScalar(Math.round(length));
         }
@@ -235,7 +235,7 @@ export default class PoseMode extends AbstractMode<AState> {
 
         movement = intersect.sub(this.oldHandlePos);
 
-        if (this.props.instance.activeKeys.Control) {
+        if (this.props.instance.activeKeys.has('Control')) {
           if (this.state.space === 'Local') {
             movement.applyQuaternion(worldQuat.clone().invert());
             movement.round();
@@ -327,12 +327,12 @@ export default class PoseMode extends AbstractMode<AState> {
       if (!intersect) return;
 
       let diff = 8 * Math.log(intersect.distanceTo(new THREE.Vector3()) / 1.5);
-      if (this.props.instance.activeKeys.Control) diff = Math.round(diff);
+      if (this.props.instance.activeKeys.has('Control')) diff = Math.round(diff);
       change = new THREE.Vector3(diff, diff, diff);
     }
 
     if (this.handle.parent?.name !== 'scaleCenterHandles') {
-      if (this.props.instance.activeKeys.Control) {
+      if (this.props.instance.activeKeys.has('Control')) {
         if (this.state.space === 'Local') {
           change.applyQuaternion(worldQuat.clone().invert());
           change.round();

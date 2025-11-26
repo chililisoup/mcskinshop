@@ -9,23 +9,23 @@ export default function DraggableDivider({ onChange }: AProps) {
   const dragging = useRef(false);
 
   useLayoutEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
+    const onPointerMove = (e: PointerEvent) => {
       if (!dragging.current || !divRef.current) return;
       const rect = divRef.current.getBoundingClientRect();
       onChange(e.clientX - (rect.left + rect.right) / 2);
     };
-    const onMouseUp = () => (dragging.current = false);
+    const onPointerUp = () => (dragging.current = false);
 
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
 
     return () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
     };
   });
 
   return (
-    <div className="draggable-divider" onMouseDown={() => (dragging.current = true)} ref={divRef} />
+    <div className="draggable-divider" onPointerDown={() => (dragging.current = true)} ref={divRef} />
   );
 }
